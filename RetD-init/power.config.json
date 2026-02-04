@@ -1,0 +1,13 @@
+{
+  "appId": "",
+  "appDisplayName": "R&D init",
+  "description": null,
+  "environmentId": "ce7183b0-3bb5-ea9c-8a38-d1e340e360fc",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "logoPath": "Default",
+  "localAppUrl": "http://localhost:3000/",
+  "region": "prod",
+  "connectionReferences": {},
+  "databaseReferences": {}
+}
