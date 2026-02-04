@@ -47,17 +47,8 @@ Ce template permet de développer des **Power Apps Code Apps** en utilisant les 
 |-------|-----------------|--------------|
 | **Node.js** | 18+ | [nodejs.org](https://nodejs.org/) |
 | **npm** | 9+ | Inclus avec Node.js |
-| **Power Platform CLI (PAC)** | Latest | Voir ci-dessous |
+| **Power Platform CLI (PAC)** | Latest | [Doc offi](https://learn.microsoft.com/en-us/power-platform/developer/cli/introduction?tabs=windows) |
 
-### Installation du Power Platform CLI
-
-```bash
-# Via npm (recommandé)
-npm install -g @microsoft/powerplatform-cli
-
-# Vérifier l'installation
-pac --version
-```
 
 ### Authentification Power Platform
 
