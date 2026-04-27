@@ -1,6 +1,6 @@
 {
-  "appId": "",
-  "appDisplayName": "A REMPLIR NOM DE L'APPLICATION",
+  "appId": "f6ac14e2-0cc6-49a1-9bf8-c423477eb7f4",
+  "appDisplayName": "Boncolac",
   "description": null,
   "environmentId": "ce7183b0-3bb5-ea9c-8a38-d1e340e360fc",
   "buildPath": "./dist",
@@ -9,5 +9,6 @@
   "localAppUrl": "http://localhost:3000/",
   "region": "prod",
   "connectionReferences": {},
-  "databaseReferences": {}
+  "databaseReferences": {},
+  "version": "1.0"
 }
