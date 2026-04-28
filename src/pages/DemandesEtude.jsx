@@ -73,12 +73,12 @@ export default function DemandesEtude() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9]">
-      <header className="bg-gradient-to-r from-white to-[#FAF6EC] border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-1 bg-white rounded-xl shadow-sm ring-1 ring-gray-100">
+              <div className="p-1 bg-card rounded-xl shadow-sm ring-1 ring-border">
                 <img
                   src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69383b6842c6c81a3e8e96d2/22582b55d_boncolac.jpeg"
                   alt="Boncolac"
@@ -86,12 +86,12 @@ export default function DemandesEtude() {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Demandes d'Étude <span className="text-[#5B3A8E]">(DE)</span></h1>
-                <p className="text-sm text-gray-600 mt-0.5">Gestion des demandes d'étude</p>
+                <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight">Demandes d'Étude <span className="text-primary">(DE)</span></h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Gestion des demandes d'étude</p>
               </div>
             </div>
             <Link to={createPageUrl('CreerDE')}>
-              <Button className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                 <Plus className="w-4 h-4 mr-2" />
                 Créer une DE
               </Button>
@@ -103,38 +103,38 @@ export default function DemandesEtude() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6">
           <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-white border border-gray-300">
+            <TabsList className="bg-card border border-border">
               <TabsTrigger 
                 value="a_traiter_adv" 
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <Clock className="w-4 h-4 mr-2" />
                 À traiter (ADV)
               </TabsTrigger>
               <TabsTrigger 
                 value="brouillon"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Brouillons
               </TabsTrigger>
               <TabsTrigger 
                 value="validee"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Validées
               </TabsTrigger>
               <TabsTrigger 
                 value="refusee"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Refusées
               </TabsTrigger>
               <TabsTrigger 
                 value="toutes"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 Toutes
               </TabsTrigger>
@@ -142,66 +142,66 @@ export default function DemandesEtude() {
           </Tabs>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden">
+        <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-[#5B3A8E]" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : filteredDemandes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-600">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#F5F1E8] to-[#EFE8D9] flex items-center justify-center mb-4 ring-1 ring-gray-200">
-                <FileText className="w-10 h-10 text-[#5B3A8E]/60" />
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4 ring-1 ring-border">
+                <FileText className="w-10 h-10 text-primary/60" />
               </div>
-              <p className="text-lg font-semibold text-gray-800">Aucune demande trouvée</p>
-              <p className="text-sm text-gray-500 mt-1">Il n'y a pas de demande correspondant à ce filtre</p>
+              <p className="text-lg font-semibold text-foreground">Aucune demande trouvée</p>
+              <p className="text-sm text-muted-foreground mt-1">Il n'y a pas de demande correspondant à ce filtre</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F5F1E8] border-b-2 border-[#5B3A8E]">
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Identifiant</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Désignation</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Usine</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Catégorie</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Statut</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Date création</TableHead>
+                <TableRow className="bg-secondary border-b-2 border-primary">
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Identifiant</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Catégorie</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredDemandes.map((de) => (
-                  <TableRow 
-                    key={de.id} 
-                    className="hover:bg-[#F5F1E8]/50 transition-colors cursor-pointer group border-b border-gray-200"
+                  <TableRow
+                    key={de.id}
+                    className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border"
                   >
-                    <TableCell className="font-mono text-sm text-gray-600">
+                    <TableCell className="font-mono text-sm text-muted-foreground">
                       {de.id?.slice(0, 8)}...
                     </TableCell>
-                    <TableCell className="font-semibold text-gray-900">
+                    <TableCell className="font-semibold text-foreground">
                       {de.designation_article}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-foreground/80">
                       {de.usine}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-foreground/80">
                       {de.categorie_produit}
                     </TableCell>
                     <TableCell>
                       {getStatutBadge(de.statut)}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {de.created_date 
+                    <TableCell className="text-sm text-muted-foreground">
+                      {de.created_date
                         ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
                         : '—'}
                     </TableCell>
                     <TableCell>
                       <Link to={createPageUrl(`TraiterDE?id=${de.id}`)}>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#5B3A8E]/10"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
                         >
-                          <ChevronRight className="w-5 h-5 text-[#5B3A8E]" />
+                          <ChevronRight className="w-5 h-5 text-primary" />
                         </Button>
                       </Link>
                     </TableCell>
@@ -213,55 +213,55 @@ export default function DemandesEtude() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6 text-blue-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {demandes.filter(d => d.statut === 'a_traiter_adv').length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">À traiter</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">À traiter</p>
               </div>
             </div>
           </div>
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <FileText className="w-6 h-6 text-amber-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {demandes.filter(d => d.statut === 'brouillon').length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Brouillons</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Brouillons</p>
               </div>
             </div>
           </div>
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <CheckCircle2 className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {demandes.filter(d => d.statut === 'validee').length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Validées</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Validées</p>
               </div>
             </div>
           </div>
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <XCircle className="w-6 h-6 text-red-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {demandes.filter(d => d.statut === 'refusee').length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Refusées</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
               </div>
             </div>
           </div>

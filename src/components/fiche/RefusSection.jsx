@@ -27,7 +27,7 @@ export default function RefusSection({
 
   if (showRefus) {
     return (
-      <div className="space-y-4 pt-6 border-t border-gray-200">
+      <div className="space-y-4 pt-6 border-t border-border">
         <div className="space-y-2">
           <Label className="text-slate-700 font-medium">
             Motif de refus <span className="text-red-500">*</span>
@@ -62,7 +62,7 @@ export default function RefusSection({
   }
 
   return (
-    <div className="pt-6 border-t border-gray-200 flex justify-between">
+    <div className="pt-6 border-t border-border flex justify-between">
       <Button
         variant="outline"
         onClick={() => setShowRefus(true)}
@@ -73,7 +73,7 @@ export default function RefusSection({
       </Button>
       <Button
         onClick={onVisa}
-        className="bg-[#5B3A8E] hover:bg-[#4A2E75] text-white px-6 py-2 h-11"
+        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 h-11"
       >
         <Check className="w-4 h-4 mr-2" />
         {visaLabel}

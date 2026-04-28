@@ -73,30 +73,29 @@ export default function Accueil() {
   });
 
   const getEtatBadge = (fiche) => {
-    const etat = fiche.etat_global || 'en_attente';
-    switch (etat) {
-      case 'terminee':
-        return (
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
-            Terminée
-          </Badge>
-        );
-      case 'en_cours':
-        return (
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            En cours
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-            <Clock className="w-3 h-3 mr-1" />
-            En attente
-          </Badge>
-        );
+    const visasValides = getVisasValides(fiche);
+    if (visasValides === 7) {
+      return (
+        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          Validée
+        </Badge>
+      );
     }
+    if (visasValides > 0) {
+      return (
+        <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+          En cours
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+        <Clock className="w-3 h-3 mr-1" />
+        En attente
+      </Badge>
+    );
   };
 
   const getIndicateurAvancement = (fiche) => {
@@ -113,9 +112,9 @@ export default function Accueil() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-gradient-to-r from-white to-[#FAF6EC] border-b border-gray-200 shadow-sm">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -127,12 +126,12 @@ export default function Accueil() {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Fiches de Lancement <span className="text-[#5B3A8E]">(FL)</span></h1>
-                <p className="text-sm text-gray-600 mt-0.5">Gestion des fiches de lancement produit</p>
+                <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight">Fiches de Lancement <span className="text-primary">(FL)</span></h1>
+                <p className="text-sm text-muted-foreground mt-0.5">Gestion des fiches de lancement produit</p>
               </div>
             </div>
             <Link to={createPageUrl('CreerFL')}>
-              <Button className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                 <Plus className="w-4 h-4 mr-2" />
                 Créer une FL
               </Button>
@@ -146,31 +145,31 @@ export default function Accueil() {
         {/* Filtres */}
         <div className="mb-6">
           <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-white border border-gray-300">
+            <TabsList className="bg-card border border-border">
               <TabsTrigger 
                 value="en_attente" 
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <Clock className="w-4 h-4 mr-2" />
                 Demandes en attente
               </TabsTrigger>
               <TabsTrigger
                 value="en_cours"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <Loader2 className="w-4 h-4 mr-2" />
                 Demandes en cours
               </TabsTrigger>
               <TabsTrigger
                 value="terminees"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Terminées
               </TabsTrigger>
               <TabsTrigger
                 value="toutes"
-                className="data-[state=active]:bg-[#5B3A8E] data-[state=active]:text-white uppercase text-xs font-semibold tracking-wide"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 Toutes
               </TabsTrigger>
@@ -179,46 +178,46 @@ export default function Accueil() {
         </div>
 
         {/* Tableau */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-md overflow-hidden">
+        <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-[#5B3A8E]" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : filteredFiches.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-600">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#F5F1E8] to-[#EFE8D9] flex items-center justify-center mb-4 ring-1 ring-gray-200">
-                <AlertCircle className="w-10 h-10 text-[#5B3A8E]/60" />
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4 ring-1 ring-border">
+                <AlertCircle className="w-10 h-10 text-primary/60" />
               </div>
-              <p className="text-lg font-semibold text-gray-800">Aucune fiche trouvée</p>
-              <p className="text-sm text-gray-500 mt-1">Il n'y a pas de fiche correspondant à ce filtre</p>
+              <p className="text-lg font-semibold text-foreground">Aucune fiche trouvée</p>
+              <p className="text-sm text-muted-foreground mt-1">Il n'y a pas de fiche correspondant à ce filtre</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F5F1E8] border-b-2 border-[#5B3A8E]">
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Identifiant</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Code article</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Libellé article</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Avancement</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">État</TableHead>
-                  <TableHead className="font-bold text-gray-900 uppercase text-xs tracking-wide">Date création</TableHead>
+                <TableRow className="bg-secondary border-b-2 border-primary">
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Identifiant</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code article</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Libellé article</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Avancement</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">État</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredFiches.map((fiche) => (
-                  <TableRow 
-                    key={fiche.id} 
-                    className="hover:bg-[#F5F1E8]/50 transition-colors cursor-pointer group border-b border-gray-200"
+                  <TableRow
+                    key={fiche.id}
+                    className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border"
                   >
-                    <TableCell className="font-mono text-sm text-gray-600">
+                    <TableCell className="font-mono text-sm text-muted-foreground">
                       {fiche.id?.slice(0, 8)}...
                     </TableCell>
-                    <TableCell className="font-semibold text-gray-900">
-                      {fiche.code_article || <span className="text-gray-400">—</span>}
+                    <TableCell className="font-semibold text-foreground">
+                      {fiche.code_article || <span className="text-muted-foreground/60">—</span>}
                     </TableCell>
-                    <TableCell className="text-gray-700">
-                      {fiche.libelle_article || <span className="text-gray-400">—</span>}
+                    <TableCell className="text-foreground/80">
+                      {fiche.libelle_article || <span className="text-muted-foreground/60">—</span>}
                     </TableCell>
                     <TableCell>
                       {getIndicateurAvancement(fiche)}
@@ -226,19 +225,19 @@ export default function Accueil() {
                     <TableCell>
                       {getEtatBadge(fiche)}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {fiche.created_date 
+                    <TableCell className="text-sm text-muted-foreground">
+                      {fiche.created_date
                         ? format(new Date(fiche.created_date), 'dd MMM yyyy', { locale: fr })
                         : '—'}
                     </TableCell>
                     <TableCell>
                       <Link to={createPageUrl(`FicheDetail?id=${fiche.id}`)}>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#5B3A8E]/10"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
                         >
-                          <ChevronRight className="w-5 h-5 text-[#5B3A8E]" />
+                          <ChevronRight className="w-5 h-5 text-primary" />
                         </Button>
                       </Link>
                     </TableCell>
@@ -251,42 +250,42 @@ export default function Accueil() {
 
         {/* Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6 text-amber-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {fiches.filter(f => getVisasValides(f) === 0).length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">En attente</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En attente</p>
               </div>
             </div>
           </div>
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#5B3A8E] to-[#7B4FB5] flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                <Loader2 className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                <Loader2 className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 7).length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">En cours</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En cours</p>
               </div>
             </div>
           </div>
-          <div className="group bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <CheckCircle2 className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-foreground">
                   {fiches.filter(f => getVisasValides(f) === 7).length}
                 </p>
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Terminées</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Terminées</p>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
@@ -17,8 +17,8 @@ import FLTab from '@/components/fiche/FLTab';
 import ImprimableTab from '@/components/fiche/ImprimableTab';
 
 export default function FicheDetail() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const ficheId = urlParams.get('id');
+  const [searchParams] = useSearchParams();
+  const ficheId = searchParams.get('id');
 
   const [activeTab, setActiveTab] = useState('controle_gestion');
   const [localFiche, setLocalFiche] = useState(null);
@@ -146,8 +146,8 @@ export default function FicheDetail() {
 
   if (isLoading || !localFiche) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#5B3A8E]" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -228,27 +228,27 @@ export default function FicheDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-gradient-to-r from-white to-[#FAF6EC] border-b border-gray-200 shadow-sm">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link to={createPageUrl('Accueil')}>
-                <Button variant="ghost" size="icon" className="text-gray-600 hover:text-[#5B3A8E] hover:bg-[#5B3A8E]/10">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-lg font-bold text-gray-900 uppercase tracking-tight">
+                <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                   {localFiche.code_article || 'Nouvelle fiche'}
                   {localFiche.libelle_article && ` — ${localFiche.libelle_article}`}
                 </h1>
-                <p className="text-sm text-gray-600 mt-0.5">ID: {ficheId?.slice(0, 8)}...</p>
+                <p className="text-sm text-muted-foreground mt-0.5">ID: {ficheId?.slice(0, 8)}...</p>
               </div>
             </div>
             {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-[#5B3A8E]">
+              <div className="flex items-center gap-2 text-sm text-primary">
                 <Save className="w-4 h-4 animate-pulse" />
                 Enregistrement...
               </div>
@@ -269,7 +269,7 @@ export default function FicheDetail() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-md p-6">
+        <div className="bg-card rounded-xl border border-border shadow-md p-6">
           {renderTabContent()}
         </div>
       </main>

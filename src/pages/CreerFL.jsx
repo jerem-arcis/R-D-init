@@ -40,20 +40,20 @@ export default function CreerFL() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9]">
-      <header className="bg-gradient-to-r from-white to-[#FAF6EC] border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center gap-4">
             <Link to={createPageUrl('Accueil')}>
-              <Button variant="ghost" size="icon" className="text-gray-600 hover:text-[#5B3A8E] hover:bg-[#5B3A8E]/10">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 uppercase tracking-tight">
+              <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                 Nouvelle Fiche de Lancement
               </h1>
-              <p className="text-sm text-gray-600 mt-0.5">Création directe d'une FL</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Création directe d'une FL</p>
             </div>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function CreerFL() {
 
       <main className="max-w-2xl mx-auto px-6 py-8">
         <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-md p-6 space-y-6">
+          <div className="bg-card rounded-xl border border-border shadow-md p-6 space-y-6">
             <div className="space-y-2">
               <Label htmlFor="code_article" className="text-slate-700 font-medium">
                 Code article <span className="text-red-500">*</span>
@@ -90,10 +90,10 @@ export default function CreerFL() {
               />
             </div>
 
-            <div className="flex justify-end pt-6 border-t border-gray-200">
+            <div className="flex justify-end pt-6 border-t border-border">
               <Button
                 type="submit"
-                className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
                 disabled={createMutation.isPending}
               >
                 <Plus className="w-4 h-4 mr-2" />

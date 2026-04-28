@@ -78,7 +78,7 @@ export default function FLTab({ fiche }) {
               <Button
                 onClick={handleCreateSAP}
                 disabled={createSAPMutation.isPending}
-                className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Créer l'article dans SAP

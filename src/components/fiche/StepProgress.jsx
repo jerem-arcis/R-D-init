@@ -47,7 +47,7 @@ export default function StepProgress({ currentStep, fiche }) {
                   w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300
                   ${status === 'terminee'
                     ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-md shadow-emerald-200 ring-2 ring-emerald-100'
-                    : 'bg-white text-slate-400 border-2 border-slate-200 hover:border-[#5B3A8E]/30'}
+                    : 'bg-card text-muted-foreground border-2 border-border hover:border-primary/30'}
                 `}>
                   {status === 'terminee' ? (
                     <Check className="w-5 h-5" />

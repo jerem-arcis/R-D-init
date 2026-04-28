@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,8 @@ import { ArrowLeft, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function TraiterDE() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const deId = urlParams.get('id');
+  const [searchParams] = useSearchParams();
+  const deId = searchParams.get('id');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -140,8 +140,8 @@ export default function TraiterDE() {
 
   if (isLoading || !de) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#5B3A8E]" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -149,27 +149,27 @@ export default function TraiterDE() {
   const isReadOnly = de.statut === 'validee' || de.statut === 'refusee';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5F1E8] via-[#FAF6EC] to-[#EFE8D9]">
-      <header className="bg-gradient-to-r from-white to-[#FAF6EC] border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center gap-4">
             <Link to={createPageUrl('DemandesEtude')}>
-              <Button variant="ghost" size="icon" className="text-gray-600 hover:text-[#5B3A8E] hover:bg-[#5B3A8E]/10">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 uppercase tracking-tight">
+              <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                 Demande d'Étude — {de.designation_article}
               </h1>
-              <p className="text-sm text-gray-600 mt-0.5">ID: {deId?.slice(0, 8)}...</p>
+              <p className="text-sm text-muted-foreground mt-0.5">ID: {deId?.slice(0, 8)}...</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-md p-6 space-y-6">
+        <div className="bg-card rounded-xl border border-border shadow-md p-6 space-y-6">
           {de.statut === 'validee' && (
             <Alert className="bg-emerald-50 border-emerald-200">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -217,7 +217,7 @@ export default function TraiterDE() {
 
           {!isReadOnly && (
             <>
-              <div className="pt-6 border-t border-gray-200 space-y-4">
+              <div className="pt-6 border-t border-border space-y-4">
                 <div className="space-y-2">
                   <Label className="text-slate-700 font-medium">
                     Code EAN suggéré pour {de.usine}
@@ -262,7 +262,7 @@ export default function TraiterDE() {
                 {selectedEAN && (
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-sm text-slate-700 mb-1">Code chapeau qui sera généré :</p>
-                    <p className="font-bold text-lg text-[#5B3A8E]">
+                    <p className="font-bold text-lg text-primary">
                       {selectedEAN} {de.designation_article}
                     </p>
                   </div>
@@ -270,7 +270,7 @@ export default function TraiterDE() {
               </div>
 
               {!showRefus ? (
-                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <div className="flex justify-end gap-3 pt-6 border-t border-border">
                   <Button
                     variant="outline"
                     onClick={() => setShowRefus(true)}
@@ -282,14 +282,14 @@ export default function TraiterDE() {
                   <Button
                     onClick={handleValider}
                     disabled={!selectedEAN || updateDEMutation.isPending}
-                    className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
                     Valider et créer FL
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-4 pt-6 border-t border-gray-200">
+                <div className="space-y-4 pt-6 border-t border-border">
                   <div className="space-y-2">
                     <Label className="text-slate-700 font-medium">
                       Motif de refus <span className="text-red-500">*</span>

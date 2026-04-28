@@ -87,7 +87,7 @@ export default function ImprimableTab({ fiche, onUpdate }) {
         <Button
           onClick={handleExport}
           disabled={isExporting}
-          className="bg-gradient-to-r from-[#5B3A8E] to-[#7B4FB5] hover:from-[#4A2E75] hover:to-[#6A3FA0] text-white shadow-md hover:shadow-lg transition-all"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
         >
           {isExporting ? (
             <>

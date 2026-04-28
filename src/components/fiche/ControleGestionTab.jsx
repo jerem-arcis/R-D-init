@@ -253,7 +253,7 @@ export default function ControleGestionTab({ fiche, onUpdate, onVisa, onRefus, i
           </Button>
           <Button
             onClick={onVisa}
-            className="bg-[#5B3A8E] hover:bg-[#4A2E75] text-white px-6 py-3 h-auto uppercase text-sm font-bold tracking-wide"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 h-auto uppercase text-sm font-bold tracking-wide"
           >
             <Check className="w-4 h-4 mr-2" />
             Visa ControleDeGestion

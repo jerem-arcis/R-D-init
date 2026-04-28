@@ -13,13 +13,13 @@ const TABS = [
 
 export default function TabNavigation({ activeTab, setActiveTab, currentStep }) {
   return (
-    <div className="bg-white border-b-2 border-[#5B3A8E]">
+    <div className="bg-card border-b-2 border-primary">
       <div className="max-w-6xl mx-auto px-6">
         <nav className="flex space-x-1 overflow-x-auto">
           {TABS.map((tab) => {
             const isAccessible = true;
             const isActive = activeTab === tab.id;
-            
+
             return (
               <button
                 key={tab.id}
@@ -27,9 +27,9 @@ export default function TabNavigation({ activeTab, setActiveTab, currentStep }) 
                 className={`
                   px-4 py-3 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-b-4 transition-all duration-200
                   flex items-center gap-2
-                  ${isActive 
-                    ? 'border-[#5B3A8E] text-[#5B3A8E] bg-[#F5F1E8]/50' 
-                    : 'border-transparent text-gray-600 hover:text-[#5B3A8E] hover:border-gray-300'}
+                  ${isActive
+                    ? 'border-primary text-primary bg-secondary/50'
+                    : 'border-transparent text-muted-foreground hover:text-primary hover:border-border'}
                 `}
               >
                 {tab.label}
