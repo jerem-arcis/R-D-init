@@ -7,20 +7,34 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 
 import StepProgress from '@/components/fiche/StepProgress';
-import TabNavigation from '@/components/fiche/TabNavigation';
-import ControleGestionTab from '@/components/fiche/ControleGestionTab';
-import SupplyChainTab from '@/components/fiche/SupplyChainTab';
-import GestionBesoinTab from '@/components/fiche/GestionBesoinTab';
-import IndustrielTab from '@/components/fiche/IndustrielTab';
-import CommerceTab from '@/components/fiche/CommerceTab';
-import FLTab from '@/components/fiche/FLTab';
-import ImprimableTab from '@/components/fiche/ImprimableTab';
+import ControleGestionSection from '@/components/fiche/ControleGestionSection';
+import SupplyChainSection from '@/components/fiche/SupplyChainSection';
+import GestionBesoinSection from '@/components/fiche/GestionBesoinSection';
+import IndustrielSection from '@/components/fiche/IndustrielSection';
+import CommerceSection from '@/components/fiche/CommerceSection';
+import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
+import { isSectionLocked, isSectionEditable } from '@/lib/ficheSchema';
+
+// Pose un visa et nettoie le refus correspondant
+const visaPatch = (visaField, refusField) => ({
+  [visaField]: true,
+  [`${visaField}_date`]: new Date().toISOString(),
+  [refusField]: false,
+  [`${refusField}_motif`]: null,
+});
+
+// Pose un refus et nettoie le visa correspondant
+const refusPatch = (visaField, refusField, motif) => ({
+  [refusField]: true,
+  [`${refusField}_motif`]: motif,
+  [`${refusField}_date`]: new Date().toISOString(),
+  [visaField]: false,
+});
 
 export default function FicheDetail() {
   const [searchParams] = useSearchParams();
   const ficheId = searchParams.get('id');
 
-  const [activeTab, setActiveTab] = useState('controle_gestion');
   const [localFiche, setLocalFiche] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -33,10 +47,14 @@ export default function FicheDetail() {
     select: (data) => data[0] || null,
   });
 
+  const { data: de } = useQuery({
+    queryKey: ['de-for-fiche', fiche?.demande_etude_id],
+    queryFn: () => base44.entities.DemandeEtude.get(fiche.demande_etude_id),
+    enabled: !!fiche?.demande_etude_id,
+  });
+
   useEffect(() => {
-    if (fiche) {
-      setLocalFiche(fiche);
-    }
+    if (fiche) setLocalFiche(fiche);
   }, [fiche]);
 
   const updateMutation = useMutation({
@@ -48,100 +66,10 @@ export default function FicheDetail() {
   });
 
   const handleUpdate = async (updates) => {
-    setLocalFiche(prev => ({ ...prev, ...updates }));
+    setLocalFiche((prev) => ({ ...prev, ...updates }));
     setIsSaving(true);
     await updateMutation.mutateAsync(updates);
     setIsSaving(false);
-  };
-
-  const handleVisaControleGestion = async () => {
-    await handleUpdate({
-      visa_controle_gestion: true,
-      visa_controle_gestion_date: new Date().toISOString(),
-      refus_controle_gestion: false,
-      refus_controle_gestion_motif: null
-    });
-  };
-
-  const handleRefusControleGestion = async (motif) => {
-    await handleUpdate({
-      refus_controle_gestion: true,
-      refus_controle_gestion_motif: motif,
-      refus_controle_gestion_date: new Date().toISOString(),
-      visa_controle_gestion: false
-    });
-  };
-
-  const handleVisaSupplyChain = async () => {
-    await handleUpdate({
-      visa_supply_chain: true,
-      visa_supply_chain_date: new Date().toISOString(),
-      refus_supply_chain: false,
-      refus_supply_chain_motif: null
-    });
-  };
-
-  const handleRefusSupplyChain = async (motif) => {
-    await handleUpdate({
-      refus_supply_chain: true,
-      refus_supply_chain_motif: motif,
-      refus_supply_chain_date: new Date().toISOString(),
-      visa_supply_chain: false
-    });
-  };
-
-  const handleVisaGestionBesoin = async () => {
-    await handleUpdate({
-      visa_gestion_besoin: true,
-      visa_gestion_besoin_date: new Date().toISOString(),
-      refus_gestion_besoin: false,
-      refus_gestion_besoin_motif: null
-    });
-  };
-
-  const handleRefusGestionBesoin = async (motif) => {
-    await handleUpdate({
-      refus_gestion_besoin: true,
-      refus_gestion_besoin_motif: motif,
-      refus_gestion_besoin_date: new Date().toISOString(),
-      visa_gestion_besoin: false
-    });
-  };
-
-  const handleVisaIndustriel = async () => {
-    await handleUpdate({
-      visa_industriel: true,
-      visa_industriel_date: new Date().toISOString(),
-      refus_industriel: false,
-      refus_industriel_motif: null
-    });
-  };
-
-  const handleRefusIndustriel = async (motif) => {
-    await handleUpdate({
-      refus_industriel: true,
-      refus_industriel_motif: motif,
-      refus_industriel_date: new Date().toISOString(),
-      visa_industriel: false
-    });
-  };
-
-  const handleVisaCommerce = async () => {
-    await handleUpdate({
-      visa_commerce: true,
-      visa_commerce_date: new Date().toISOString(),
-      refus_commerce: false,
-      refus_commerce_motif: null
-    });
-  };
-
-  const handleRefusCommerce = async (motif) => {
-    await handleUpdate({
-      refus_commerce: true,
-      refus_commerce_motif: motif,
-      refus_commerce_date: new Date().toISOString(),
-      visa_commerce: false
-    });
   };
 
   if (isLoading || !localFiche) {
@@ -152,86 +80,33 @@ export default function FicheDetail() {
     );
   }
 
-  const currentStep = localFiche.etape_courante || 1;
+  const sectionHandlers = (sectionKey, visaField, refusField) => ({
+    isLocked: isSectionLocked(sectionKey, localFiche),
+    isEditable: isSectionEditable(sectionKey, localFiche),
+    onUpdate: handleUpdate,
+    onVisa: () => handleUpdate(visaPatch(visaField, refusField)),
+    onRefus: (motif) => handleUpdate(refusPatch(visaField, refusField, motif)),
+  });
 
-  const isTabEditable = (tabStep) => {
-    return tabStep === currentStep;
-  };
-
-  const isTabAccessible = (tabStep) => {
-    // L'onglet Industriel (étape 4) n'est accessible qu'après l'étape 3
-    if (tabStep === 4) {
-      return currentStep >= 4;
-    }
-    return tabStep <= currentStep;
-  };
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'controle_gestion':
-        return (
-          <ControleGestionTab
-            fiche={localFiche}
-            onUpdate={handleUpdate}
-            onVisa={handleVisaControleGestion}
-            onRefus={handleRefusControleGestion}
-            isReadOnly={localFiche.visa_controle_gestion}
-          />
-        );
-      case 'supply_chain':
-        return (
-          <SupplyChainTab
-            fiche={localFiche}
-            onUpdate={handleUpdate}
-            onVisa={handleVisaSupplyChain}
-            onRefus={handleRefusSupplyChain}
-            isReadOnly={localFiche.visa_supply_chain}
-          />
-        );
-      case 'gestion_besoin':
-        return (
-          <GestionBesoinTab
-            fiche={localFiche}
-            onUpdate={handleUpdate}
-            onVisa={handleVisaGestionBesoin}
-            onRefus={handleRefusGestionBesoin}
-            isReadOnly={localFiche.visa_gestion_besoin}
-          />
-        );
-      case 'industriel':
-        return (
-          <IndustrielTab
-            fiche={localFiche}
-            onUpdate={handleUpdate}
-            onVisa={handleVisaIndustriel}
-            onRefus={handleRefusIndustriel}
-            isReadOnly={localFiche.visa_industriel}
-          />
-        );
-      case 'commerce':
-        return (
-          <CommerceTab
-            fiche={localFiche}
-            onUpdate={handleUpdate}
-            onVisa={handleVisaCommerce}
-            onRefus={handleRefusCommerce}
-            isReadOnly={localFiche.visa_commerce}
-          />
-        );
-      case 'fl':
-        return <FLTab fiche={localFiche} />;
-      case 'imprimable':
-        return <ImprimableTab fiche={localFiche} onUpdate={handleUpdate} />;
-      default:
-        return null;
-    }
-  };
+  // Étape courante = première section non visée
+  const currentStep = !localFiche.visa_controle_gestion
+    ? 1
+    : !localFiche.visa_supply_chain
+    ? 2
+    : !localFiche.visa_gestion_besoin
+    ? 3
+    : !localFiche.visa_industriel
+    ? 4
+    : !localFiche.visa_commerce
+    ? 5
+    : localFiche.statut_sap === 'Création SAP effectuée'
+    ? 7
+    : 6;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-5">
+    <div className="min-h-screen bg-background pb-20">
+      <header className="bg-card border-b border-border shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link to={createPageUrl('Accueil')}>
@@ -244,34 +119,57 @@ export default function FicheDetail() {
                   {localFiche.code_article || 'Nouvelle fiche'}
                   {localFiche.libelle_article && ` — ${localFiche.libelle_article}`}
                 </h1>
-                <p className="text-sm text-muted-foreground mt-0.5">ID: {ficheId?.slice(0, 8)}...</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  ID: {ficheId?.slice(0, 8)}...
+                  {de && <span className="ml-3">DE: {de.code_projet || de.id?.slice(0, 8)}</span>}
+                </p>
               </div>
             </div>
-            {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-primary">
-                <Save className="w-4 h-4 animate-pulse" />
-                Enregistrement...
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {isSaving && (
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <Save className="w-4 h-4 animate-pulse" />
+                  Enregistrement...
+                </div>
+              )}
+              <Link to={createPageUrl(`FicheDetailV2?id=${ficheId}`)}>
+                <Button variant="outline" size="sm" className="h-8 text-xs">
+                  Vue V2 (fiche unique) →
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
+        <StepProgress currentStep={currentStep} fiche={localFiche} />
       </header>
 
-      {/* Step Progress */}
-      <StepProgress currentStep={currentStep} fiche={localFiche} />
-
-      {/* Tab Navigation */}
-      <TabNavigation 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        currentStep={currentStep}
-      />
-
-      {/* Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="bg-card rounded-xl border border-border shadow-md p-6">
-          {renderTabContent()}
-        </div>
+      <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+        <ControleGestionSection
+          fiche={localFiche}
+          de={de}
+          {...sectionHandlers('controle_gestion', 'visa_controle_gestion', 'refus_controle_gestion')}
+        />
+        <SupplyChainSection
+          fiche={localFiche}
+          de={de}
+          {...sectionHandlers('supply_chain', 'visa_supply_chain', 'refus_supply_chain')}
+        />
+        <GestionBesoinSection
+          fiche={localFiche}
+          de={de}
+          {...sectionHandlers('gestion_besoin', 'visa_gestion_besoin', 'refus_gestion_besoin')}
+        />
+        <IndustrielSection
+          fiche={localFiche}
+          de={de}
+          {...sectionHandlers('industriel', 'visa_industriel', 'refus_industriel')}
+        />
+        <CommerceSection
+          fiche={localFiche}
+          de={de}
+          {...sectionHandlers('commerce', 'visa_commerce', 'refus_commerce')}
+        />
+        <FLSynthesisSection fiche={localFiche} />
       </main>
     </div>
   );

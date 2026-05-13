@@ -26,8 +26,28 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+// Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
+const getType = (de) => de.type_de || 'de';
+const getDesignation = (de) =>
+  getType(de) === 'autre' ? de.autre_designation : de.designation_article;
+const getDemandeur = (de) =>
+  getType(de) === 'autre' ? de.autre_demandeur : de.demandeur;
+const getTypeDemande = (de) =>
+  getType(de) === 'autre' ? (de.autre_type_demande ? `Autre — type ${de.autre_type_demande}` : null) : de.type_demande_de;
+const getUsine = (de) =>
+  de.usine_validee || (getType(de) === 'autre' ? de.autre_usine_fab : null);
+const getCodeProjet = (de) =>
+  getType(de) === 'autre' ? de.autre_code_origine : de.code_projet;
+
+const TYPE_BADGE = {
+  de: { label: 'DE', cls: 'bg-primary/15 text-primary border-primary/30' },
+  de_dl: { label: 'DE / DL', cls: 'bg-violet-100 text-violet-700 border-violet-300' },
+  autre: { label: 'Autre', cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+};
+
 export default function DemandesEtude() {
-  const [filter, setFilter] = useState('a_traiter_adv');
+  const [filter, setFilter] = useState('toutes');
+  const [typeFilter, setTypeFilter] = useState('tous');
 
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ['demandes_etude'],
@@ -35,6 +55,7 @@ export default function DemandesEtude() {
   });
 
   const filteredDemandes = demandes.filter(de => {
+    if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
     if (filter === 'toutes') return true;
     return de.statut === filter;
   });
@@ -101,38 +122,38 @@ export default function DemandesEtude() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList className="bg-card border border-border">
-              <TabsTrigger 
-                value="a_traiter_adv" 
+              <TabsTrigger
+                value="a_traiter_adv"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <Clock className="w-4 h-4 mr-2" />
                 À traiter (ADV)
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="brouillon"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Brouillons
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="validee"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Validées
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="refusee"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Refusées
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="toutes"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
               >
@@ -140,79 +161,32 @@ export default function DemandesEtude() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">Type :</span>
+            {[
+              { id: 'tous', label: 'Tous' },
+              { id: 'de', label: 'DE' },
+              { id: 'de_dl', label: 'DE / DL' },
+              { id: 'autre', label: 'Autre' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTypeFilter(t.id)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                  typeFilter === t.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/40'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : filteredDemandes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4 ring-1 ring-border">
-                <FileText className="w-10 h-10 text-primary/60" />
-              </div>
-              <p className="text-lg font-semibold text-foreground">Aucune demande trouvée</p>
-              <p className="text-sm text-muted-foreground mt-1">Il n'y a pas de demande correspondant à ce filtre</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-secondary border-b-2 border-primary">
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Identifiant</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Catégorie</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDemandes.map((de) => (
-                  <TableRow
-                    key={de.id}
-                    className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border"
-                  >
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {de.id?.slice(0, 8)}...
-                    </TableCell>
-                    <TableCell className="font-semibold text-foreground">
-                      {de.designation_article}
-                    </TableCell>
-                    <TableCell className="text-foreground/80">
-                      {de.usine}
-                    </TableCell>
-                    <TableCell className="text-foreground/80">
-                      {de.categorie_produit}
-                    </TableCell>
-                    <TableCell>
-                      {getStatutBadge(de.statut)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {de.created_date
-                        ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Link to={createPageUrl(`TraiterDE?id=${de.id}`)}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
-                        >
-                          <ChevronRight className="w-5 h-5 text-primary" />
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -266,6 +240,90 @@ export default function DemandesEtude() {
             </div>
           </div>
         </div>
+
+        <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : filteredDemandes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4 ring-1 ring-border">
+                <FileText className="w-10 h-10 text-primary/60" />
+              </div>
+              <p className="text-lg font-semibold text-foreground">Aucune demande trouvée</p>
+              <p className="text-sm text-muted-foreground mt-1">Il n'y a pas de demande correspondant à ce filtre</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary border-b-2 border-primary">
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Type</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code projet</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Demandeur</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Type de demande</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDemandes.map((de) => {
+                  const tBadge = TYPE_BADGE[getType(de)] || TYPE_BADGE.de;
+                  return (
+                  <TableRow
+                    key={de.id}
+                    className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border"
+                  >
+                    <TableCell>
+                      <Badge className={`${tBadge.cls} text-[10px] font-bold uppercase tracking-wider`}>
+                        {tBadge.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {getCodeProjet(de) || <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell className="font-semibold text-foreground">
+                      {getDesignation(de) || <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 text-sm">
+                      {getDemandeur(de) || <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 text-sm">
+                      {getTypeDemande(de) || <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 text-sm">
+                      {getUsine(de) || <span className="text-muted-foreground/50">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {getStatutBadge(de.statut)}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {de.created_date
+                        ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Link to={createPageUrl(`TraiterDE?id=${de.id}`)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
+                        >
+                          <ChevronRight className="w-5 h-5 text-primary" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
       </main>
     </div>
   );

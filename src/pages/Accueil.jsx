@@ -38,7 +38,7 @@ const STEP_NAMES = {
 };
 
 export default function Accueil() {
-  const [filter, setFilter] = useState('en_attente');
+  const [filter, setFilter] = useState('toutes');
 
   const { data: fiches = [], isLoading } = useQuery({
     queryKey: ['fiches'],
@@ -177,6 +177,49 @@ export default function Accueil() {
           </Tabs>
         </div>
 
+        {/* Stats */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {fiches.filter(f => getVisasValides(f) === 0).length}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En attente</p>
+              </div>
+            </div>
+          </div>
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                <Loader2 className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 7).length}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En cours</p>
+              </div>
+            </div>
+          </div>
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="w-6 h-6 text-emerald-700" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {fiches.filter(f => getVisasValides(f) === 7).length}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Terminées</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tableau */}
         <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
           {isLoading ? (
@@ -248,48 +291,6 @@ export default function Accueil() {
           )}
         </div>
 
-        {/* Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Clock className="w-6 h-6 text-amber-700" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) === 0).length}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En attente</p>
-              </div>
-            </div>
-          </div>
-          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                <Loader2 className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 7).length}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En cours</p>
-              </div>
-            </div>
-          </div>
-          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <CheckCircle2 className="w-6 h-6 text-emerald-700" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) === 7).length}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Terminées</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );
