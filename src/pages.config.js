@@ -1,3 +1,4 @@
+import Dashboard from './pages/Dashboard';
 import Accueil from './pages/Accueil';
 import FicheDetail from './pages/FicheDetail';
 import FicheDetailV2 from './pages/FicheDetailV2';
@@ -9,6 +10,7 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "Dashboard": Dashboard,
     "Accueil": Accueil,
     "FicheDetail": FicheDetail,
     "FicheDetailV2": FicheDetailV2,
@@ -19,7 +21,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Accueil",
+    mainPage: "Dashboard",
     Pages: PAGES,
     Layout: __Layout,
 };

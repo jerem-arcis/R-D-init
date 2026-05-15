@@ -4,6 +4,7 @@ import { createPageUrl } from '@/utils';
 import {
   FileText,
   ClipboardList,
+  LayoutDashboard,
   Menu,
   X,
   ChevronRight,
@@ -11,8 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 
 const NAV_ITEMS = [
-  { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,      match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
-  { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList, match: ["Accueil", "FicheDetail", "CreerFL"] },
+  { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"] },
+  { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
+  { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail", "CreerFL"] },
 ];
 
 export default function Layout({ children, currentPageName }) {
@@ -97,18 +99,6 @@ export default function Layout({ children, currentPageName }) {
           })}
         </nav>
 
-        {/* Footer */}
-        <div
-          className="p-4"
-          style={{ borderTop: "1px solid hsl(270, 50%, 28%)" }}
-        >
-          <p
-            className="text-[10px] tracking-widest uppercase"
-            style={{ color: "rgba(255,255,255,0.4)" }}
-          >
-            Boncolac · 2025
-          </p>
-        </div>
       </aside>
 
       {/* Main */}
