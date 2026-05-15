@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import RadarHero from '@/components/dashboard/RadarHero';
 import CriticalCard from '@/components/dashboard/CriticalCard';
 import LaunchTimeline from '@/components/dashboard/LaunchTimeline';
+import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts';
 
 const FADE_UP_KEYFRAMES = `
 @keyframes fadeUp {
@@ -130,6 +131,10 @@ export default function Dashboard() {
 
             <div style={{ animation: 'fadeUp 600ms ease-out 150ms both' }}>
               <LaunchTimeline entries={entries} />
+            </div>
+
+            <div style={{ animation: 'fadeUp 700ms ease-out 250ms both' }}>
+              <AnalyticsCharts entries={entries} fiches={fiches} des={des} />
             </div>
 
             {unplanned > 0 && (
