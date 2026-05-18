@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -44,6 +44,21 @@ export default function Accueil() {
     queryKey: ['fiches'],
     queryFn: () => base44.entities.FicheLancement.list('-created_date'),
   });
+
+  const { data: des = [] } = useQuery({
+    queryKey: ['demandes_etude'],
+    queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
+  });
+
+  const usineByFicheId = useMemo(() => {
+    const deById = new Map(des.map((d) => [d.id, d]));
+    const map = new Map();
+    for (const f of fiches) {
+      const de = f.demande_etude_id ? deById.get(f.demande_etude_id) : null;
+      map.set(f.id, de?.usine_validee || de?.usine_fab || null);
+    }
+    return map;
+  }, [fiches, des]);
 
   const getVisasValides = (fiche) => {
     let count = 0;
@@ -243,6 +258,7 @@ export default function Accueil() {
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Libellé article</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Avancement</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">État</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine de prod</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -267,6 +283,9 @@ export default function Accueil() {
                     </TableCell>
                     <TableCell>
                       {getEtatBadge(fiche)}
+                    </TableCell>
+                    <TableCell className="text-foreground/80 text-sm">
+                      {usineByFicheId.get(fiche.id) || <span className="text-muted-foreground/60">—</span>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {fiche.created_date

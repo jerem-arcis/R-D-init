@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, AlertTriangle, Clock, Flame } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Flame, Hourglass } from 'lucide-react';
 
 const Stat = ({ label, value, Icon, accent }) => (
   <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm ring-1 ring-white/15">
@@ -18,7 +18,7 @@ const Stat = ({ label, value, Icon, accent }) => (
   </div>
 );
 
-export default function RadarHero({ critical, counts, totalActive }) {
+export default function RadarHero({ critical, delayLancement, blocageService, totalActive }) {
   const allClear = critical === 0;
 
   return (
@@ -90,10 +90,9 @@ export default function RadarHero({ critical, counts, totalActive }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 w-full lg:w-auto">
-          <Stat label="En retard" value={counts.retard} Icon={AlertTriangle} accent="hsl(0, 75%, 55%)" />
-          <Stat label="≤ J-3" value={counts.critique} Icon={Flame} accent="hsl(15, 85%, 55%)" />
-          <Stat label="≤ J-7" value={counts.imminent} Icon={Clock} accent="hsl(35, 90%, 55%)" />
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto">
+          <Stat label="Retard date de lancement" value={delayLancement} Icon={AlertTriangle} accent="hsl(0, 75%, 55%)" />
+          <Stat label="Blocage service > 3 j" value={blocageService} Icon={Hourglass} accent="hsl(15, 85%, 55%)" />
         </div>
       </div>
     </section>

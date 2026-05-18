@@ -2,13 +2,12 @@ import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, CalendarOff, Radar, RotateCcw } from 'lucide-react';
-import { buildAlertEntries, summarize } from '@/lib/launchAlert';
+import { buildAlertEntries } from '@/lib/launchAlert';
+import { getStaleWaitingTransitions } from '@/lib/cycleStats';
 import { resetMockDemoData } from '@/lib/mockSeed';
 import { Button } from '@/components/ui/button';
 import RadarHero from '@/components/dashboard/RadarHero';
-import CriticalCard from '@/components/dashboard/CriticalCard';
-import LaunchTimeline from '@/components/dashboard/LaunchTimeline';
-import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts';
+import CycleStatsSection from '@/components/dashboard/CycleStatsSection';
 
 const FADE_UP_KEYFRAMES = `
 @keyframes fadeUp {
@@ -39,20 +38,25 @@ export default function Dashboard() {
   const fiches = fichesQuery.data || [];
   const des = desQuery.data || [];
 
-  const { entries, unplanned, summary, criticalEntries, totalActive } = useMemo(() => {
+  const { unplanned, totalActive, delayLancement, blocageService, critical } = useMemo(() => {
     const { entries, unplanned } = buildAlertEntries(fiches, des);
-    const summary = summarize(entries);
-
-    // On garde jusqu'à 3 cartes : d'abord critiques, complétées par les imminentes.
-    const critical = entries.filter((e) => e.bucket.isCritical);
-    const fillers = entries.filter(
-      (e) => !e.bucket.isCritical && e.bucket.key !== 'lancee'
-    );
-    const criticalEntries = [...critical, ...fillers].slice(0, 3);
-
     const totalActive = entries.filter((e) => e.bucket.key !== 'lancee').length;
 
-    return { entries, unplanned, summary, criticalEntries, totalActive };
+    const delayIds = new Set(
+      entries.filter((e) => e.bucket.key === 'retard').map((e) => e.fiche.id),
+    );
+    const blockedIds = new Set(
+      getStaleWaitingTransitions(fiches).map((e) => e.fiche.id),
+    );
+    const criticalIds = new Set([...delayIds, ...blockedIds]);
+
+    return {
+      unplanned,
+      totalActive,
+      delayLancement: delayIds.size,
+      blocageService: blockedIds.size,
+      critical: criticalIds.size,
+    };
   }, [fiches, des]);
 
   return (
@@ -87,7 +91,7 @@ export default function Dashboard() {
               size="sm"
               onClick={handleReset}
               className="uppercase text-[10px] font-bold tracking-wider"
-              title="Remplace toutes les fiches actuelles par 9 fiches d'exemple réparties dans tous les buckets"
+              title="Remplace toutes les fiches actuelles par les données de démo"
             >
               <RotateCcw className="w-3.5 h-3.5 mr-2" />
               Données de démo
@@ -105,36 +109,15 @@ export default function Dashboard() {
           <>
             <div style={{ animation: 'fadeUp 500ms ease-out both' }}>
               <RadarHero
-                critical={summary.critical}
-                counts={summary.counts}
+                critical={critical}
+                delayLancement={delayLancement}
+                blocageService={blocageService}
                 totalActive={totalActive}
               />
             </div>
 
-            {criticalEntries.length > 0 && (
-              <section>
-                <div className="flex items-baseline justify-between mb-2.5">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-slate-700">
-                    À traiter en priorité
-                  </h2>
-                  <p className="text-[11px] text-slate-500">
-                    Top {criticalEntries.length} fiche{criticalEntries.length > 1 ? 's' : ''} les plus urgentes
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {criticalEntries.map((e, i) => (
-                    <CriticalCard key={e.fiche.id} entry={e} index={i} />
-                  ))}
-                </div>
-              </section>
-            )}
-
             <div style={{ animation: 'fadeUp 600ms ease-out 150ms both' }}>
-              <LaunchTimeline entries={entries} />
-            </div>
-
-            <div style={{ animation: 'fadeUp 700ms ease-out 250ms both' }}>
-              <AnalyticsCharts entries={entries} fiches={fiches} des={des} />
+              <CycleStatsSection fiches={fiches} des={des} />
             </div>
 
             {unplanned > 0 && (

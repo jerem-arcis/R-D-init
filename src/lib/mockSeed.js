@@ -2,7 +2,7 @@
 // S'exécute une fois au démarrage de l'app si rien n'a été créé.
 
 const STORAGE_PREFIX = 'mock_db_';
-const SEED_FLAG = 'mock_seed_v3';
+const SEED_FLAG = 'mock_seed_v6';
 
 const uid = () =>
   (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -592,20 +592,56 @@ const buildSeedData = () => {
     const sapStatut = s.visas.statut_sap || null;
     const fl_exportee = !!s.visas.fl_exportee;
 
+    // Dates de visa progressives à partir d'une date de création étalée dans le temps.
+    // L'âge des fiches est dispersé sur ~6 mois pour faire parler le filtre 30j/90j.
+    // 4 profils de rythme (rapide / normal / lent / très lent) pour varier les stats.
+    const cycleProfiles = [
+      [1, 2, 3, 4, 5, 6, 7],         // rapide  (cycle ~1 sem)
+      [2, 5, 9, 14, 20, 25, 28],     // normal  (~4 sem)
+      [3, 8, 15, 23, 33, 40, 45],    // lent    (~6 sem)
+      [4, 12, 22, 35, 50, 60, 68],   // très lent (~10 sem)
+    ];
+    const profile = cycleProfiles[idx % cycleProfiles.length];
+
+    // Âge de la fiche : pseudo-shuffle (idx * 47 mod 180) + 3 jours.
+    // Garantit un mélange des états de visas (full / partiel / vide) à chaque tranche d'âge,
+    // pour que les filtres 30j / 90j / Tout donnent des résultats variés et complets.
+    const ficheAgeJours = ((idx * 47) % 180) + 3;
+    const ficheCreatedDate = new Date();
+    ficheCreatedDate.setDate(ficheCreatedDate.getDate() - ficheAgeJours);
+    const nowMs = Date.now();
+    // Renvoie l'ISO si la date est passée, null sinon (visa pas encore atteint).
+    const visaDateOrNull = (offsetDays) => {
+      const d = new Date(ficheCreatedDate);
+      d.setDate(d.getDate() + offsetDays);
+      if (d.getTime() > nowMs) return null;
+      return d.toISOString();
+    };
+
+    // Résolution des visas : on respecte l'intention du sample, mais on désactive
+    // les visas dont la date calculée tomberait dans le futur (cycle non encore atteint).
+    const cgDate    = s.visas.visa_controle_gestion ? visaDateOrNull(profile[0]) : null;
+    const scDate    = cgDate && s.visas.visa_supply_chain     ? visaDateOrNull(profile[1]) : null;
+    const gbDate    = scDate && s.visas.visa_gestion_besoin   ? visaDateOrNull(profile[2]) : null;
+    const indDate   = gbDate && s.visas.visa_industriel       ? visaDateOrNull(profile[3]) : null;
+    const comDate   = indDate && s.visas.visa_commerce         ? visaDateOrNull(profile[4]) : null;
+    const sapDate   = comDate && sapStatut === 'Création SAP effectuée' ? visaDateOrNull(profile[5]) : null;
+    const exportDate = sapDate && fl_exportee ? visaDateOrNull(profile[6]) : null;
+
     const fiche = {
       id: ficheId,
-      created_date: now,
+      created_date: ficheCreatedDate.toISOString(),
       updated_date: now,
       demande_etude_id: deId,
       etat_global: 'en_attente',
       etape_courante: 1,
-      visa_controle_gestion: !!s.visas.visa_controle_gestion,
-      visa_supply_chain: !!s.visas.visa_supply_chain,
-      visa_gestion_besoin: !!s.visas.visa_gestion_besoin,
-      visa_industriel: !!s.visas.visa_industriel,
-      visa_commerce: !!s.visas.visa_commerce,
-      statut_sap: sapStatut,
-      fl_exportee,
+      visa_controle_gestion: cgDate != null,
+      visa_supply_chain: scDate != null,
+      visa_gestion_besoin: gbDate != null,
+      visa_industriel: indDate != null,
+      visa_commerce: comDate != null,
+      statut_sap: sapDate ? 'Création SAP effectuée' : null,
+      fl_exportee: exportDate != null,
       code_article: s.code,
       code_chapeau: codeChapeau,
       libelle_article: s.libelle,
@@ -614,6 +650,17 @@ const buildSeedData = () => {
       date_limite_creation_mm01: isoDateOffset(s.offsetJours + 30),
       date_envoi_ficher: isoDateOffset(s.offsetJours - 10),
     };
+
+    if (cgDate)     fiche.visa_controle_gestion_date = cgDate;
+    if (scDate)     fiche.visa_supply_chain_date     = scDate;
+    if (gbDate)     fiche.visa_gestion_besoin_date   = gbDate;
+    if (indDate)    fiche.visa_industriel_date       = indDate;
+    if (comDate)    fiche.visa_commerce_date         = comDate;
+    if (sapDate) {
+      fiche.date_creation_sap = sapDate;
+      fiche.cree_sap_par = 'demo@boncolac.local';
+    }
+    if (exportDate) fiche.fl_exportee_date = exportDate;
 
     des.push(de);
     fiches.push(fiche);
