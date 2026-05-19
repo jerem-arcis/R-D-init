@@ -147,15 +147,15 @@ const ServiceFilterChips = ({ selected, counts, onToggle, onReset }) => {
 };
 
 const WaitingRow = ({ entry }) => {
-  const sev = getDurationSeverity(entry.duration);
+  const days = Math.floor(entry.duration / (1000 * 60 * 60 * 24));
   return (
     <Link
       to={createPageUrl(`FicheDetail?id=${entry.fiche.id}`)}
-      className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 group"
+      className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-amber-50/60 transition-colors border border-transparent hover:border-amber-200 group"
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <span className={`px-2 py-1 rounded-md text-xs font-bold border ${SEVERITY_BG_BADGE[sev]} flex-shrink-0`}>
-          {formatDuration(entry.duration)}
+        <span className="px-2 py-1 rounded-md text-xs font-bold border bg-amber-100 text-amber-800 border-amber-300 flex-shrink-0 whitespace-nowrap">
+          {days} j
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 truncate">
@@ -165,8 +165,8 @@ const WaitingRow = ({ entry }) => {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <TransitionMiniBadge transition={entry.transition} />
-            <span className="text-[10px] text-rose-600 font-semibold uppercase tracking-wider">
-              En attente depuis
+            <span className="text-[10px] text-amber-700 font-semibold uppercase tracking-wider">
+              En attente depuis <span className="font-bold">{days} jour{days > 1 ? 's' : ''}</span>
             </span>
           </div>
         </div>
@@ -586,9 +586,9 @@ export default function CycleStatsSection({ fiches, des = [] }) {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <DelayPanel
-            title="En retard par rapport à un service"
+            title="Bloqué à une étape"
             icon={AlarmClock}
-            accent="from-rose-500 to-rose-700"
+            accent="from-amber-500 to-orange-600"
             entries={staleWaiting}
             totalBeforeFilter={staleWaitingAll.length}
             emptyMessage={
