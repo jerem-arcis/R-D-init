@@ -6,6 +6,7 @@ import DemandesEtude from './pages/DemandesEtude';
 import CreerDE from './pages/CreerDE';
 import TraiterDE from './pages/TraiterDE';
 import CreerFL from './pages/CreerFL';
+import DeclencherFlux from './pages/DeclencherFlux';
 import __Layout from './Layout.jsx';
 
 
@@ -18,6 +19,7 @@ export const PAGES = {
     "CreerDE": CreerDE,
     "TraiterDE": TraiterDE,
     "CreerFL": CreerFL,
+    "DeclencherFlux": DeclencherFlux,
 }
 
 export const pagesConfig = {

@@ -7,6 +7,7 @@ import {
   FileText,
   ClipboardList,
   LayoutDashboard,
+  Zap,
   Menu,
   X,
   ChevronRight,
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"], badgeKey: "delays" },
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
   { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail", "CreerFL"] },
+  { label: "Déclencher le flux",  page: "DeclencherFlux", icon: Zap,            match: ["DeclencherFlux"] },
 ];
 
 export default function Layout({ children, currentPageName }) {
