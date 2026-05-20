@@ -1,8 +1,8 @@
 {
-  "appId": "f6ac14e2-0cc6-49a1-9bf8-c423477eb7f4",
+  "appId": "1e9b24b9-7f00-4f18-a179-41169ab4b860",
   "appDisplayName": "Boncolac",
   "description": null,
-  "environmentId": "ce7183b0-3bb5-ea9c-8a38-d1e340e360fc",
+  "environmentId": "Default-77784041-615d-4839-adf5-c63961bdfee3",
   "buildPath": "./dist",
   "buildEntryPoint": "index.html",
   "logoPath": "Default",
