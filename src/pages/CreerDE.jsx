@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 // ---------- Listes ----------
 const AXES_STRATEGIQUES = [
@@ -137,6 +138,65 @@ const computeSecteurActivite = (type_marque) => {
 
 const isUsineRequiredType = (t) => ['1', '2', '3', '6', '7'].includes(t);
 
+// ---------- Presets de pré-remplissage (démo import fichier) ----------
+const PREFILL_PRESETS_DE = [
+  {
+    code_projet: 'PRJ-2026-042',
+    axe_strategique: 'Développement de nos marques',
+    reseau: 'GDM',
+    type_demande_de: 'CA Additionnel',
+    demandeur: 'Sophie Martin',
+    famille_produit: 'Bouchees aperitives froides',
+    designation_article: 'Verrines apéritives saumon-aneth 12x40g',
+    marque: 'Boncolac Traiteur',
+  },
+  {
+    code_projet: 'PRJ-2026-068',
+    axe_strategique: 'Plan produits inscrits au budget',
+    reseau: 'RHF',
+    type_demande_de: 'Retravail Produit - CA existant',
+    demandeur: 'Julien Dubois',
+    famille_produit: 'Pizza',
+    designation_article: 'Pizza 4 fromages 350g — recette V2',
+    marque: 'Boncolac',
+  },
+  {
+    code_projet: 'PRJ-2026-095',
+    axe_strategique: 'Business Courant',
+    reseau: 'MDD',
+    type_demande_de: 'CA Additionnel',
+    demandeur: 'Marie Lefèvre',
+    famille_produit: 'Croques traiteur',
+    designation_article: 'Croque jambon-emmental 2x100g MDD',
+    marque: 'Marque Distributeur',
+  },
+];
+
+const PREFILL_PRESETS_AUTRE = [
+  {
+    autre_demandeur: 'Thomas Bernard',
+    autre_service: 'Industriel',
+    autre_type_demande: '1',
+    autre_code_origine: 'BCL-2024-118',
+    autre_usine_fab: 'Bonloc',
+    autre_designation: 'Transfert ligne quiche lorraine 4x150g',
+    autre_activite: 'TRAITEUR',
+    autre_type_marque: 'Marque Nationale RHF / Export',
+  },
+  {
+    autre_demandeur: 'Camille Petit',
+    autre_service: 'Achats',
+    autre_type_demande: '4',
+    autre_code_origine: 'NEG-2026-007',
+    autre_usine_fab: 'Produit négoce',
+    autre_designation: 'Mini-cakes salés négoce 24x18g',
+    autre_activite: 'TRAITEUR',
+    autre_type_marque: 'Marque distributeur',
+  },
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // ---------- Sous-composants ----------
 const FormSection = ({ title, icon: Icon, children }) => (
   <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
@@ -192,9 +252,12 @@ const TypeCard = ({ icon: Icon, title, subtitle, onClick, accent }) => (
 export default function CreerDE() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [step, setStep] = useState('selection'); // 'selection' | 'form'
   const [formType, setFormType] = useState(null); // 'de' | 'de_dl' | 'autre'
+  const [isPrefilling, setIsPrefilling] = useState(false);
+  const [prefilledFrom, setPrefilledFrom] = useState(null);
 
   const [formData, setFormData] = useState({
     // DE / DE/DL
@@ -238,6 +301,27 @@ export default function CreerDE() {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePrefillFromFile = async (file) => {
+    if (!file || isPrefilling) return;
+    setIsPrefilling(true);
+    setPrefilledFrom(null);
+
+    await sleep(1400);
+
+    const pool =
+      formType === 'autre' ? PREFILL_PRESETS_AUTRE : PREFILL_PRESETS_DE;
+    const preset = pool[Math.floor(Math.random() * pool.length)];
+
+    setFormData((prev) => ({ ...prev, ...preset }));
+    setIsPrefilling(false);
+    setPrefilledFrom(file.name);
+
+    toast({
+      title: 'Champs pré-remplis',
+      description: `${Object.keys(preset).length} champs renseignés depuis "${file.name}".`,
+    });
   };
 
   // Champs auto-calculés (Section Autre)
@@ -385,6 +469,68 @@ export default function CreerDE() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl border-2 border-dashed border-primary/30 p-5 flex flex-wrap items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                {isPrefilling ? (
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                ) : prefilledFrom ? (
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                ) : (
+                  <Sparkles className="w-6 h-6 text-primary" />
+                )}
+              </div>
+              <div className="flex-1 min-w-[220px]">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
+                    Pré-remplissage assisté
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30 rounded-full px-2 py-0.5">
+                    Bêta
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isPrefilling
+                    ? 'Analyse du fichier en cours…'
+                    : prefilledFrom
+                      ? <>Champs pré-remplis depuis <span className="font-semibold text-foreground">{prefilledFrom}</span>. Vous pouvez modifier librement.</>
+                      : 'Importez un cahier des charges ou un brief : on pré-remplit les champs clés.'}
+                </p>
+              </div>
+              <label
+                htmlFor="prefill-file"
+                className={`inline-flex items-center gap-2 h-10 px-4 rounded-md text-xs font-bold uppercase tracking-wide cursor-pointer transition-all ${
+                  isPrefilling
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg hover:-translate-y-0.5'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                {prefilledFrom ? 'Changer de fichier' : 'Importer un fichier'}
+              </label>
+              <input
+                id="prefill-file"
+                type="file"
+                accept="*"
+                disabled={isPrefilling}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handlePrefillFromFile(f);
+                  e.target.value = '';
+                }}
+                className="sr-only"
+              />
+              {prefilledFrom && !isPrefilling && (
+                <button
+                  type="button"
+                  onClick={() => setPrefilledFrom(null)}
+                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+                  aria-label="Masquer le bandeau"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
             {(formType === 'de' || formType === 'de_dl') && (
               <>
                 <FormSection title="Informations générales" icon={FileText}>

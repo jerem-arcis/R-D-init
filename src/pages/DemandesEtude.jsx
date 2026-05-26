@@ -13,15 +13,25 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  FileText, 
-  Clock, 
-  Loader2, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  FileText,
+  Clock,
+  Loader2,
   ChevronRight,
   CheckCircle2,
   XCircle,
-  Plus
+  Plus,
+  Search,
+  X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -45,20 +55,70 @@ const TYPE_BADGE = {
   autre: { label: 'Autre', cls: 'bg-amber-100 text-amber-700 border-amber-300' },
 };
 
+const TYPES_DEMANDE_OPTIONS = [
+  'CA Additionnel',
+  'Retravail Produit - CA existant',
+  "Changement d'usine",
+  'DE/DL',
+  'AO - CA Additionnel',
+  'AO - Retravail Produit',
+];
+
+const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
+
+const normalize = (v) =>
+  (v ?? '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
 export default function DemandesEtude() {
   const [filter, setFilter] = useState('toutes');
   const [typeFilter, setTypeFilter] = useState('tous');
+  const [search, setSearch] = useState('');
+  const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
+  const [usineFilter, setUsineFilter] = useState('toutes');
 
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
 
+  const searchTerm = normalize(search.trim());
   const filteredDemandes = demandes.filter(de => {
     if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
-    if (filter === 'toutes') return true;
-    return de.statut === filter;
+    if (filter !== 'toutes' && de.statut !== filter) return false;
+
+    if (typeDemandeFilter !== 'tous') {
+      const td = getTypeDemande(de);
+      if (!td || !td.toLowerCase().includes(typeDemandeFilter.toLowerCase())) return false;
+    }
+    if (usineFilter !== 'toutes' && getUsine(de) !== usineFilter) return false;
+
+    if (searchTerm) {
+      const haystack = [
+        getCodeProjet(de),
+        getDesignation(de),
+        getDemandeur(de),
+        getTypeDemande(de),
+        getUsine(de),
+        de.code_article,
+      ]
+        .map(normalize)
+        .join(' ');
+      if (!haystack.includes(searchTerm)) return false;
+    }
+    return true;
   });
+
+  const filtersActive =
+    !!searchTerm || typeDemandeFilter !== 'tous' || usineFilter !== 'toutes';
+  const clearFilters = () => {
+    setSearch('');
+    setTypeDemandeFilter('tous');
+    setUsineFilter('toutes');
+  };
 
   const getStatutBadge = (statut) => {
     switch (statut) {
@@ -238,6 +298,73 @@ export default function DemandesEtude() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="mb-6 bg-card rounded-xl border border-border shadow-sm p-3 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher par code projet, désignation, demandeur…"
+              className="pl-9 pr-9 h-9"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-muted text-muted-foreground"
+                aria-label="Effacer la recherche"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Select value={typeDemandeFilter} onValueChange={setTypeDemandeFilter}>
+            <SelectTrigger className="w-[220px] h-9">
+              <SelectValue placeholder="Type de demande" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="tous">Tous les types</SelectItem>
+              {TYPES_DEMANDE_OPTIONS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={usineFilter} onValueChange={setUsineFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Usine" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="toutes">Toutes les usines</SelectItem>
+              {USINES_OPTIONS.map((u) => (
+                <SelectItem key={u} value={u}>
+                  {u}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-muted-foreground font-medium">
+              {filteredDemandes.length} résultat{filteredDemandes.length > 1 ? 's' : ''}
+            </span>
+            {filtersActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="h-8 text-xs"
+              >
+                <X className="w-3.5 h-3.5 mr-1" />
+                Effacer
+              </Button>
+            )}
           </div>
         </div>
 

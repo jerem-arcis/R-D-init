@@ -127,7 +127,7 @@ export default function TraiterDE() {
     mutationFn: (data) => base44.entities.FicheLancement.create(data),
   });
 
-  const handleValider = async () => {
+  const handleValider = async ({ createFL }) => {
     if (!usineSource) {
       alert("Veuillez sélectionner une usine de fabrication");
       return;
@@ -149,13 +149,17 @@ export default function TraiterDE() {
       },
     });
 
-    const ficheFL = await createFLMutation.mutateAsync({
-      code_article: codeChapeau,
-      libelle_article: designation,
-      demande_etude_id: deId,
-      etat_global: 'en_attente',
-      etape_courante: 1,
-    });
+    let ficheFLId = null;
+    if (createFL) {
+      const ficheFL = await createFLMutation.mutateAsync({
+        code_article: codeChapeau,
+        libelle_article: designation,
+        demande_etude_id: deId,
+        etat_global: 'en_attente',
+        etape_courante: 1,
+      });
+      ficheFLId = ficheFL.id;
+    }
 
     await updateDEMutation.mutateAsync({
       deId,
@@ -165,7 +169,7 @@ export default function TraiterDE() {
         code_chapeau: codeChapeau,
         usine_validee: usineSource,
         date_validation: new Date().toISOString(),
-        fiche_lancement_id: ficheFL.id,
+        ...(ficheFLId ? { fiche_lancement_id: ficheFLId } : {}),
       },
     });
   };
@@ -405,7 +409,7 @@ export default function TraiterDE() {
               )}
 
               {!showRefus ? (
-                <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                <div className="flex flex-wrap justify-end gap-3 pt-2 border-t border-border">
                   <Button
                     variant="outline"
                     onClick={() => setShowRefus(true)}
@@ -415,12 +419,21 @@ export default function TraiterDE() {
                     Refuser
                   </Button>
                   <Button
-                    onClick={handleValider}
-                    disabled={!selectedEAN || !usineSource || updateDEMutation.isPending}
+                    variant="outline"
+                    onClick={() => handleValider({ createFL: false })}
+                    disabled={!selectedEAN || !usineSource || updateDEMutation.isPending || createFLMutation.isPending}
+                    className="border-primary/40 text-primary hover:bg-primary/5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Valider
+                  </Button>
+                  <Button
+                    onClick={() => handleValider({ createFL: true })}
+                    disabled={!selectedEAN || !usineSource || updateDEMutation.isPending || createFLMutation.isPending}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Valider et créer FL
+                    Valider + créer FL
                   </Button>
                 </div>
               ) : (
