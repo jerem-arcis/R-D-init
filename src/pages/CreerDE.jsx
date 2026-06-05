@@ -8,7 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 
 // ---------- Listes ----------
@@ -32,35 +35,38 @@ const TYPES_DEMANDE_DE = [
   'AO - Retravail Produit'
 ];
 
-const FAMILLES_PRODUIT = [
-  'Accompagnements traiteur',
-  'Autres bases creatives',
-  'Boncolac frais traiteur',
-  'Bouchees aperitives chaudes',
-  'Bouchees aperitives froides',
-  'Bouchees evenementielles',
-  'Brochettes',
-  'Croques traiteur',
-  'Entrees chaudes',
-  'Entrees froides',
-  'Pain surprise',
-  'Pain surprise a garnir',
-  'PDTS étude ES',
-  'Pizza',
-  'Plaques de pain',
-  'Plat individuels',
-  'Roules traiteur',
-  'Saucisses',
-  'Verrines et contenants'
-];
+const FAMILLES_PRODUIT = ['Traiteur', 'Mochi', 'Pâtisseries'];
 
-const MARQUES = [
+const SECTEURS_ACTIVITE = [
   'Boncolac',
   'Boncolac Traiteur',
   'Marque Distributeur',
   'Marque RHF',
   'Marque Export',
   'Autre'
+];
+
+const CLIENTS = [
+  'Carrefour',
+  'Auchan',
+  'Leclerc',
+  'Intermarché',
+  'Système U',
+  'Casino',
+  'Monoprix',
+  'Lidl',
+  'Aldi',
+  'Metro',
+  'Promocash',
+  'Transgourmet',
+  'Pomona',
+  'Sysco France',
+  'Brake France',
+  'API Restauration',
+  'Sodexo',
+  'Elior',
+  'Compass Group',
+  'Newrest'
 ];
 
 const CATEGORIES_VIF = ['Permanent', 'Spot', 'Saisonnier'];
@@ -230,6 +236,52 @@ const ReadOnlyField = ({ label, value, hint }) => (
   </Field>
 );
 
+// ---------- Combobox Client recherche ----------
+const ClientCombobox = ({ value, onChange, options }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+            !value && 'text-muted-foreground'
+          )}
+        >
+          {value || 'Rechercher un client…'}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Tapez pour filtrer…" />
+          <CommandList>
+            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+            <CommandGroup>
+              {options.map((c) => (
+                <CommandItem
+                  key={c}
+                  value={c}
+                  onSelect={(v) => {
+                    onChange(v === value ? '' : c);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === c ? 'opacity-100' : 'opacity-0')} />
+                  {c}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 // ---------- Écran de sélection initial ----------
 const TypeCard = ({ icon: Icon, title, subtitle, onClick, accent }) => (
   <button
@@ -270,6 +322,7 @@ export default function CreerDE() {
     famille_produit: '',
     designation_article: '',
     marque: '',
+    client: '',
     categorie: '',
     date_lancement: '',
     type_logistique: '',
@@ -551,7 +604,7 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
-                    <Field label="Axe stratégique" required>
+                    <Field label="Axe stratégique">
                       <Select
                         value={formData.axe_strategique}
                         onValueChange={(v) => handleChange('axe_strategique', v)}
@@ -581,7 +634,7 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Type de la demande" required>
+                    <Field label="Type de la demande">
                       <Select
                         value={formData.type_demande_de}
                         onValueChange={(v) => handleChange('type_demande_de', v)}
@@ -609,7 +662,7 @@ export default function CreerDE() {
 
                 <FormSection title="Produit" icon={Layers}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Famille de produit" required>
+                    <Field label="Hiérarchie produit famille" required>
                       <Select
                         value={formData.famille_produit}
                         onValueChange={(v) => handleChange('famille_produit', v)}
@@ -624,21 +677,30 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Marque">
+                    <Field label="Secteur d'activité">
                       <Select
                         value={formData.marque}
                         onValueChange={(v) => handleChange('marque', v)}
                       >
                         <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner une marque" />
+                          <SelectValue placeholder="Sélectionner un secteur" />
                         </SelectTrigger>
                         <SelectContent>
-                          {MARQUES.map((m) => (
+                          {SECTEURS_ACTIVITE.map((m) => (
                             <SelectItem key={m} value={m}>{m}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </Field>
+                    <div className="md:col-span-2">
+                      <Field label="Client" hint="Recherchez et sélectionnez un client">
+                        <ClientCombobox
+                          value={formData.client}
+                          onChange={(v) => handleChange('client', v)}
+                          options={CLIENTS}
+                        />
+                      </Field>
+                    </div>
                     <div className="md:col-span-2">
                       <Field label="Nom du produit / Désignation" required>
                         <Input
