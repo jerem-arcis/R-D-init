@@ -13,19 +13,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { useAdminLists } from '@/lib/adminLists';
 
-// ---------- Listes ----------
-const AXES_STRATEGIQUES = [
-  'Froid positif',
-  'Démarche utilisateurs en RHF',
-  'Développement de nos marques',
-  'Plan produits inscrits au budget',
-  'Business Courant',
-  'Schéma directeur industriel'
-];
-
-const RESEAUX = ['GDM', 'MDD', 'HSFC', 'EXPORT', 'RMN', 'RMD', 'BPT_GMS', 'BPT_RHF', 'BTB', 'SOCIETE'];
-
+// ---------- Listes (fixes, non gérées via Admin) ----------
 const TYPES_DEMANDE_DE = [
   'CA Additionnel',
   'Retravail Produit - CA existant',
@@ -35,17 +25,7 @@ const TYPES_DEMANDE_DE = [
   'AO - Retravail Produit'
 ];
 
-const FAMILLES_PRODUIT = ['Traiteur', 'Mochi', 'Pâtisseries'];
-
-const SECTEURS_ACTIVITE = [
-  'Boncolac',
-  'Boncolac Traiteur',
-  'Marque Distributeur',
-  'Marque RHF',
-  'Marque Export',
-  'Autre'
-];
-
+// Listes encore présentes mais non gérées via Admin pour l'instant
 const CLIENTS = [
   'Carrefour',
   'Auchan',
@@ -68,9 +48,6 @@ const CLIENTS = [
   'Compass Group',
   'Newrest'
 ];
-
-const CATEGORIES_VIF = ['Permanent', 'Spot', 'Saisonnier'];
-const TYPES_LOGISTIQUE = ['Franco / One Shot', 'Franco', 'Départ'];
 
 // ---------- Listes Section "Autre" ----------
 const TYPES_DEMANDE_AUTRE = [
@@ -98,18 +75,6 @@ const TYPES_MARQUE = ['Marque Nationale RHF / Export', 'Marque Nationale GMS', '
 
 // Pour la logique "Centre de profit" usine = Agen
 const PRODUITS_AGEN = ['Pains surprises', 'Assortiments ou plateaux', 'Plaques', '(vide)'];
-
-const SERVICES_DEMANDEUR = [
-  'Commerce',
-  'ADV',
-  'Marketing',
-  'R&D',
-  'Industriel',
-  'Supply Chain',
-  'Contrôle de gestion',
-  'Qualité',
-  'Achats'
-];
 
 // ---------- Helpers de calcul automatique ----------
 const computeClasseValorisation = ({ usine, type_demande, activite }) => {
@@ -305,6 +270,7 @@ export default function CreerDE() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const adminLists = useAdminLists();
 
   const [step, setStep] = useState('selection'); // 'selection' | 'form'
   const [formType, setFormType] = useState(null); // 'de' | 'de_dl' | 'autre'
@@ -333,6 +299,8 @@ export default function CreerDE() {
     poids_net: '',
     volume: '',
     unite: '',
+    qte_previsionnelle_annuelle: '',
+    groupe_article: '',
 
     // Autre
     autre_demandeur: '',
@@ -613,7 +581,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un axe" />
                         </SelectTrigger>
                         <SelectContent>
-                          {AXES_STRATEGIQUES.map((a) => (
+                          {adminLists.axes_strategiques.map((a) => (
                             <SelectItem key={a} value={a}>{a}</SelectItem>
                           ))}
                         </SelectContent>
@@ -628,7 +596,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un réseau" />
                         </SelectTrigger>
                         <SelectContent>
-                          {RESEAUX.map((r) => (
+                          {adminLists.reseaux.map((r) => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))}
                         </SelectContent>
@@ -671,7 +639,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner une famille" />
                         </SelectTrigger>
                         <SelectContent>
-                          {FAMILLES_PRODUIT.map((f) => (
+                          {adminLists.familles_produit.map((f) => (
                             <SelectItem key={f} value={f}>{f}</SelectItem>
                           ))}
                         </SelectContent>
@@ -686,8 +654,23 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un secteur" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SECTEURS_ACTIVITE.map((m) => (
+                          {adminLists.secteurs_activite.map((m) => (
                             <SelectItem key={m} value={m}>{m}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Groupe article" required>
+                      <Select
+                        value={formData.groupe_article}
+                        onValueChange={(v) => handleChange('groupe_article', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un groupe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {adminLists.groupes_article.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -720,7 +703,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {CATEGORIES_VIF.map((c) => (
+                          {adminLists.categories_vif.map((c) => (
                             <SelectItem key={c} value={c}>{c}</SelectItem>
                           ))}
                         </SelectContent>
@@ -734,65 +717,6 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
-                  </div>
-                </FormSection>
-
-                <FormSection title="Logistique & échantillons" icon={Settings2}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <Field label="Type de logistique">
-                      <Select
-                        value={formData.type_logistique}
-                        onValueChange={(v) => handleChange('type_logistique', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TYPES_LOGISTIQUE.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field label="Date échantillon">
-                      <Input
-                        type="date"
-                        value={formData.date_echantillon}
-                        onChange={(e) => handleChange('date_echantillon', e.target.value)}
-                        className="h-11"
-                      />
-                    </Field>
-                    <Field label="Date mise à dispo client">
-                      <Input
-                        type="date"
-                        value={formData.date_mise_dispo}
-                        onChange={(e) => handleChange('date_mise_dispo', e.target.value)}
-                        className="h-11"
-                      />
-                    </Field>
-                  </div>
-                </FormSection>
-
-                <FormSection title="Caractéristiques physiques">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <Field label="Poids OP" hint="Vif">
-                      <Input
-                        type="number"
-                        value={formData.poids_op}
-                        onChange={(e) => handleChange('poids_op', e.target.value)}
-                        placeholder="0"
-                        className="h-11"
-                      />
-                    </Field>
-                    <Field label="Poids brut">
-                      <Input
-                        type="number"
-                        value={formData.poids_brut}
-                        onChange={(e) => handleChange('poids_brut', e.target.value)}
-                        placeholder="0"
-                        className="h-11"
-                      />
-                    </Field>
                     <Field label="Poids net">
                       <Input
                         type="number"
@@ -802,20 +726,12 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
-                    <Field label="Volume">
+                    <Field label="Qté prévisionnelle annuelle">
                       <Input
                         type="number"
-                        value={formData.volume}
-                        onChange={(e) => handleChange('volume', e.target.value)}
+                        value={formData.qte_previsionnelle_annuelle}
+                        onChange={(e) => handleChange('qte_previsionnelle_annuelle', e.target.value)}
                         placeholder="0"
-                        className="h-11"
-                      />
-                    </Field>
-                    <Field label="Unité">
-                      <Input
-                        value={formData.unite}
-                        onChange={(e) => handleChange('unite', e.target.value)}
-                        placeholder="Ex: kg, L, pcs"
                         className="h-11"
                       />
                     </Field>
@@ -853,7 +769,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un service" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SERVICES_DEMANDEUR.map((s) => (
+                          {adminLists.services_demandeur.map((s) => (
                             <SelectItem key={s} value={s}>{s}</SelectItem>
                           ))}
                         </SelectContent>
