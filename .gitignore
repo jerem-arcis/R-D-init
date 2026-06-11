@@ -13,6 +13,12 @@ RetD-init
 dist-ssr
 *.local
 
+# Azurite local emulator (artefacts de dev local)
+AzuriteConfig
+__azurite_db_*.json
+__blobstorage__
+__queuestorage__
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
