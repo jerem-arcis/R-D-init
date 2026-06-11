@@ -782,6 +782,7 @@ export default function CreerDE() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Hiérarchie produit famille" required>
                       <Select
+                        key={`fam-${formData.famille_produit}`}
                         value={formData.famille_produit}
                         onValueChange={(v) => handleChange('famille_produit', v)}
                       >
@@ -797,6 +798,7 @@ export default function CreerDE() {
                     </Field>
                     <Field label="Secteur d'activité">
                       <Select
+                        key={`sec-${formData.marque}`}
                         value={formData.marque}
                         onValueChange={(v) => handleChange('marque', v)}
                       >
