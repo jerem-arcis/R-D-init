@@ -275,12 +275,14 @@ const RecupererBeCPG = ({ onApply }) => {
   const [codePJ, setCodePJ] = useState('');
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [message, setMessage] = useState('');
+  const [debug, setDebug] = useState(null); // DIAGNOSTIC TEMPORAIRE
 
   const handleFetch = async () => {
     const code = codePJ.trim();
     if (!code || status === 'loading') return;
     setStatus('loading');
     setMessage('');
+    setDebug(null);
     try {
       const res = await fetch(BECPG_FLOW_URL, {
         method: 'POST',
@@ -298,6 +300,21 @@ const RecupererBeCPG = ({ onApply }) => {
         throw new Error('Réponse du flux illisible (JSON invalide).');
       }
       const mapped = mapBeCPGToDE(json);
+
+      // --- DIAGNOSTIC TEMPORAIRE : voir la donnée réelle reçue ---
+      const attrs = json?.entities?.[0]?.entity?.attributes || {};
+      const debugInfo = {
+        attribut_deFamilleProduit: attrs['bnc:deFamilleProduit'],
+        attribut_deDateLivraison: attrs['bnc:deDateLivraison'],
+        attribut_plants: attrs['bcpg:plants'],
+        mapped,
+        cles_mapped: mapped ? Object.keys(mapped) : null,
+      };
+      console.log('[beCPG] json reçu =', json);
+      console.log('[beCPG] mapped =', mapped);
+      setDebug(debugInfo);
+      // --- fin diagnostic ---
+
       if (!mapped) {
         setStatus('error');
         setMessage(`Aucun projet trouvé pour le code « ${code} ».`);
@@ -372,6 +389,16 @@ const RecupererBeCPG = ({ onApply }) => {
         <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-sm text-rose-700">
           <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <span className="break-words">{message}</span>
+        </div>
+      )}
+      {debug && (
+        <div className="mt-3 rounded-lg bg-amber-500/10 border border-amber-500/40 px-3 py-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-1">
+            🔍 Diagnostic temporaire (à retirer)
+          </p>
+          <pre className="max-h-72 overflow-auto text-[11px] text-amber-900 whitespace-pre-wrap break-words font-mono">
+            {JSON.stringify(debug, null, 2)}
+          </pre>
         </div>
       )}
     </div>
