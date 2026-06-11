@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { mapBeCPGToDE, withValue } from "./becpgMapping";
+import {
+  mapBeCPGToDE,
+  withValue,
+  dropdownAdditionsFromMapping,
+} from "./becpgMapping";
 
 // Réponse de référence renvoyée par le flux Power Automate pour le CodePJ "PJ4987".
 const PJ4987 = {
@@ -93,5 +97,44 @@ describe("withValue", () => {
   it("renvoie la liste inchangée pour une valeur vide", () => {
     expect(withValue(["A", "B"], "")).toEqual(["A", "B"]);
     expect(withValue(["A", "B"], undefined)).toEqual(["A", "B"]);
+  });
+});
+
+describe("dropdownAdditionsFromMapping", () => {
+  const adminLists = {
+    axes_strategiques: ["Business Courant"],
+    reseaux: ["RMN", "MDD"],
+    familles_produit: ["Traiteur", "Mochi", "Pâtisseries"],
+    secteurs_activite: ["Boncolac"],
+  };
+
+  it("ne propose que les valeurs absentes des dropdowns Dataverse", () => {
+    const mapped = {
+      axe_strategique: "Business Courant", // déjà présent
+      reseau: "RMN", // déjà présent
+      famille_produit: "TARTES", // absent → à créer
+      marque: "BONLOC", // absent → à créer
+      type_demande_de: "Retravail Produit - CA existant", // non géré → ignoré
+      client: "BONCOLAC", // non géré → ignoré
+    };
+    expect(dropdownAdditionsFromMapping(mapped, adminLists)).toEqual([
+      { dropdownId: "familles_produit", value: "TARTES" },
+      { dropdownId: "secteurs_activite", value: "BONLOC" },
+    ]);
+  });
+
+  it("renvoie un tableau vide si toutes les valeurs existent déjà", () => {
+    const mapped = { axe_strategique: "Business Courant", reseau: "MDD" };
+    expect(dropdownAdditionsFromMapping(mapped, adminLists)).toEqual([]);
+  });
+
+  it("gère un dropdown encore vide (liste absente)", () => {
+    expect(
+      dropdownAdditionsFromMapping({ marque: "BONLOC" }, {})
+    ).toEqual([{ dropdownId: "secteurs_activite", value: "BONLOC" }]);
+  });
+
+  it("renvoie un tableau vide pour mapped null", () => {
+    expect(dropdownAdditionsFromMapping(null, adminLists)).toEqual([]);
   });
 });

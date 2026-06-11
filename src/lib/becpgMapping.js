@@ -43,3 +43,31 @@ export function withValue(list, value) {
   if (!value || list.includes(value)) return list;
   return [...list, value];
 }
+
+// Champs beCPG adossés à un dropdown Dataverse géré par l'Admin → leur dropdownId.
+// (type_demande_de et client sont codés en dur, non gérés par l'Admin : exclus.)
+export const BECPG_FIELD_TO_DROPDOWN = {
+  axe_strategique: "axes_strategiques",
+  reseau: "reseaux",
+  famille_produit: "familles_produit",
+  marque: "secteurs_activite",
+};
+
+/**
+ * À partir d'un objet `mapped` (sortie de mapBeCPGToDE) et des listes Admin
+ * courantes, détermine les valeurs à créer dans Dataverse : celles renvoyées
+ * par beCPG qui n'existent pas encore dans le dropdown correspondant.
+ * Renvoie un tableau de { dropdownId, value }.
+ */
+export function dropdownAdditionsFromMapping(mapped, adminLists) {
+  const additions = [];
+  if (!mapped) return additions;
+  for (const [field, dropdownId] of Object.entries(BECPG_FIELD_TO_DROPDOWN)) {
+    const value = mapped[field];
+    const list = adminLists?.[dropdownId] || [];
+    if (value && !list.includes(value)) {
+      additions.push({ dropdownId, value });
+    }
+  }
+  return additions;
+}

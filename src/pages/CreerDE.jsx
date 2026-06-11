@@ -13,8 +13,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { useAdminLists } from '@/lib/adminLists';
-import { mapBeCPGToDE, withValue } from '@/lib/becpgMapping';
+import { useAdminLists, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
+import { create as createOptionSetValue } from '@/api/optionSet';
+import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 
 // ---------- Listes (fixes, non gérées via Admin) ----------
 const TYPES_DEMANDE_DE = [
@@ -450,7 +451,34 @@ export default function CreerDE() {
   // Retourne le nombre de champs renseignés pour le message de confirmation.
   const handleApplyBeCPG = (mapped) => {
     setFormData((prev) => ({ ...prev, ...mapped }));
+    void persistNewDropdownValues(mapped);
     return Object.keys(mapped).length;
+  };
+
+  // Crée dans Dataverse (comme un ajout Admin) les valeurs de dropdown renvoyées
+  // par beCPG qui n'existent pas encore dans la liste correspondante.
+  const persistNewDropdownValues = async (mapped) => {
+    const additions = dropdownAdditionsFromMapping(mapped, adminLists);
+    if (additions.length === 0) return;
+    try {
+      await Promise.all(
+        additions.map((a) => createOptionSetValue(a.dropdownId, a.value))
+      );
+      queryClient.invalidateQueries({ queryKey: OPTIONSET_QUERY_KEY });
+      toast({
+        title: 'Listes mises à jour',
+        description: `${additions.length} valeur(s) ajoutée(s) aux listes : ${additions
+          .map((a) => a.value)
+          .join(', ')}.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Ajout aux listes échoué',
+        description:
+          err?.message || "Impossible d'ajouter certaines valeurs aux listes déroulantes.",
+        variant: 'destructive',
+      });
+    }
   };
 
   // Envoi de la désignation produit vers SAP via le flux Power Automate.
