@@ -483,6 +483,7 @@ export default function CreerDE() {
 
   // Envoi de la désignation produit vers SAP via le flux Power Automate.
   const [isSendingSAP, setIsSendingSAP] = useState(false);
+  const [sapSent, setSapSent] = useState(false); // notif discrète de succès
   const handleSendToSAP = async () => {
     const description = formData.designation_article?.trim();
     if (!description) {
@@ -494,6 +495,7 @@ export default function CreerDE() {
       return;
     }
     setIsSendingSAP(true);
+    setSapSent(false);
     try {
       const res = await fetch(SAP_FLOW_URL, {
         method: 'POST',
@@ -504,10 +506,9 @@ export default function CreerDE() {
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
       }
-      toast({
-        title: 'Envoyé vers SAP',
-        description: `« ${description} » transmis au flux SAP.`,
-      });
+      // Succès (HTTP 2xx) : petite notif inline discrète, masquée après 4 s.
+      setSapSent(true);
+      setTimeout(() => setSapSent(false), 4000);
     } catch (err) {
       toast({
         title: 'Échec de l\'envoi vers SAP',
@@ -1166,20 +1167,27 @@ export default function CreerDE() {
 
             <div className="flex justify-end gap-3 pt-2">
               {(formType === 'de' || formType === 'de_dl') && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSendToSAP}
-                  disabled={isSendingSAP}
-                  className="mr-auto"
-                >
-                  {isSendingSAP ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Database className="w-4 h-4 mr-2" />
+                <div className="mr-auto flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendToSAP}
+                    disabled={isSendingSAP}
+                  >
+                    {isSendingSAP ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Database className="w-4 h-4 mr-2" />
+                    )}
+                    Envoyer vers SAP
+                  </Button>
+                  {sapSent && (
+                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Envoi SAP réussi
+                    </span>
                   )}
-                  Envoyer vers SAP
-                </Button>
+                </div>
               )}
               <Button
                 type="button"
