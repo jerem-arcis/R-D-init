@@ -48,7 +48,6 @@ describe("mapBeCPGToDE", () => {
       code_projet: "PJ4987",
       designation_article: "Tarte Citron BIO-BNC FS",
       date_demande: "2024-12-17",
-      date_lancement: "2025-08-31",
       axe_strategique: "Business Courant",
       reseau: "RMN",
       type_demande_de: "Retravail Produit - CA existant",
@@ -63,7 +62,6 @@ describe("mapBeCPGToDE", () => {
   it("tronque les dates ISO en YYYY-MM-DD", () => {
     const out = mapBeCPGToDE(PJ4987);
     expect(out.date_demande).toBe("2024-12-17");
-    expect(out.date_lancement).toBe("2025-08-31");
   });
 
   it("renvoie null quand entities est vide", () => {

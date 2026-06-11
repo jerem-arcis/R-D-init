@@ -23,7 +23,6 @@ export function mapBeCPGToDE(json) {
   setIf(out, "code_projet", entity["bcpg:code"]);
   setIf(out, "designation_article", a["cm:name"]);
   setIf(out, "date_demande", toDateInput(a["bnc:deDateDemande"]));
-  setIf(out, "date_lancement", toDateInput(a["bnc:deDateLivraison"]));
   setIf(out, "axe_strategique", a["bnc:deAxeStrategique"]);
   setIf(out, "reseau", a["pjt:projectHierarchy1"]?.["bcpg:lkvValue"]);
   setIf(out, "type_demande_de", a["pjt:projectOrigin"]);

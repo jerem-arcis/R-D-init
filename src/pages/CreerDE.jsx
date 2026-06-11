@@ -775,6 +775,15 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
+                    <Field label="Qté prévisionnelle annuelle">
+                      <Input
+                        type="number"
+                        value={formData.qte_previsionnelle_annuelle}
+                        onChange={(e) => handleChange('qte_previsionnelle_annuelle', e.target.value)}
+                        placeholder="0"
+                        className="h-11"
+                      />
+                    </Field>
                   </div>
                 </FormSection>
 
@@ -846,43 +855,11 @@ export default function CreerDE() {
                         />
                       </Field>
                     </div>
-                    <Field label="Catégorie" hint="Vif">
-                      <Select
-                        value={formData.categorie}
-                        onValueChange={(v) => handleChange('categorie', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {adminLists.categories_vif.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field label="Date de lancement souhaitée" hint="Vif">
-                      <Input
-                        type="date"
-                        value={formData.date_lancement}
-                        onChange={(e) => handleChange('date_lancement', e.target.value)}
-                        className="h-11"
-                      />
-                    </Field>
                     <Field label="Poids net">
                       <Input
                         type="number"
                         value={formData.poids_net}
                         onChange={(e) => handleChange('poids_net', e.target.value)}
-                        placeholder="0"
-                        className="h-11"
-                      />
-                    </Field>
-                    <Field label="Qté prévisionnelle annuelle">
-                      <Input
-                        type="number"
-                        value={formData.qte_previsionnelle_annuelle}
-                        onChange={(e) => handleChange('qte_previsionnelle_annuelle', e.target.value)}
                         placeholder="0"
                         className="h-11"
                       />
