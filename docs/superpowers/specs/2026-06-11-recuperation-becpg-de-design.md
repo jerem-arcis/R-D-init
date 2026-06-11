@@ -19,6 +19,19 @@ correspondant, puis pré-remplit (en écrasant) les champs du formulaire DE.
 - Comportement de remplissage : **écrase tous** les champs mappés (pas de
   préservation des valeurs déjà saisies).
 
+## Dette de sécurité connue (à traiter ultérieurement)
+
+Les URLs de déclenchement Power Automate (beCPG et SAP) sont appelées **directement
+depuis le code client** et contiennent une **signature SAS (`sig=`)**. Cette signature
+est donc exposée dans le bundle JS et l'historique Git : toute personne disposant de
+l'URL peut déclencher les flux sans authentification. Risque atténué par le fait que
+l'app est interne à l'environnement Power Platform (accès SSO), **assumé pour l'instant**.
+
+Remédiation cible : proxifier les appels via un backend authentifié (URL en variable
+d'environnement secrète), **régénérer les signatures** des 2 flux, ajouter une
+autorisation côté serveur + un cap de longueur sur les payloads. Signalé par la revue
+de sécurité automatique le 2026-06-11.
+
 ## Intégration Power Automate
 
 - **Méthode :** `POST`

@@ -169,6 +169,11 @@ const PREFILL_PRESETS_AUTRE = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// TODO(sécurité) : ces URLs de flux Power Automate contiennent une signature SAS
+// (sig=) exposée côté client (bundle JS + historique Git). À terme : proxifier via
+// un backend authentifié (URL en variable d'env secrète), régénérer les signatures
+// des 2 flux, ajouter autorisation + cap de longueur sur les payloads. Risque atténué
+// car app interne Power Platform (accès SSO), assumé pour l'instant.
 // URL du flux Power Automate qui retourne les données beCPG d'un CodePJ.
 const BECPG_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a622144c10f44a6becafb2df0f78775/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5BL_-hxk0OMUfcJT9GRVKoh1BX7hkNsag7Qy3KxzpkQ';
