@@ -1,0 +1,44 @@
+cr04e_id_dd,cr04e_valeur_dd
+reseaux,MDD
+reseaux,HSFC
+reseaux,GDM
+reseaux,RMN
+reseaux,RMD
+reseaux,BPT_GMS
+reseaux,BPT_RHF
+reseaux,EXPORT RHF
+reseaux,EXPORT RETAIL
+groupes_article,Valeur 1
+groupes_article,Valeur 2
+groupes_article,Valeur 3
+groupes_article,Valeur 4
+axes_strategiques,Froid positif
+axes_strategiques,Démarche utilisateurs en RHF
+axes_strategiques,Développement de nos marques
+axes_strategiques,Plan produits inscrits au budget
+axes_strategiques,Business Courant
+axes_strategiques,Schéma directeur industriel
+familles_produit,Traiteur
+familles_produit,Mochi
+familles_produit,Pâtisseries
+secteurs_activite,Boncolac
+secteurs_activite,Boncolac Traiteur
+secteurs_activite,Marque Distributeur
+secteurs_activite,Marque RHF
+secteurs_activite,Marque Export
+secteurs_activite,Autre
+categories_vif,Permanent
+categories_vif,Spot
+categories_vif,Saisonnier
+types_logistique,Franco / One Shot
+types_logistique,Franco
+types_logistique,Départ
+services_demandeur,Commerce
+services_demandeur,ADV
+services_demandeur,Marketing
+services_demandeur,R&D
+services_demandeur,Industriel
+services_demandeur,Supply Chain
+services_demandeur,Contrôle de gestion
+services_demandeur,Qualité
+services_demandeur,Achats
