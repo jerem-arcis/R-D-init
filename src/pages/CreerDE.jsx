@@ -10,10 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users } from 'lucide-react';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists } from '@/lib/adminLists';
+import { mapBeCPGToDE, withValue } from '@/lib/becpgMapping';
 
 // ---------- Listes (fixes, non gérées via Admin) ----------
 const TYPES_DEMANDE_DE = [
@@ -168,6 +169,10 @@ const PREFILL_PRESETS_AUTRE = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// URL du flux Power Automate qui retourne les données beCPG d'un CodePJ.
+const BECPG_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a622144c10f44a6becafb2df0f78775/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5BL_-hxk0OMUfcJT9GRVKoh1BX7hkNsag7Qy3KxzpkQ';
+
 // ---------- Sous-composants ----------
 const FormSection = ({ title, icon: Icon, children }) => (
   <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
@@ -265,6 +270,114 @@ const TypeCard = ({ icon: Icon, title, subtitle, onClick, accent }) => (
   </button>
 );
 
+// ---------- Encart de récupération beCPG par CodePJ ----------
+const RecupererBeCPG = ({ onApply }) => {
+  const [codePJ, setCodePJ] = useState('');
+  const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [message, setMessage] = useState('');
+
+  const handleFetch = async () => {
+    const code = codePJ.trim();
+    if (!code || status === 'loading') return;
+    setStatus('loading');
+    setMessage('');
+    try {
+      const res = await fetch(BECPG_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CodePJ: code }),
+      });
+      const text = await res.text().catch(() => '');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+      }
+      let json = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error('Réponse du flux illisible (JSON invalide).');
+      }
+      const mapped = mapBeCPGToDE(json);
+      if (!mapped) {
+        setStatus('error');
+        setMessage(`Aucun projet trouvé pour le code « ${code} ».`);
+        return;
+      }
+      const count = onApply(mapped);
+      setStatus('success');
+      setMessage(`${count} champ(s) renseigné(s) depuis « ${code} ».`);
+    } catch (err) {
+      setStatus('error');
+      setMessage(err?.message || 'Erreur lors de la récupération des informations.');
+    }
+  };
+
+  const isLoading = status === 'loading';
+
+  return (
+    <div className="bg-gradient-to-r from-violet-500/5 via-violet-500/10 to-violet-500/5 rounded-xl border-2 border-dashed border-violet-500/30 p-5">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0 self-start">
+          {isLoading ? (
+            <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
+          ) : status === 'success' ? (
+            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+          ) : (
+            <Search className="w-6 h-6 text-violet-600" />
+          )}
+        </div>
+        <div className="flex-1 min-w-[220px]">
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
+            Récupération depuis beCPG
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            Saisissez un Code PJ pour pré-remplir automatiquement la demande.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              value={codePJ}
+              onChange={(e) => setCodePJ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleFetch();
+                }
+              }}
+              placeholder="Ex: PJ4987"
+              className="h-10 max-w-[200px] font-mono"
+            />
+            <Button
+              type="button"
+              onClick={handleFetch}
+              disabled={isLoading || !codePJ.trim()}
+              className="h-10 bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 mr-2" />
+              )}
+              Récupérer les informations
+            </Button>
+          </div>
+        </div>
+      </div>
+      {status === 'success' && message && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-700">
+          <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{message}</span>
+        </div>
+      )}
+      {status === 'error' && message && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-sm text-rose-700">
+          <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span className="break-words">{message}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ---------- Composant principal ----------
 export default function CreerDE() {
   const navigate = useNavigate();
@@ -322,6 +435,13 @@ export default function CreerDE() {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Applique les champs récupérés depuis beCPG (écrase les valeurs existantes).
+  // Retourne le nombre de champs renseignés pour le message de confirmation.
+  const handleApplyBeCPG = (mapped) => {
+    setFormData((prev) => ({ ...prev, ...mapped }));
+    return Object.keys(mapped).length;
   };
 
   const handlePrefillFromFile = async (file) => {
@@ -490,6 +610,9 @@ export default function CreerDE() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {(formType === 'de' || formType === 'de_dl') && (
+              <RecupererBeCPG onApply={handleApplyBeCPG} />
+            )}
             <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl border-2 border-dashed border-primary/30 p-5 flex flex-wrap items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 {isPrefilling ? (
@@ -581,7 +704,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un axe" />
                         </SelectTrigger>
                         <SelectContent>
-                          {adminLists.axes_strategiques.map((a) => (
+                          {withValue(adminLists.axes_strategiques, formData.axe_strategique).map((a) => (
                             <SelectItem key={a} value={a}>{a}</SelectItem>
                           ))}
                         </SelectContent>
@@ -596,7 +719,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un réseau" />
                         </SelectTrigger>
                         <SelectContent>
-                          {adminLists.reseaux.map((r) => (
+                          {withValue(adminLists.reseaux, formData.reseau).map((r) => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))}
                         </SelectContent>
@@ -611,7 +734,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un type" />
                         </SelectTrigger>
                         <SelectContent>
-                          {TYPES_DEMANDE_DE.map((t) => (
+                          {withValue(TYPES_DEMANDE_DE, formData.type_demande_de).map((t) => (
                             <SelectItem key={t} value={t}>{t}</SelectItem>
                           ))}
                         </SelectContent>
@@ -639,7 +762,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner une famille" />
                         </SelectTrigger>
                         <SelectContent>
-                          {adminLists.familles_produit.map((f) => (
+                          {withValue(adminLists.familles_produit, formData.famille_produit).map((f) => (
                             <SelectItem key={f} value={f}>{f}</SelectItem>
                           ))}
                         </SelectContent>
@@ -654,7 +777,7 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner un secteur" />
                         </SelectTrigger>
                         <SelectContent>
-                          {adminLists.secteurs_activite.map((m) => (
+                          {withValue(adminLists.secteurs_activite, formData.marque).map((m) => (
                             <SelectItem key={m} value={m}>{m}</SelectItem>
                           ))}
                         </SelectContent>
@@ -680,7 +803,7 @@ export default function CreerDE() {
                         <ClientCombobox
                           value={formData.client}
                           onChange={(v) => handleChange('client', v)}
-                          options={CLIENTS}
+                          options={withValue(CLIENTS, formData.client)}
                         />
                       </Field>
                     </div>
