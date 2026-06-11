@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle } from 'lucide-react';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists } from '@/lib/adminLists';
@@ -173,6 +173,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BECPG_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a622144c10f44a6becafb2df0f78775/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5BL_-hxk0OMUfcJT9GRVKoh1BX7hkNsag7Qy3KxzpkQ';
 
+// URL du flux Power Automate qui envoie la désignation produit vers SAP.
+const SAP_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3bb2973cf1f04b5d96faf9c178abab3f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=RiXc-MYGR9LYdZ8b1sizYPHOUijB3SKwtI1eK-73c4w';
+
 // ---------- Sous-composants ----------
 const FormSection = ({ title, icon: Icon, children }) => (
   <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
@@ -275,14 +279,12 @@ const RecupererBeCPG = ({ onApply }) => {
   const [codePJ, setCodePJ] = useState('');
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [message, setMessage] = useState('');
-  const [debug, setDebug] = useState(null); // DIAGNOSTIC TEMPORAIRE
 
   const handleFetch = async () => {
     const code = codePJ.trim();
     if (!code || status === 'loading') return;
     setStatus('loading');
     setMessage('');
-    setDebug(null);
     try {
       const res = await fetch(BECPG_FLOW_URL, {
         method: 'POST',
@@ -300,21 +302,6 @@ const RecupererBeCPG = ({ onApply }) => {
         throw new Error('Réponse du flux illisible (JSON invalide).');
       }
       const mapped = mapBeCPGToDE(json);
-
-      // --- DIAGNOSTIC TEMPORAIRE : voir la donnée réelle reçue ---
-      const attrs = json?.entities?.[0]?.entity?.attributes || {};
-      const debugInfo = {
-        attribut_deFamilleProduit: attrs['bnc:deFamilleProduit'],
-        attribut_deDateLivraison: attrs['bnc:deDateLivraison'],
-        attribut_plants: attrs['bcpg:plants'],
-        mapped,
-        cles_mapped: mapped ? Object.keys(mapped) : null,
-      };
-      console.log('[beCPG] json reçu =', json);
-      console.log('[beCPG] mapped =', mapped);
-      setDebug(debugInfo);
-      // --- fin diagnostic ---
-
       if (!mapped) {
         setStatus('error');
         setMessage(`Aucun projet trouvé pour le code « ${code} ».`);
@@ -391,16 +378,6 @@ const RecupererBeCPG = ({ onApply }) => {
           <span className="break-words">{message}</span>
         </div>
       )}
-      {debug && (
-        <div className="mt-3 rounded-lg bg-amber-500/10 border border-amber-500/40 px-3 py-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-1">
-            🔍 Diagnostic temporaire (à retirer)
-          </p>
-          <pre className="max-h-72 overflow-auto text-[11px] text-amber-900 whitespace-pre-wrap break-words font-mono">
-            {JSON.stringify(debug, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 };
@@ -469,6 +446,44 @@ export default function CreerDE() {
   const handleApplyBeCPG = (mapped) => {
     setFormData((prev) => ({ ...prev, ...mapped }));
     return Object.keys(mapped).length;
+  };
+
+  // Envoi de la désignation produit vers SAP via le flux Power Automate.
+  const [isSendingSAP, setIsSendingSAP] = useState(false);
+  const handleSendToSAP = async () => {
+    const description = formData.designation_article?.trim();
+    if (!description) {
+      toast({
+        title: 'Désignation manquante',
+        description: 'Renseignez « Nom du produit / Désignation » avant l\'envoi vers SAP.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setIsSendingSAP(true);
+    try {
+      const res = await fetch(SAP_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ProductDescription: description }),
+      });
+      const text = await res.text().catch(() => '');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+      }
+      toast({
+        title: 'Envoyé vers SAP',
+        description: `« ${description} » transmis au flux SAP.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Échec de l\'envoi vers SAP',
+        description: err?.message || 'Une erreur est survenue lors de l\'envoi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingSAP(false);
+    }
   };
 
   const handlePrefillFromFile = async (file) => {
@@ -724,6 +739,7 @@ export default function CreerDE() {
                     </Field>
                     <Field label="Axe stratégique">
                       <Select
+                        key={`axe-${formData.axe_strategique}`}
                         value={formData.axe_strategique}
                         onValueChange={(v) => handleChange('axe_strategique', v)}
                       >
@@ -739,6 +755,7 @@ export default function CreerDE() {
                     </Field>
                     <Field label="Réseau" required>
                       <Select
+                        key={`res-${formData.reseau}`}
                         value={formData.reseau}
                         onValueChange={(v) => handleChange('reseau', v)}
                       >
@@ -754,6 +771,7 @@ export default function CreerDE() {
                     </Field>
                     <Field label="Type de la demande">
                       <Select
+                        key={`type-${formData.type_demande_de}`}
                         value={formData.type_demande_de}
                         onValueChange={(v) => handleChange('type_demande_de', v)}
                       >
@@ -1114,6 +1132,22 @@ export default function CreerDE() {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
+              {(formType === 'de' || formType === 'de_dl') && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendToSAP}
+                  disabled={isSendingSAP}
+                  className="mr-auto"
+                >
+                  {isSendingSAP ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Database className="w-4 h-4 mr-2" />
+                  )}
+                  Envoyer vers SAP
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
