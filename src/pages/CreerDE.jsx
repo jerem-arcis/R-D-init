@@ -10,7 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle, Database } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle, Database, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
@@ -388,6 +389,183 @@ const RecupererBeCPG = ({ onApply }) => {
   );
 };
 
+// ---------- Aperçu "vue SAP" (look SAP GUI rétro, écran MM03) ----------
+// Répartition des champs par vue, fidèle à la transaction MM03 :
+//  - Données de base 1 : groupe d'articles, groupe d'autorisation, poids
+//  - Données de base 2 : classification (secteur d'activité / hiérarchie)
+//  - Ventes            : client, division livreuse, secteur d'activité
+//  - Comptabilité 1    : classe de valorisation, contrôle prix
+//  - Calcul du coût 1  : centre de profit, groupe de frais généraux
+const SAP_VIEWS = [
+  {
+    id: 'base1',
+    label: 'Données de base 1',
+    fields: (d, zug) => [
+      { label: 'Unité quantité de base', value: 'PCE', width: 'w-24', mono: false },
+      { label: "Groupe d'articles", value: d.groupe_article, width: 'w-40', mono: false },
+      { label: "Groupe d'autorisation", value: d.groupe_autorisation, width: 'w-28' },
+      { label: 'Poids brut', value: d.poids_brut, unit: 'G', width: 'w-28' },
+      { label: 'Poids net', value: d.poids_net, unit: 'G', width: 'w-28' },
+      { label: 'ZUG (poids net × 1000)', value: zug, width: 'w-32' },
+    ],
+  },
+  {
+    id: 'base2',
+    label: 'Données de base 2',
+    fields: (d) => [
+      { label: "Secteur d'activité", value: d.marque, width: 'w-44', mono: false },
+      { label: 'Hiérarchie de produits', value: d.famille_produit, width: 'w-44', mono: false },
+      { label: 'Code EAN/UPC', value: '', width: 'w-36' },
+      { label: 'Matière de base', value: '', width: 'w-36', mono: false },
+    ],
+  },
+  {
+    id: 'ventes',
+    label: 'Ventes : orga. comm.',
+    fields: (d) => [
+      { label: 'Client', value: d.client, width: 'w-44', mono: false },
+      { label: 'Division livreuse', value: d.division, width: 'w-28' },
+      { label: 'Unité de vente', value: 'PCE', width: 'w-24', mono: false },
+      { label: "Secteur d'activité", value: d.marque, width: 'w-44', mono: false },
+      { label: "Groupe d'imputation", value: d.marque ? '01' : '', width: 'w-24' },
+    ],
+  },
+  {
+    id: 'compta',
+    label: 'Comptabilité 1',
+    fields: (d) => [
+      { label: 'Division', value: d.division, width: 'w-28' },
+      { label: 'Classe de valorisation', value: d.classe_valorisation, width: 'w-28' },
+      { label: 'Contrôle prix', value: d.classe_valorisation ? 'S' : '', width: 'w-12' },
+      { label: 'Prix standard', value: '', unit: 'EUR', width: 'w-28' },
+    ],
+  },
+  {
+    id: 'cout',
+    label: 'Calcul du coût 1',
+    fields: (d) => [
+      { label: 'Division', value: d.division, width: 'w-28' },
+      { label: 'Centre de profit', value: d.centre_profit, width: 'w-28' },
+      { label: 'Groupe de frais généraux', value: d.groupe_frais_generaux, width: 'w-28' },
+      { label: 'Taille de lot calcul coût', value: d.centre_profit ? '1 000' : '', width: 'w-28' },
+    ],
+  },
+];
+
+// Une ligne de champ au look classique SAP : libellé + zone blanche encadrée.
+const SapField = ({ label, value, unit, mono = true, width = 'w-44' }) => (
+  <div className="flex items-center gap-2 py-[3px]">
+    <span className="w-48 shrink-0 text-right text-[12px] leading-none text-black">
+      {label}
+    </span>
+    <div
+      className={cn(
+        'flex h-[22px] items-center border border-[#a0a0a0] bg-white px-1.5 text-[12px] text-[#000080] shadow-[inset_1px_1px_0_#7f9db9]',
+        mono && 'font-mono',
+        width
+      )}
+    >
+      {value !== '' && value != null ? value : ' '}
+    </div>
+    {unit && <span className="text-[11px] text-black/70">{unit}</span>}
+  </div>
+);
+
+const SapPreviewDialog = ({ open, onOpenChange, data, zug }) => {
+  // Numéro d'article : "(à créer)" tant que SAP ne l'a pas généré.
+  const numArticle = '(à créer)';
+  // Onglet (vue MM03) actif ; on revient à la 1ʳᵉ vue à chaque ouverture.
+  const [activeView, setActiveView] = useState(0);
+  const view = SAP_VIEWS[activeView] || SAP_VIEWS[0];
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (o) setActiveView(0);
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="max-w-3xl gap-0 overflow-hidden border-2 border-[#5a5a5a] bg-[#d4d0c8] p-0 [&>button]:hidden">
+        {/* Barre de titre SAP */}
+        <div className="flex items-center justify-between bg-gradient-to-b from-[#0b5394] to-[#1576c4] px-3 py-1.5">
+          <div className="flex items-center gap-2">
+            <Monitor className="h-4 w-4 text-white" />
+            <span className="text-[13px] font-semibold tracking-wide text-white">
+              Afficher article (Données de base) — MM03
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="flex h-5 w-5 items-center justify-center border border-white/40 bg-[#c0392b] text-white hover:bg-[#e04030]"
+            aria-label="Fermer"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+
+        {/* Barre d'outils factice */}
+        <div className="flex items-center gap-3 border-b border-[#9a9a9a] bg-[#ece9d8] px-3 py-1 text-[11px] text-black/60">
+          <span>✔ Contrôler</span>
+          <span>🖫 Sauvegarder</span>
+          <span>↩ Retour</span>
+          <span className="ml-auto font-mono text-[10px]">SAP ECC · Mandant 100</span>
+        </div>
+
+        {/* En-tête article */}
+        <div className="space-y-1 border-b border-[#bdbdbd] bg-[#f4f3ee] px-4 py-2">
+          <SapField label="Article" value={numArticle} width="w-32" mono />
+          <SapField
+            label="Désignation"
+            value={data.designation_article}
+            mono={false}
+            width="w-[22rem]"
+          />
+        </div>
+
+        {/* Onglets SAP cliquables (vues MM03) */}
+        <div className="flex flex-wrap gap-0.5 bg-[#d4d0c8] px-3 pt-2">
+          {SAP_VIEWS.map((v, i) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => setActiveView(i)}
+              className={cn(
+                'border border-b-0 border-[#a0a0a0] px-3 py-1 text-[11px] transition-colors',
+                i === activeView
+                  ? 'rounded-t bg-[#f4f3ee] font-semibold text-black'
+                  : 'bg-[#cfcabd] text-black/55 hover:bg-[#ddd8cb] hover:text-black/80'
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Corps : champs de la vue active */}
+        <div className="grid min-h-[164px] grid-cols-1 content-start gap-x-8 gap-y-0.5 border border-[#a0a0a0] bg-[#f4f3ee] px-4 py-4 md:grid-cols-2">
+          {view.fields(data, zug).map((f) => (
+            <SapField
+              key={f.label}
+              label={f.label}
+              value={f.value}
+              unit={f.unit}
+              width={f.width}
+              mono={f.mono}
+            />
+          ))}
+        </div>
+
+        {/* Barre d'état */}
+        <div className="flex items-center justify-between border-t border-[#9a9a9a] bg-[#ece9d8] px-3 py-1 text-[10px] text-black/60">
+          <span>Simulation — aucune donnée n'est réellement écrite dans SAP</span>
+          <span className="font-mono">⬤ Connecté · Vue {activeView + 1}/{SAP_VIEWS.length}</span>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ---------- Composant principal ----------
 export default function CreerDE() {
   const navigate = useNavigate();
@@ -489,6 +667,7 @@ export default function CreerDE() {
   // Envoi de la désignation produit vers SAP via le flux Power Automate.
   const [isSendingSAP, setIsSendingSAP] = useState(false);
   const [sapSent, setSapSent] = useState(false); // notif discrète de succès
+  const [sapPreviewOpen, setSapPreviewOpen] = useState(false); // aperçu "vue SAP"
   const handleSendToSAP = async () => {
     const description = formData.designation_article?.trim();
     if (!description) {
@@ -850,6 +1029,25 @@ export default function CreerDE() {
 
                 <FormSection title="Produit" icon={Layers}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="md:col-span-2">
+                      <Field label="Nom du produit / Désignation" required>
+                        <Input
+                          value={formData.designation_article}
+                          onChange={(e) => handleChange('designation_article', e.target.value)}
+                          placeholder="Ex: Yaourt nature 125g"
+                          className="h-11"
+                        />
+                      </Field>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Field label="Client" hint="Recherchez et sélectionnez un client">
+                        <ClientCombobox
+                          value={formData.client}
+                          onChange={(v) => handleChange('client', v)}
+                          options={withValue(CLIENTS, formData.client)}
+                        />
+                      </Field>
+                    </div>
                     <Field label="Hiérarchie produit famille" required>
                       <Select
                         key={`fam-${formData.famille_produit}`}
@@ -991,25 +1189,6 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <div className="md:col-span-2">
-                      <Field label="Client" hint="Recherchez et sélectionnez un client">
-                        <ClientCombobox
-                          value={formData.client}
-                          onChange={(v) => handleChange('client', v)}
-                          options={withValue(CLIENTS, formData.client)}
-                        />
-                      </Field>
-                    </div>
-                    <div className="md:col-span-2">
-                      <Field label="Nom du produit / Désignation" required>
-                        <Input
-                          value={formData.designation_article}
-                          onChange={(e) => handleChange('designation_article', e.target.value)}
-                          placeholder="Ex: Yaourt nature 125g"
-                          className="h-11"
-                        />
-                      </Field>
-                    </div>
                   </div>
                 </FormSection>
               </>
@@ -1265,6 +1444,14 @@ export default function CreerDE() {
                   <Button
                     type="button"
                     variant="outline"
+                    onClick={() => setSapPreviewOpen(true)}
+                  >
+                    <Monitor className="w-4 h-4 mr-2" />
+                    Aperçu SAP
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={handleSendToSAP}
                     disabled={isSendingSAP}
                   >
@@ -1301,6 +1488,13 @@ export default function CreerDE() {
                 Envoyer à l'ADV
               </Button>
             </div>
+
+            <SapPreviewDialog
+              open={sapPreviewOpen}
+              onOpenChange={setSapPreviewOpen}
+              data={formData}
+              zug={zug}
+            />
           </form>
         )}
       </main>
