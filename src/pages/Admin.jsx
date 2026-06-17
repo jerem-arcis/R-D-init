@@ -31,7 +31,12 @@ import { create, remove, update } from '@/api/optionSet';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
+  divisions: 'Division (Usine)',
   groupes_article: 'Groupes article',
+  classes_valorisation: 'Classe de valorisation',
+  centres_profit: 'Centre de profit',
+  groupes_autorisation: "Groupe d'autorisation",
+  groupes_frais_generaux: 'Groupe de frais généraux',
   axes_strategiques: 'Axes stratégiques',
   familles_produit: 'Familles produit',
   secteurs_activite: "Secteurs d'activité",

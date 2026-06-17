@@ -3,7 +3,12 @@ import { listAll } from '@/api/optionSet';
 
 export const DROPDOWN_KEYS = [
   'reseaux',
+  'divisions',
   'groupes_article',
+  'classes_valorisation',
+  'centres_profit',
+  'groupes_autorisation',
+  'groupes_frais_generaux',
   'axes_strategiques',
   'familles_produit',
   'secteurs_activite',

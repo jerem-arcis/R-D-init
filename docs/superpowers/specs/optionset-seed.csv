@@ -8,6 +8,10 @@ reseaux,BPT_GMS
 reseaux,BPT_RHF
 reseaux,EXPORT RHF
 reseaux,EXPORT RETAIL
+divisions,2847
+divisions,2866
+divisions,2859
+divisions,2886
 groupes_article,Valeur 1
 groupes_article,Valeur 2
 groupes_article,Valeur 3

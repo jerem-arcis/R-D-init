@@ -424,6 +424,11 @@ export default function CreerDE() {
     unite: '',
     qte_previsionnelle_annuelle: '',
     groupe_article: '',
+    division: '',
+    classe_valorisation: '',
+    centre_profit: '',
+    groupe_autorisation: '',
+    groupe_frais_generaux: '',
 
     // Autre
     autre_demandeur: '',
@@ -588,14 +593,18 @@ export default function CreerDE() {
     }
   });
 
+  // ZUG = poids net × 1000 (champ calculé, non modifiable).
+  const zug = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
+
   const handleSaveBrouillon = () => {
-    createMutation.mutate({ ...formData, type_de: formType, statut: 'brouillon' });
+    createMutation.mutate({ ...formData, zug, type_de: formType, statut: 'brouillon' });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     createMutation.mutate({
       ...formData,
+      zug,
       type_de: formType,
       code_division_calc: autreCodeDivision,
       classe_valorisation_calc: autreClasseVal,
@@ -873,7 +882,101 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Groupe article" required>
+                    <Field label="Poids net">
+                      <Input
+                        type="number"
+                        value={formData.poids_net}
+                        onChange={(e) => handleChange('poids_net', e.target.value)}
+                        placeholder="0"
+                        className="h-11"
+                      />
+                    </Field>
+                    <Field label="ZUG" hint="Calculé : poids net × 1000">
+                      <Input
+                        type="number"
+                        value={zug}
+                        readOnly
+                        tabIndex={-1}
+                        placeholder="0"
+                        className="h-11 bg-muted text-muted-foreground cursor-not-allowed"
+                      />
+                    </Field>
+                    <Field label="Division (Usine)">
+                      <Select
+                        value={formData.division}
+                        onValueChange={(v) => handleChange('division', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner une division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {withValue(adminLists.divisions, formData.division).map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Classe de valorisation">
+                      <Select
+                        value={formData.classe_valorisation}
+                        onValueChange={(v) => handleChange('classe_valorisation', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner une classe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {withValue(adminLists.classes_valorisation, formData.classe_valorisation).map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Centre de profit">
+                      <Select
+                        value={formData.centre_profit}
+                        onValueChange={(v) => handleChange('centre_profit', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un centre" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {withValue(adminLists.centres_profit, formData.centre_profit).map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Groupe d'autorisation">
+                      <Select
+                        value={formData.groupe_autorisation}
+                        onValueChange={(v) => handleChange('groupe_autorisation', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un groupe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {withValue(adminLists.groupes_autorisation, formData.groupe_autorisation).map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Groupe de frais généraux">
+                      <Select
+                        value={formData.groupe_frais_generaux}
+                        onValueChange={(v) => handleChange('groupe_frais_generaux', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner un groupe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {withValue(adminLists.groupes_frais_generaux, formData.groupe_frais_generaux).map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Groupe article (division)" required>
                       <Select
                         value={formData.groupe_article}
                         onValueChange={(v) => handleChange('groupe_article', v)}
@@ -907,15 +1010,6 @@ export default function CreerDE() {
                         />
                       </Field>
                     </div>
-                    <Field label="Poids net">
-                      <Input
-                        type="number"
-                        value={formData.poids_net}
-                        onChange={(e) => handleChange('poids_net', e.target.value)}
-                        placeholder="0"
-                        className="h-11"
-                      />
-                    </Field>
                   </div>
                 </FormSection>
               </>
