@@ -409,9 +409,11 @@ export default function DemandesEtude() {
                     </TableCell>
                     <TableCell>
                       <Link to={createPageUrl(
-                        de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl'
-                          ? `DL?id=${de.id}`
-                          : `TraiterDE?id=${de.id}`
+                        de.statut === 'brouillon'
+                          ? `CreerDE?id=${de.id}`
+                          : de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl'
+                            ? `DL?id=${de.id}`
+                            : `TraiterDE?id=${de.id}`
                       )}>
                         <Button
                           variant="ghost"

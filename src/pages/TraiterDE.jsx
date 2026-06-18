@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle2, XCircle, Loader2, FileText, Layers, Settings2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -47,17 +47,13 @@ const TYPES_DEMANDE_AUTRE_LABELS = {
   '7': 'Modification palettisation mineure (< 2 %)',
 };
 
-// Code chapeau simulé : préfixe CC + 6 chiffres dérivés de l'horodatage.
-const genererCodeChapeau = () => `CC-${String(Date.now()).slice(-6)}`;
-
 export default function TraiterDE() {
   const [searchParams] = useSearchParams();
   const deId = searchParams.get('id');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [showRefus, setShowRefus] = useState(false);
-  const [motifRefus, setMotifRefus] = useState('');
+  const [codeChapeauInput, setCodeChapeauInput] = useState('');
 
   const { data: de, isLoading } = useQuery({
     queryKey: ['demande_etude', deId],
@@ -77,29 +73,18 @@ export default function TraiterDE() {
     },
   });
 
-  const handleCodeChapeauRecu = async () => {
-    await updateDEMutation.mutateAsync({
-      deId,
-      data: {
-        statut: 'en_attente_dl',
-        code_chapeau: genererCodeChapeau(),
-        date_code_chapeau: new Date().toISOString(),
-      },
-    });
-    navigate(createPageUrl('DemandesEtude'));
-  };
-
-  const handleRefuser = async () => {
-    if (!motifRefus.trim()) {
-      alert('Veuillez saisir un motif de refus');
+  const handleValiderCodeChapeau = async () => {
+    const code = codeChapeauInput.trim();
+    if (!code) {
+      alert('Veuillez saisir le code chapeau reçu');
       return;
     }
     await updateDEMutation.mutateAsync({
       deId,
       data: {
-        statut: 'refusee',
-        motif_refus: motifRefus,
-        date_refus: new Date().toISOString(),
+        statut: 'en_attente_dl',
+        code_chapeau: code,
+        date_code_chapeau: new Date().toISOString(),
       },
     });
     navigate(createPageUrl('DemandesEtude'));
@@ -260,54 +245,30 @@ export default function TraiterDE() {
           <FormSection title="Code chapeau" icon={CheckCircle2}>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                En attente du code chapeau pour ce projet. Cliquez ci-dessous une fois le code
-                chapeau reçu de SAP pour passer la demande en « En attente de DL ».
+                En attente du code chapeau pour ce projet. Saisissez le code chapeau reçu de SAP,
+                puis validez : la demande passera en « En attente de DL ».
               </p>
-              {!showRefus ? (
-                <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowRefus(true)}
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Refuser
-                  </Button>
-                  <Button
-                    onClick={handleCodeChapeauRecu}
-                    disabled={updateDEMutation.isPending}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Code chapeau reçu
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Motif de refus <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    value={motifRefus}
-                    onChange={(e) => setMotifRefus(e.target.value)}
-                    placeholder="Expliquer pourquoi cette demande est refusée…"
-                    className="min-h-[100px]"
-                  />
-                  <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => { setShowRefus(false); setMotifRefus(''); }}>
-                      Annuler
-                    </Button>
-                    <Button
-                      onClick={handleRefuser}
-                      disabled={updateDEMutation.isPending}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Confirmer le refus
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2 max-w-md">
+                <Label className="text-xs font-semibold text-slate-700">
+                  Code chapeau reçu <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={codeChapeauInput}
+                  onChange={(e) => setCodeChapeauInput(e.target.value)}
+                  placeholder="Ex: CC-204815"
+                  className="h-11 font-mono"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                <Button
+                  onClick={handleValiderCodeChapeau}
+                  disabled={!codeChapeauInput.trim() || updateDEMutation.isPending}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Valider le code chapeau
+                </Button>
+              </div>
             </div>
           </FormSection>
         )}

@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ArrowLeft, Upload, CheckCircle2, XCircle, Loader2, FileText, Truck,
-  Package, Factory, ShoppingCart,
+  Package, Factory, ShoppingCart, ChevronRight,
 } from 'lucide-react';
 import { getStatutMeta } from '@/lib/deStatus';
 
@@ -53,9 +54,7 @@ const SubSection = ({ title, icon: Icon, children }) => (
   </div>
 );
 
-export default function DL() {
-  const [searchParams] = useSearchParams();
-  const deId = searchParams.get('id');
+function DLDetail({ deId }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -92,6 +91,11 @@ export default function DL() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['declinaison_logistique', deId] }),
   });
 
+  const createFLMutation = useMutation({
+    mutationFn: (data) => base44.entities.FicheLancement.create(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiches'] }),
+  });
+
   const handleImport = async (file) => {
     if (!file) return;
     await upsertDL.mutateAsync({
@@ -104,8 +108,29 @@ export default function DL() {
   };
 
   const handleValider = async () => {
-    await upsertDL.mutateAsync({ statut: 'validee', date_validation: new Date().toISOString() });
-    await updateDE.mutateAsync({ data: { statut: 'validee', date_validation: new Date().toISOString() } });
+    const designationVal = de.designation_article || de.autre_designation;
+    // La validation d'une DL génère la Fiche de Lancement (FL) liée.
+    const fl = await createFLMutation.mutateAsync({
+      code_article: de.code_chapeau,
+      code_chapeau: de.code_chapeau,
+      libelle_article: designationVal,
+      demande_etude_id: deId,
+      declinaison_logistique_id: dl?.id || null,
+      etat_global: 'en_attente',
+      etape_courante: 1,
+    });
+    await upsertDL.mutateAsync({
+      statut: 'validee',
+      date_validation: new Date().toISOString(),
+      fiche_lancement_id: fl.id,
+    });
+    await updateDE.mutateAsync({
+      data: {
+        statut: 'validee',
+        date_validation: new Date().toISOString(),
+        fiche_lancement_id: fl.id,
+      },
+    });
     navigate(createPageUrl('DemandesEtude'));
   };
 
@@ -233,8 +258,8 @@ export default function DL() {
                 <Button variant="outline" onClick={() => setShowRefus(true)} className="border-red-300 text-red-600 hover:bg-red-50">
                   <XCircle className="w-4 h-4 mr-2" /> Refuser
                 </Button>
-                <Button onClick={handleValider} disabled={updateDE.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-                  <CheckCircle2 className="w-4 h-4 mr-2" /> Valider la DL
+                <Button onClick={handleValider} disabled={updateDE.isPending || createFLMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Valider la DL → FL
                 </Button>
               </div>
             )}
@@ -256,4 +281,107 @@ export default function DL() {
       </main>
     </div>
   );
+}
+
+// ---------- Liste des DL en cours ----------
+const DL_STATUT_BADGE = {
+  en_attente_dl: { label: 'En attente de DL', cls: 'bg-violet-100 text-violet-700 border-violet-200' },
+  en_attente_validation_dl: { label: 'En attente de validation DL', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+};
+
+function DLList() {
+  const { data: demandes = [], isLoading } = useQuery({
+    queryKey: ['demandes_etude'],
+    queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
+  });
+
+  const dls = demandes.filter(
+    (d) => d.statut === 'en_attente_dl' || d.statut === 'en_attente_validation_dl'
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="bg-card border-b border-border shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-7">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-md">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight">
+                Déclinaisons Logistiques <span className="text-violet-600">(DL)</span>
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">DL en cours de traitement</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : dls.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4 ring-1 ring-border">
+                <Package className="w-10 h-10 text-violet-500/60" />
+              </div>
+              <p className="text-lg font-semibold text-foreground">Aucune DL en cours</p>
+              <p className="text-sm text-muted-foreground mt-1">Les DL apparaissent ici une fois le code chapeau reçu</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary border-b-2 border-violet-500">
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code chapeau</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Demandeur</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dls.map((de) => {
+                  const badge = DL_STATUT_BADGE[de.statut] || DL_STATUT_BADGE.en_attente_dl;
+                  return (
+                    <TableRow key={de.id} className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border">
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {de.code_chapeau || <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground">
+                        {de.designation_article || de.autre_designation || <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                      <TableCell className="text-foreground/80 text-sm">
+                        {de.demandeur || <span className="text-muted-foreground/50">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={badge.cls}>{badge.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Link to={createPageUrl(`DL?id=${de.id}`)}>
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-violet-500/10">
+                            <ChevronRight className="w-5 h-5 text-violet-600" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Route "DL" : liste si aucun id, détail sinon.
+export default function DL() {
+  const [searchParams] = useSearchParams();
+  const deId = searchParams.get('id');
+  if (!deId) return <DLList />;
+  return <DLDetail deId={deId} />;
 }

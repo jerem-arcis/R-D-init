@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -395,6 +395,8 @@ export default function CreerDE() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const adminLists = useAdminLists();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('id'); // édition d'un brouillon existant
 
   const [step, setStep] = useState('selection'); // 'selection' | 'form'
   const [formType, setFormType] = useState(null); // 'de' | 'autre'
@@ -450,6 +452,22 @@ export default function CreerDE() {
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Mode édition : charge la DE existante et pré-remplit le formulaire.
+  const { data: editDE } = useQuery({
+    queryKey: ['demande_etude', editId],
+    queryFn: () => base44.entities.DemandeEtude.filter({ id: editId }),
+    enabled: !!editId,
+    select: (d) => d[0] || null,
+  });
+
+  useEffect(() => {
+    if (editDE) {
+      setFormType(editDE.type_de || 'de');
+      setFormData((prev) => ({ ...prev, ...editDE }));
+      setStep('form');
+    }
+  }, [editDE]);
 
   // Applique les champs récupérés depuis beCPG (écrase les valeurs existantes).
   // Retourne le nombre de champs renseignés pour le message de confirmation.
@@ -565,8 +583,11 @@ export default function CreerDE() {
     [formData.autre_type_marque]
   );
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.DemandeEtude.create(data),
+  const saveMutation = useMutation({
+    mutationFn: (data) =>
+      editId
+        ? base44.entities.DemandeEtude.update(editId, data)
+        : base44.entities.DemandeEtude.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
       navigate(createPageUrl('DemandesEtude'));
@@ -577,12 +598,12 @@ export default function CreerDE() {
   const zug = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
 
   const handleSaveBrouillon = () => {
-    createMutation.mutate({ ...formData, zug, type_de: formType, statut: 'brouillon' });
+    saveMutation.mutate({ ...formData, zug, type_de: formType, statut: 'brouillon' });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createMutation.mutate({
+    saveMutation.mutate({
       ...formData,
       zug,
       type_de: formType,
@@ -596,7 +617,7 @@ export default function CreerDE() {
   };
 
   const handleBack = () => {
-    if (step === 'form') {
+    if (step === 'form' && !editId) {
       setStep('selection');
       setFormType(null);
     } else {
@@ -1176,7 +1197,7 @@ export default function CreerDE() {
                     onClick={() => setSapPreviewOpen(true)}
                   >
                     <Monitor className="w-4 h-4 mr-2" />
-                    Aperçu SAP
+                    Aperçu pour SAP
                   </Button>
                   <Button
                     type="button"
@@ -1203,7 +1224,7 @@ export default function CreerDE() {
                 type="button"
                 variant="outline"
                 onClick={handleSaveBrouillon}
-                disabled={createMutation.isPending}
+                disabled={saveMutation.isPending}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Enregistrer brouillon
@@ -1211,7 +1232,7 @@ export default function CreerDE() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                disabled={createMutation.isPending}
+                disabled={saveMutation.isPending}
               >
                 <Send className="w-4 h-4 mr-2" />
                 Envoyer (demande code chapeau)
