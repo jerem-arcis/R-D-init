@@ -81,6 +81,7 @@ export const base44 = {
     DemandeEtude: createEntity('DemandeEtude'),
     CodeEAN: createEntity('CodeEAN'),
     Query: createEntity('Query'),
+    DeclinaisonLogistique: createEntity('DeclinaisonLogistique'),
   },
   auth: {
     me: async () => MOCK_USER,

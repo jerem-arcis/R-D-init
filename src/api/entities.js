@@ -4,5 +4,6 @@ export const Query = base44.entities.Query;
 export const FicheLancement = base44.entities.FicheLancement;
 export const DemandeEtude = base44.entities.DemandeEtude;
 export const CodeEAN = base44.entities.CodeEAN;
+export const DeclinaisonLogistique = base44.entities.DeclinaisonLogistique;
 
 export const User = base44.auth;
