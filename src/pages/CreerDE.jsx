@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Upload, Sparkles, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Users, Search, XCircle, Database, Monitor } from 'lucide-react';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Search, XCircle, Database, Monitor, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
@@ -111,65 +111,6 @@ const computeSecteurActivite = (type_marque) => {
 };
 
 const isUsineRequiredType = (t) => ['1', '2', '3', '6', '7'].includes(t);
-
-// ---------- Presets de pré-remplissage (démo import fichier) ----------
-const PREFILL_PRESETS_DE = [
-  {
-    code_projet: 'PRJ-2026-042',
-    axe_strategique: 'Développement de nos marques',
-    reseau: 'GDM',
-    type_demande_de: 'CA Additionnel',
-    demandeur: 'Sophie Martin',
-    famille_produit: 'Bouchees aperitives froides',
-    designation_article: 'Verrines apéritives saumon-aneth 12x40g',
-    marque: 'Boncolac Traiteur',
-  },
-  {
-    code_projet: 'PRJ-2026-068',
-    axe_strategique: 'Plan produits inscrits au budget',
-    reseau: 'RHF',
-    type_demande_de: 'Retravail Produit - CA existant',
-    demandeur: 'Julien Dubois',
-    famille_produit: 'Pizza',
-    designation_article: 'Pizza 4 fromages 350g — recette V2',
-    marque: 'Boncolac',
-  },
-  {
-    code_projet: 'PRJ-2026-095',
-    axe_strategique: 'Business Courant',
-    reseau: 'MDD',
-    type_demande_de: 'CA Additionnel',
-    demandeur: 'Marie Lefèvre',
-    famille_produit: 'Croques traiteur',
-    designation_article: 'Croque jambon-emmental 2x100g MDD',
-    marque: 'Marque Distributeur',
-  },
-];
-
-const PREFILL_PRESETS_AUTRE = [
-  {
-    autre_demandeur: 'Thomas Bernard',
-    autre_service: 'Industriel',
-    autre_type_demande: '1',
-    autre_code_origine: 'BCL-2024-118',
-    autre_usine_fab: 'Bonloc',
-    autre_designation: 'Transfert ligne quiche lorraine 4x150g',
-    autre_activite: 'TRAITEUR',
-    autre_type_marque: 'Marque Nationale RHF / Export',
-  },
-  {
-    autre_demandeur: 'Camille Petit',
-    autre_service: 'Achats',
-    autre_type_demande: '4',
-    autre_code_origine: 'NEG-2026-007',
-    autre_usine_fab: 'Produit négoce',
-    autre_designation: 'Mini-cakes salés négoce 24x18g',
-    autre_activite: 'TRAITEUR',
-    autre_type_marque: 'Marque distributeur',
-  },
-];
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // TODO(sécurité) : ces URLs de flux Power Automate contiennent une signature SAS
 // (sig=) exposée côté client (bundle JS + historique Git). À terme : proxifier via
@@ -389,182 +330,64 @@ const RecupererBeCPG = ({ onApply }) => {
   );
 };
 
-// ---------- Aperçu "vue SAP" (look SAP GUI rétro, écran MM03) ----------
-// Répartition des champs par vue, fidèle à la transaction MM03 :
-//  - Données de base 1 : groupe d'articles, groupe d'autorisation, poids
-//  - Données de base 2 : classification (secteur d'activité / hiérarchie)
-//  - Ventes            : client, division livreuse, secteur d'activité
-//  - Comptabilité 1    : classe de valorisation, contrôle prix
-//  - Calcul du coût 1  : centre de profit, groupe de frais généraux
-const SAP_VIEWS = [
-  {
-    id: 'base1',
-    label: 'Données de base 1',
-    fields: (d, zug) => [
-      { label: 'Unité quantité de base', value: 'PCE', width: 'w-24', mono: false },
-      { label: "Groupe d'articles", value: d.groupe_article, width: 'w-40', mono: false },
-      { label: "Groupe d'autorisation", value: d.groupe_autorisation, width: 'w-28' },
-      { label: 'Poids brut', value: d.poids_brut, unit: 'G', width: 'w-28' },
-      { label: 'Poids net', value: d.poids_net, unit: 'G', width: 'w-28' },
-      { label: 'ZUG (poids net × 1000)', value: zug, width: 'w-32' },
-    ],
-  },
-  {
-    id: 'base2',
-    label: 'Données de base 2',
-    fields: (d) => [
-      { label: "Secteur d'activité", value: d.marque, width: 'w-44', mono: false },
-      { label: 'Hiérarchie de produits', value: d.famille_produit, width: 'w-44', mono: false },
-      { label: 'Code EAN/UPC', value: '', width: 'w-36' },
-      { label: 'Matière de base', value: '', width: 'w-36', mono: false },
-    ],
-  },
-  {
-    id: 'ventes',
-    label: 'Ventes : orga. comm.',
-    fields: (d) => [
-      { label: 'Client', value: d.client, width: 'w-44', mono: false },
-      { label: 'Division livreuse', value: d.division, width: 'w-28' },
-      { label: 'Unité de vente', value: 'PCE', width: 'w-24', mono: false },
-      { label: "Secteur d'activité", value: d.marque, width: 'w-44', mono: false },
-      { label: "Groupe d'imputation", value: d.marque ? '01' : '', width: 'w-24' },
-    ],
-  },
-  {
-    id: 'compta',
-    label: 'Comptabilité 1',
-    fields: (d) => [
-      { label: 'Division', value: d.division, width: 'w-28' },
-      { label: 'Classe de valorisation', value: d.classe_valorisation, width: 'w-28' },
-      { label: 'Contrôle prix', value: d.classe_valorisation ? 'S' : '', width: 'w-12' },
-      { label: 'Prix standard', value: '', unit: 'EUR', width: 'w-28' },
-    ],
-  },
-  {
-    id: 'cout',
-    label: 'Calcul du coût 1',
-    fields: (d) => [
-      { label: 'Division', value: d.division, width: 'w-28' },
-      { label: 'Centre de profit', value: d.centre_profit, width: 'w-28' },
-      { label: 'Groupe de frais généraux', value: d.groupe_frais_generaux, width: 'w-28' },
-      { label: 'Taille de lot calcul coût', value: d.centre_profit ? '1 000' : '', width: 'w-28' },
-    ],
-  },
-];
-
-// Une ligne de champ au look classique SAP : libellé + zone blanche encadrée.
-const SapField = ({ label, value, unit, mono = true, width = 'w-44' }) => (
-  <div className="flex items-center gap-2 py-[3px]">
-    <span className="w-48 shrink-0 text-right text-[12px] leading-none text-black">
-      {label}
-    </span>
-    <div
-      className={cn(
-        'flex h-[22px] items-center border border-[#a0a0a0] bg-white px-1.5 text-[12px] text-[#000080] shadow-[inset_1px_1px_0_#7f9db9]',
-        mono && 'font-mono',
-        width
-      )}
-    >
-      {value !== '' && value != null ? value : ' '}
-    </div>
-    {unit && <span className="text-[11px] text-black/70">{unit}</span>}
+// ---------- Aperçu SAP : vue synthèse (style Synthèse FL) ----------
+const SynthField = ({ label, value }) => (
+  <div className="space-y-0.5">
+    <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">{label}</p>
+    <p className="text-sm text-slate-900">{value !== '' && value != null ? value : '—'}</p>
   </div>
 );
 
-const SapPreviewDialog = ({ open, onOpenChange, data, zug }) => {
-  // Numéro d'article : "(à créer)" tant que SAP ne l'a pas généré.
-  const numArticle = '(à créer)';
-  // Onglet (vue MM03) actif ; on revient à la 1ʳᵉ vue à chaque ouverture.
-  const [activeView, setActiveView] = useState(0);
-  const view = SAP_VIEWS[activeView] || SAP_VIEWS[0];
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (o) setActiveView(0);
-        onOpenChange(o);
-      }}
-    >
-      <DialogContent className="max-w-3xl gap-0 overflow-hidden border-2 border-[#5a5a5a] bg-[#d4d0c8] p-0 [&>button]:hidden">
-        {/* Barre de titre SAP */}
-        <div className="flex items-center justify-between bg-gradient-to-b from-[#0b5394] to-[#1576c4] px-3 py-1.5">
-          <div className="flex items-center gap-2">
-            <Monitor className="h-4 w-4 text-white" />
-            <span className="text-[13px] font-semibold tracking-wide text-white">
-              Afficher article (Données de base) — MM03
-            </span>
+const SynthCard = ({ title, icon: Icon, children }) => (
+  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
+      <Icon className="w-4 h-4 text-slate-500" />
+      <h3 className="font-semibold text-slate-700 text-sm">{title}</h3>
+    </div>
+    <div className="p-4 grid grid-cols-2 gap-3">{children}</div>
+  </div>
+);
+
+const SapSynthesisDialog = ({ open, onOpenChange, data, zug }) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
+      <section className="bg-gradient-to-br from-slate-50 to-violet-50">
+        <header className="bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-4 flex items-center gap-3">
+          <Monitor className="w-5 h-5" />
+          <div>
+            <h2 className="text-lg font-bold">Synthèse SAP — aperçu</h2>
+            <p className="text-xs text-violet-100">Consolidation des données article — lecture seule, rien n'est écrit dans SAP</p>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="flex h-5 w-5 items-center justify-center border border-white/40 bg-[#c0392b] text-white hover:bg-[#e04030]"
-            aria-label="Fermer"
-          >
-            <X className="h-3 w-3" />
-          </button>
+        </header>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SynthCard title="Données de base" icon={Layers}>
+            <SynthField label="Désignation" value={data.designation_article} />
+            <SynthField label="Groupe article" value={data.groupe_article} />
+            <SynthField label="Poids brut" value={data.poids_brut && `${data.poids_brut} g`} />
+            <SynthField label="Poids net" value={data.poids_net && `${data.poids_net} g`} />
+            <SynthField label="ZUG" value={zug} />
+            <SynthField label="Groupe d'autorisation" value={data.groupe_autorisation} />
+          </SynthCard>
+          <SynthCard title="Ventes" icon={ShoppingCart}>
+            <SynthField label="Client" value={data.client} />
+            <SynthField label="Division (usine)" value={data.division} />
+            <SynthField label="Secteur d'activité" value={data.marque} />
+            <SynthField label="Hiérarchie produit" value={data.famille_produit} />
+          </SynthCard>
+          <SynthCard title="Comptabilité" icon={FileText}>
+            <SynthField label="Division" value={data.division} />
+            <SynthField label="Classe de valorisation" value={data.classe_valorisation} />
+            <SynthField label="Contrôle prix" value={data.classe_valorisation ? 'S' : ''} />
+          </SynthCard>
+          <SynthCard title="Calcul du coût" icon={Settings2}>
+            <SynthField label="Centre de profit" value={data.centre_profit} />
+            <SynthField label="Groupe de frais généraux" value={data.groupe_frais_generaux} />
+          </SynthCard>
         </div>
-
-        {/* Barre d'outils factice */}
-        <div className="flex items-center gap-3 border-b border-[#9a9a9a] bg-[#ece9d8] px-3 py-1 text-[11px] text-black/60">
-          <span>✔ Contrôler</span>
-          <span>🖫 Sauvegarder</span>
-          <span>↩ Retour</span>
-          <span className="ml-auto font-mono text-[10px]">SAP ECC · Mandant 100</span>
-        </div>
-
-        {/* En-tête article */}
-        <div className="space-y-1 border-b border-[#bdbdbd] bg-[#f4f3ee] px-4 py-2">
-          <SapField label="Article" value={numArticle} width="w-32" mono />
-          <SapField
-            label="Désignation"
-            value={data.designation_article}
-            mono={false}
-            width="w-[22rem]"
-          />
-        </div>
-
-        {/* Onglets SAP cliquables (vues MM03) */}
-        <div className="flex flex-wrap gap-0.5 bg-[#d4d0c8] px-3 pt-2">
-          {SAP_VIEWS.map((v, i) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => setActiveView(i)}
-              className={cn(
-                'border border-b-0 border-[#a0a0a0] px-3 py-1 text-[11px] transition-colors',
-                i === activeView
-                  ? 'rounded-t bg-[#f4f3ee] font-semibold text-black'
-                  : 'bg-[#cfcabd] text-black/55 hover:bg-[#ddd8cb] hover:text-black/80'
-              )}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Corps : champs de la vue active */}
-        <div className="grid min-h-[164px] grid-cols-1 content-start gap-x-8 gap-y-0.5 border border-[#a0a0a0] bg-[#f4f3ee] px-4 py-4 md:grid-cols-2">
-          {view.fields(data, zug).map((f) => (
-            <SapField
-              key={f.label}
-              label={f.label}
-              value={f.value}
-              unit={f.unit}
-              width={f.width}
-              mono={f.mono}
-            />
-          ))}
-        </div>
-
-        {/* Barre d'état */}
-        <div className="flex items-center justify-between border-t border-[#9a9a9a] bg-[#ece9d8] px-3 py-1 text-[10px] text-black/60">
-          <span>Simulation — aucune donnée n'est réellement écrite dans SAP</span>
-          <span className="font-mono">⬤ Connecté · Vue {activeView + 1}/{SAP_VIEWS.length}</span>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
+      </section>
+    </DialogContent>
+  </Dialog>
+);
 
 // ---------- Composant principal ----------
 export default function CreerDE() {
@@ -574,9 +397,7 @@ export default function CreerDE() {
   const adminLists = useAdminLists();
 
   const [step, setStep] = useState('selection'); // 'selection' | 'form'
-  const [formType, setFormType] = useState(null); // 'de' | 'de_dl' | 'autre'
-  const [isPrefilling, setIsPrefilling] = useState(false);
-  const [prefilledFrom, setPrefilledFrom] = useState(null);
+  const [formType, setFormType] = useState(null); // 'de' | 'autre'
 
   const [formData, setFormData] = useState({
     // DE / DE/DL
@@ -704,26 +525,6 @@ export default function CreerDE() {
     }
   };
 
-  const handlePrefillFromFile = async (file) => {
-    if (!file || isPrefilling) return;
-    setIsPrefilling(true);
-    setPrefilledFrom(null);
-
-    await sleep(1400);
-
-    const pool =
-      formType === 'autre' ? PREFILL_PRESETS_AUTRE : PREFILL_PRESETS_DE;
-    const preset = pool[Math.floor(Math.random() * pool.length)];
-
-    setFormData((prev) => ({ ...prev, ...preset }));
-    setIsPrefilling(false);
-    setPrefilledFrom(file.name);
-
-    toast({
-      title: 'Champs pré-remplis',
-      description: `${Object.keys(preset).length} champs renseignés depuis "${file.name}".`,
-    });
-  };
 
   // Champs auto-calculés (Section Autre)
   const autreCodeDivision = useMemo(() => {
@@ -789,7 +590,8 @@ export default function CreerDE() {
       classe_valorisation_calc: autreClasseVal,
       centre_profit_calc: autreCentreProfit,
       secteur_activite_calc: autreSecteur,
-      statut: 'a_traiter_adv'
+      statut: 'en_attente_code_chapeau',
+      date_demande_code_chapeau: new Date().toISOString(),
     });
   };
 
@@ -805,9 +607,7 @@ export default function CreerDE() {
   const formTitle =
     formType === 'de'
       ? 'Demande d\'Étude (DE)'
-      : formType === 'de_dl'
-        ? 'Demande d\'Étude / Déclinaison Logistique (DE/DL)'
-        : formType === 'autre'
+      : formType === 'autre'
           ? 'Autre demande'
           : 'Nouvelle Demande';
 
@@ -840,7 +640,7 @@ export default function CreerDE() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {step === 'selection' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <TypeCard
               icon={FileText}
               title="DE"
@@ -848,16 +648,6 @@ export default function CreerDE() {
               accent="bg-gradient-to-br from-primary to-primary/70"
               onClick={() => {
                 setFormType('de');
-                setStep('form');
-              }}
-            />
-            <TypeCard
-              icon={Layers}
-              title="DE / DL"
-              subtitle="Demande d'Étude avec Déclinaison Logistique associée."
-              accent="bg-gradient-to-br from-violet-500 to-violet-700"
-              onClick={() => {
-                setFormType('de_dl');
                 setStep('form');
               }}
             />
@@ -874,72 +664,11 @@ export default function CreerDE() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {(formType === 'de' || formType === 'de_dl') && (
+            {formType === 'de' && (
               <RecupererBeCPG onApply={handleApplyBeCPG} />
             )}
-            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl border-2 border-dashed border-primary/30 p-5 flex flex-wrap items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                {isPrefilling ? (
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                ) : prefilledFrom ? (
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                ) : (
-                  <Sparkles className="w-6 h-6 text-primary" />
-                )}
-              </div>
-              <div className="flex-1 min-w-[220px]">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
-                    Pré-remplissage assisté
-                  </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30 rounded-full px-2 py-0.5">
-                    Bêta
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isPrefilling
-                    ? 'Analyse du fichier en cours…'
-                    : prefilledFrom
-                      ? <>Champs pré-remplis depuis <span className="font-semibold text-foreground">{prefilledFrom}</span>. Vous pouvez modifier librement.</>
-                      : 'Importez un cahier des charges ou un brief : on pré-remplit les champs clés.'}
-                </p>
-              </div>
-              <label
-                htmlFor="prefill-file"
-                className={`inline-flex items-center gap-2 h-10 px-4 rounded-md text-xs font-bold uppercase tracking-wide cursor-pointer transition-all ${
-                  isPrefilling
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg hover:-translate-y-0.5'
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                {prefilledFrom ? 'Changer de fichier' : 'Importer un fichier'}
-              </label>
-              <input
-                id="prefill-file"
-                type="file"
-                accept="*"
-                disabled={isPrefilling}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handlePrefillFromFile(f);
-                  e.target.value = '';
-                }}
-                className="sr-only"
-              />
-              {prefilledFrom && !isPrefilling && (
-                <button
-                  type="button"
-                  onClick={() => setPrefilledFrom(null)}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
-                  aria-label="Masquer le bandeau"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
 
-            {(formType === 'de' || formType === 'de_dl') && (
+            {formType === 'de' && (
               <>
                 <FormSection title="Informations générales" icon={FileText}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1439,7 +1168,7 @@ export default function CreerDE() {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              {(formType === 'de' || formType === 'de_dl') && (
+              {formType === 'de' && (
                 <div className="mr-auto flex items-center gap-2">
                   <Button
                     type="button"
@@ -1485,11 +1214,11 @@ export default function CreerDE() {
                 disabled={createMutation.isPending}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Envoyer à l'ADV
+                Envoyer (demande code chapeau)
               </Button>
             </div>
 
-            <SapPreviewDialog
+            <SapSynthesisDialog
               open={sapPreviewOpen}
               onOpenChange={setSapPreviewOpen}
               data={formData}
