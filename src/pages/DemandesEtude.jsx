@@ -35,6 +35,16 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { STATUTS, STATUT_ORDER, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
+
+const TONE_BADGE = {
+  amber: 'bg-amber-100 text-amber-700 border-amber-200',
+  blue: 'bg-blue-100 text-blue-700 border-blue-200',
+  violet: 'bg-violet-100 text-violet-700 border-violet-200',
+  indigo: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  red: 'bg-red-100 text-red-700 border-red-200',
+};
 
 // Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
 const getType = (de) => de.type_de || 'de';
@@ -121,37 +131,11 @@ export default function DemandesEtude() {
   };
 
   const getStatutBadge = (statut) => {
-    switch (statut) {
-      case 'validee':
-        return (
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 mr-1" />
-            Validée
-          </Badge>
-        );
-      case 'refusee':
-        return (
-          <Badge className="bg-red-100 text-red-700 border-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
-            Refusée
-          </Badge>
-        );
-      case 'a_traiter_adv':
-        return (
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-            <Clock className="w-3 h-3 mr-1" />
-            À traiter (ADV)
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-            <FileText className="w-3 h-3 mr-1" />
-            Brouillon
-          </Badge>
-        );
-    }
+    const meta = getStatutMeta(statut);
+    return <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>;
   };
+
+  const alertCount = demandes.filter((d) => codeChapeauAlert(d).level !== 'none').length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,35 +168,16 @@ export default function DemandesEtude() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Tabs value={filter} onValueChange={setFilter}>
-            <TabsList className="bg-card border border-border">
-              <TabsTrigger
-                value="a_traiter_adv"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                À traiter (ADV)
-              </TabsTrigger>
-              <TabsTrigger
-                value="brouillon"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Brouillons
-              </TabsTrigger>
-              <TabsTrigger
-                value="validee"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
-              >
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Validées
-              </TabsTrigger>
-              <TabsTrigger
-                value="refusee"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                Refusées
-              </TabsTrigger>
+            <TabsList className="bg-card border border-border flex-wrap h-auto">
+              {STATUT_ORDER.map((key) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
+                >
+                  {STATUTS[key].label}
+                </TabsTrigger>
+              ))}
               <TabsTrigger
                 value="toutes"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase text-xs font-semibold tracking-wide"
@@ -254,22 +219,22 @@ export default function DemandesEtude() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'a_traiter_adv').length}
+                  {demandes.filter(d => d.statut === 'en_attente_code_chapeau').length}
                 </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">À traiter</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente code chapeau</p>
               </div>
             </div>
           </div>
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6 text-amber-700" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6 text-violet-700" />
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'brouillon').length}
+                  {demandes.filter(d => d.statut === 'en_attente_dl' || d.statut === 'en_attente_validation_dl').length}
                 </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Brouillons</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">DL en cours</p>
               </div>
             </div>
           </div>
@@ -288,14 +253,12 @@ export default function DemandesEtude() {
           </div>
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <XCircle className="w-6 h-6 text-red-700" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6 text-rose-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'refusee').length}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
+                <p className="text-3xl font-bold text-foreground">{alertCount}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Alertes code chapeau</p>
               </div>
             </div>
           </div>
@@ -425,7 +388,19 @@ export default function DemandesEtude() {
                       {getUsine(de) || <span className="text-muted-foreground/50">—</span>}
                     </TableCell>
                     <TableCell>
-                      {getStatutBadge(de.statut)}
+                      <div className="flex items-center gap-2">
+                        {getStatutBadge(de.statut)}
+                        {(() => {
+                          const a = codeChapeauAlert(de);
+                          if (a.level === 'none') return null;
+                          return (
+                            <Badge className={a.level === 'j6' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'}>
+                              <Clock className="w-3 h-3 mr-1" />
+                              {a.level === 'j6' ? `Relance J+${a.joursEcoules}` : `J+${a.joursEcoules}`}
+                            </Badge>
+                          );
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {de.created_date
@@ -433,7 +408,11 @@ export default function DemandesEtude() {
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      <Link to={createPageUrl(`TraiterDE?id=${de.id}`)}>
+                      <Link to={createPageUrl(
+                        de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl'
+                          ? `DL?id=${de.id}`
+                          : `TraiterDE?id=${de.id}`
+                      )}>
                         <Button
                           variant="ghost"
                           size="icon"
