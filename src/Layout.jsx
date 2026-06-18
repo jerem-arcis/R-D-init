@@ -7,7 +7,6 @@ import {
   FileText,
   ClipboardList,
   LayoutDashboard,
-  Zap,
   Menu,
   X,
   ChevronRight,
@@ -22,7 +21,6 @@ const NAV_ITEMS = [
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
   { label: "DL",                  page: "DL",            icon: Package,         match: ["DL"] },
   { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail", "CreerFL"] },
-  { label: "Déclencher le flux",  page: "DeclencherFlux", icon: Zap,            match: ["DeclencherFlux"] },
   { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"] },
 ];
 

@@ -194,22 +194,10 @@ export const getValueFromDE = (de, ficheField) => {
 // ---------- Helpers ----------
 
 // Détermine si une section est verrouillée (visa précédent absent)
-export const isSectionLocked = (sectionKey, fiche) => {
-  switch (sectionKey) {
-    case 'controle_gestion':
-      return false;
-    case 'supply_chain':
-      return !fiche.visa_controle_gestion;
-    case 'gestion_besoin':
-      return !fiche.visa_supply_chain;
-    case 'industriel':
-      return !fiche.visa_gestion_besoin;
-    case 'commerce':
-      return !fiche.visa_industriel;
-    default:
-      return false;
-  }
-};
+// Écriture simultanée : aucune section n'est verrouillée par l'ordre des visas.
+// Chaque service peut renseigner sa section en parallèle (le visa de chaque
+// section reste indépendant et fige sa section une fois posé).
+export const isSectionLocked = () => false;
 
 // Section éditable = pas verrouillée ET pas encore visée
 export const isSectionEditable = (sectionKey, fiche) => {
@@ -315,23 +303,19 @@ export const getCurrentOwner = (fiche) => {
   return null;
 };
 
-// Champ éditable : son owner est l'étape courante
+// Écriture simultanée : un champ est éditable tant que sa section n'a pas posé
+// son visa (et que SAP n'est pas créé), indépendamment de l'ordre du workflow.
 export const isFieldEditable = (fieldName, fiche) => {
   const owner = FIELD_OWNERS[fieldName];
   if (!owner) return false;
   if (fiche.statut_sap === 'Création SAP effectuée') return false;
-  return getCurrentOwner(fiche) === owner;
+  return !fiche[OWNER_META[owner].visaField];
 };
 
-// État d'un champ : 'editable' (étape courante), 'validated' (visa posé), 'future' (verrouillé)
+// État d'un champ : 'editable' (section non visée) ou 'validated' (visa posé / SAP créé).
 export const getFieldState = (fieldName, fiche) => {
   const owner = FIELD_OWNERS[fieldName];
   if (!owner) return 'future';
   if (fiche.statut_sap === 'Création SAP effectuée') return 'validated';
-  const current = getCurrentOwner(fiche);
-  if (!current) return 'validated';
-  if (owner === current) return 'editable';
-  const ownerIdx = WORKFLOW_ORDER.indexOf(owner);
-  const currentIdx = WORKFLOW_ORDER.indexOf(current);
-  return ownerIdx < currentIdx ? 'validated' : 'future';
+  return fiche[OWNER_META[owner].visaField] ? 'validated' : 'editable';
 };

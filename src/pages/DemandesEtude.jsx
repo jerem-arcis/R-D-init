@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { STATUTS, STATUT_ORDER, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
+import { STATUTS, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
 
 const TONE_BADGE = {
   amber: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -45,6 +45,13 @@ const TONE_BADGE = {
   emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   red: 'bg-red-100 text-red-700 border-red-200',
 };
+
+// Côté DE, une fois le code chapeau reçu (phase DL ou validé) la DE est « Validée ».
+const isDEValidated = (statut) =>
+  ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(statut);
+
+// Onglets de la liste DE (les statuts DL ne sont pas exposés ici, ils ont leur onglet).
+const DE_TABS = ['brouillon', 'en_attente_code_chapeau', 'validee', 'refusee'];
 
 // Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
 const getType = (de) => de.type_de || 'de';
@@ -98,7 +105,13 @@ export default function DemandesEtude() {
   const searchTerm = normalize(search.trim());
   const filteredDemandes = demandes.filter(de => {
     if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
-    if (filter !== 'toutes' && de.statut !== filter) return false;
+    if (filter !== 'toutes') {
+      if (filter === 'validee') {
+        if (!isDEValidated(de.statut)) return false;
+      } else if (de.statut !== filter) {
+        return false;
+      }
+    }
 
     if (typeDemandeFilter !== 'tous') {
       const td = getTypeDemande(de);
@@ -131,6 +144,11 @@ export default function DemandesEtude() {
   };
 
   const getStatutBadge = (statut) => {
+    // Une fois les étapes DE passées (le projet est en phase DL ou validé),
+    // on l'affiche comme « Validée » côté DE — le suivi DL vit dans l'onglet DL.
+    if (isDEValidated(statut)) {
+      return <Badge className={TONE_BADGE.emerald}>{STATUTS.validee.label}</Badge>;
+    }
     const meta = getStatutMeta(statut);
     return <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>;
   };
@@ -169,7 +187,7 @@ export default function DemandesEtude() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList className="bg-card border border-border flex-wrap h-auto">
-              {STATUT_ORDER.map((key) => (
+              {DE_TABS.map((key) => (
                 <TabsTrigger
                   key={key}
                   value={key}
@@ -227,27 +245,27 @@ export default function DemandesEtude() {
           </div>
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6 text-violet-700" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'en_attente_dl' || d.statut === 'en_attente_validation_dl').length}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">DL en cours</p>
-              </div>
-            </div>
-          </div>
-          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <CheckCircle2 className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'validee').length}
+                  {demandes.filter(d => isDEValidated(d.statut)).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Validées</p>
+              </div>
+            </div>
+          </div>
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <XCircle className="w-6 h-6 text-red-700" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {demandes.filter(d => d.statut === 'refusee').length}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
               </div>
             </div>
           </div>

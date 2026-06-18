@@ -161,11 +161,14 @@ function DLDetail({ deId }) {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-5 flex items-center gap-4">
-          <Link to={createPageUrl('DemandesEtude')}>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
