@@ -2,7 +2,7 @@
 // S'exécute une fois au démarrage de l'app si rien n'a été créé.
 
 const STORAGE_PREFIX = 'mock_db_';
-const SEED_FLAG = 'mock_seed_v6';
+const SEED_FLAG = 'mock_seed_v7';
 
 const uid = () =>
   (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -542,8 +542,8 @@ const buildSeedData = () => {
       created_date: now,
       updated_date: now,
 
-      // Sélection initiale
-      type_de: s.typeDe,
+      // Sélection initiale (le type DE/DL a été retiré : on normalise vers 'de')
+      type_de: s.typeDe === 'de_dl' ? 'de' : s.typeDe,
 
       // Informations générales
       code_projet: `PRJ-2026-${String(142 + idx).padStart(3, '0')}`,
@@ -664,6 +664,47 @@ const buildSeedData = () => {
 
     des.push(de);
     fiches.push(fiche);
+  });
+
+  // DE de démonstration réparties sur les statuts in-progress du pipeline.
+  // (L'échantillon en_attente_validation_dl est volontairement omis : la DL
+  //  n'existe qu'après un import réel via la page DL.)
+  const isoOffsetDateTime = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString();
+  };
+  const pipelineSamples = [
+    // En attente de code chapeau — demande du jour (alerte J+0)
+    { statut: 'en_attente_code_chapeau', demande: 0, designation: 'MINI QUICHES LORRAINES 16P', famille: 'Entrees chaudes', demandeur: 'Inès Faure' },
+    // En attente de code chapeau — 8 jours (alerte J+6 / relance)
+    { statut: 'en_attente_code_chapeau', demande: -8, designation: 'PLATEAU SUSHIS 30P', famille: 'Plats cuisinés', demandeur: 'Karim Benali' },
+    // En attente de DL — code chapeau reçu
+    { statut: 'en_attente_dl', demande: -12, codeChapeau: 'CC-204815', designation: 'TARTE FINE POMMES', famille: 'Desserts', demandeur: 'Léa Garnier' },
+  ];
+  pipelineSamples.forEach((s, i) => {
+    des.push({
+      id: uid(),
+      created_date: now,
+      updated_date: now,
+      type_de: 'de',
+      code_projet: `PRJ-2026-${String(200 + i).padStart(3, '0')}`,
+      axe_strategique: 'Business Courant',
+      date_demande: isoDateOffset(s.demande - 2),
+      reseau: 'GDM',
+      type_demande_de: 'CA Additionnel',
+      demandeur: s.demandeur,
+      famille_produit: s.famille,
+      designation_article: s.designation,
+      marque: 'Boncolac',
+      poids_net: 250,
+      groupe_article: '0001',
+      statut: s.statut,
+      date_demande_code_chapeau: isoOffsetDateTime(s.demande),
+      ...(s.codeChapeau
+        ? { code_chapeau: s.codeChapeau, date_code_chapeau: isoOffsetDateTime(s.demande + 3) }
+        : {}),
+    });
   });
 
   return { des, fiches };
