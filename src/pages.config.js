@@ -5,6 +5,7 @@ import FicheDetailV2 from './pages/FicheDetailV2';
 import DemandesEtude from './pages/DemandesEtude';
 import CreerDE from './pages/CreerDE';
 import TraiterDE from './pages/TraiterDE';
+import DL from './pages/DL';
 import CreerFL from './pages/CreerFL';
 import DeclencherFlux from './pages/DeclencherFlux';
 import Admin from './pages/Admin';
@@ -19,6 +20,7 @@ export const PAGES = {
     "DemandesEtude": DemandesEtude,
     "CreerDE": CreerDE,
     "TraiterDE": TraiterDE,
+    "DL": DL,
     "CreerFL": CreerFL,
     "DeclencherFlux": DeclencherFlux,
     "Admin": Admin,
