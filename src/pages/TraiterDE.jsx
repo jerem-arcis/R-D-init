@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle2, XCircle, Loader2, FileText, Layers, Settings2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-// Liste des usines (alignée avec CreerDE.autre_usine_fab)
-const USINES = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
+import { getStatutMeta } from '@/lib/deStatus';
 
 // Sous-composants
 const FormSection = ({ title, icon: Icon, children }) => (
@@ -51,6 +47,9 @@ const TYPES_DEMANDE_AUTRE_LABELS = {
   '7': 'Modification palettisation mineure (< 2 %)',
 };
 
+// Code chapeau simulé : préfixe CC + 6 chiffres dérivés de l'horodatage.
+const genererCodeChapeau = () => `CC-${String(Date.now()).slice(-6)}`;
+
 export default function TraiterDE() {
   const [searchParams] = useSearchParams();
   const deId = searchParams.get('id');
@@ -59,8 +58,6 @@ export default function TraiterDE() {
 
   const [showRefus, setShowRefus] = useState(false);
   const [motifRefus, setMotifRefus] = useState('');
-  const [selectedEAN, setSelectedEAN] = useState('');
-  const [pickedUsine, setPickedUsine] = useState('');
 
   const { data: de, isLoading } = useQuery({
     queryKey: ['demande_etude', deId],
@@ -69,109 +66,27 @@ export default function TraiterDE() {
     select: (data) => data[0] || null,
   });
 
-  // Résolutions selon le type
   const typeDe = de?.type_de || 'de';
   const isAutre = typeDe === 'autre';
-  const designation = isAutre ? de?.autre_designation : de?.designation_article;
-  const usineSource = isAutre ? de?.autre_usine_fab : pickedUsine;
-
-  const { data: codesEAN = [], isLoading: isLoadingCodes } = useQuery({
-    queryKey: ['codes_ean', usineSource],
-    queryFn: async () => {
-      const codes = await base44.entities.CodeEAN.filter({
-        usine: usineSource,
-        disponible: true,
-      });
-      if (codes.length === 0 && usineSource) {
-        const baseCode =
-          usineSource === 'Aire' ? '3250390001' :
-          usineSource === 'Agen' ? '3250390002' :
-          usineSource === 'Bonloc' ? '3250390003' :
-          usineSource === 'Rivesaltes' ? '3250390004' :
-          '3250390009';
-        const nouveauxCodes = [];
-        for (let i = 1; i <= 5; i++) {
-          const code = `${baseCode}00${i}`;
-          const nouveauCode = await base44.entities.CodeEAN.create({
-            code,
-            usine: usineSource,
-            disponible: true,
-          });
-          nouveauxCodes.push(nouveauCode);
-        }
-        return nouveauxCodes;
-      }
-      return codes;
-    },
-    enabled: !!usineSource,
-  });
-
-  useEffect(() => {
-    if (codesEAN.length > 0) setSelectedEAN(codesEAN[0].code);
-    else setSelectedEAN('');
-  }, [codesEAN]);
 
   const updateDEMutation = useMutation({
     mutationFn: ({ deId, data }) => base44.entities.DemandeEtude.update(deId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
-      navigate(createPageUrl('DemandesEtude'));
+      queryClient.invalidateQueries({ queryKey: ['demande_etude', deId] });
     },
   });
 
-  const updateCodeEANMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.CodeEAN.update(id, data),
-  });
-
-  const createFLMutation = useMutation({
-    mutationFn: (data) => base44.entities.FicheLancement.create(data),
-  });
-
-  const handleValider = async ({ createFL }) => {
-    if (!usineSource) {
-      alert("Veuillez sélectionner une usine de fabrication");
-      return;
-    }
-    if (!selectedEAN) {
-      alert('Veuillez sélectionner un code EAN');
-      return;
-    }
-
-    const codeChapeau = `${selectedEAN} ${designation || ''}`.trim();
-    const codeEANObj = codesEAN.find((c) => c.code === selectedEAN);
-
-    await updateCodeEANMutation.mutateAsync({
-      id: codeEANObj.id,
-      data: {
-        disponible: false,
-        date_utilisation: new Date().toISOString(),
-        demande_etude_id: deId,
-      },
-    });
-
-    let ficheFLId = null;
-    if (createFL) {
-      const ficheFL = await createFLMutation.mutateAsync({
-        code_article: codeChapeau,
-        libelle_article: designation,
-        demande_etude_id: deId,
-        etat_global: 'en_attente',
-        etape_courante: 1,
-      });
-      ficheFLId = ficheFL.id;
-    }
-
+  const handleCodeChapeauRecu = async () => {
     await updateDEMutation.mutateAsync({
       deId,
       data: {
-        statut: 'validee',
-        code_ean: selectedEAN,
-        code_chapeau: codeChapeau,
-        usine_validee: usineSource,
-        date_validation: new Date().toISOString(),
-        ...(ficheFLId ? { fiche_lancement_id: ficheFLId } : {}),
+        statut: 'en_attente_dl',
+        code_chapeau: genererCodeChapeau(),
+        date_code_chapeau: new Date().toISOString(),
       },
     });
+    navigate(createPageUrl('DemandesEtude'));
   };
 
   const handleRefuser = async () => {
@@ -187,6 +102,7 @@ export default function TraiterDE() {
         date_refus: new Date().toISOString(),
       },
     });
+    navigate(createPageUrl('DemandesEtude'));
   };
 
   if (isLoading || !de) {
@@ -197,8 +113,11 @@ export default function TraiterDE() {
     );
   }
 
-  const isReadOnly = de.statut === 'validee' || de.statut === 'refusee';
+  const designation = isAutre ? de.autre_designation : de.designation_article;
   const typeBadge = TYPE_BADGE[typeDe] || TYPE_BADGE.de;
+  const codeChapeauVisible =
+    de.code_chapeau &&
+    ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(de.statut);
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,18 +138,20 @@ export default function TraiterDE() {
                   {typeBadge.label}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">ID: {deId?.slice(0, 8)}…</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Statut : {getStatutMeta(de.statut).label}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {de.statut === 'validee' && (
+        {codeChapeauVisible && (
           <Alert className="bg-emerald-50 border-emerald-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <AlertDescription className="text-emerald-700">
-              Demande validée — Code chapeau : <strong>{de.code_chapeau}</strong>
+              Code chapeau reçu : <strong>{de.code_chapeau}</strong> — statut : {getStatutMeta(de.statut).label}
             </AlertDescription>
           </Alert>
         )}
@@ -243,7 +164,7 @@ export default function TraiterDE() {
           </Alert>
         )}
 
-        {/* ===== Type DE / DE_DL ===== */}
+        {/* ===== Type DE ===== */}
         {!isAutre && (
           <>
             <FormSection title="Informations générales" icon={FileText}>
@@ -261,27 +182,21 @@ export default function TraiterDE() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ReadField label="Désignation" value={de.designation_article} span={2} />
                 <ReadField label="Famille de produit" value={de.famille_produit} />
-                <ReadField label="Marque" value={de.marque} />
-                <ReadField label="Catégorie (Vif)" value={de.categorie} />
-                <ReadField label="Date de lancement souhaitée" value={de.date_lancement} />
-              </div>
-            </FormSection>
-
-            <FormSection title="Logistique & échantillons" icon={Settings2}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ReadField label="Type de logistique" value={de.type_logistique} />
-                <ReadField label="Date échantillon" value={de.date_echantillon} />
-                <ReadField label="Date mise à dispo client" value={de.date_mise_dispo} />
-              </div>
-            </FormSection>
-
-            <FormSection title="Caractéristiques physiques">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ReadField label="Poids OP" value={de.poids_op} />
-                <ReadField label="Poids brut" value={de.poids_brut} />
+                <ReadField label="Secteur d'activité" value={de.marque} />
+                <ReadField label="Client" value={de.client} />
                 <ReadField label="Poids net" value={de.poids_net} />
-                <ReadField label="Volume" value={de.volume} />
-                <ReadField label="Unité" value={de.unite} />
+                <ReadField label="ZUG" value={de.zug} mono />
+              </div>
+            </FormSection>
+
+            <FormSection title="Champs SAP" icon={Settings2}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ReadField label="Groupe article" value={de.groupe_article} mono />
+                <ReadField label="Division" value={de.division} mono />
+                <ReadField label="Classe de valorisation" value={de.classe_valorisation} mono />
+                <ReadField label="Centre de profit" value={de.centre_profit} mono />
+                <ReadField label="Groupe d'autorisation" value={de.groupe_autorisation} mono />
+                <ReadField label="Groupe de frais généraux" value={de.groupe_frais_generaux} mono />
               </div>
             </FormSection>
           </>
@@ -340,76 +255,16 @@ export default function TraiterDE() {
           </>
         )}
 
-        {/* ===== Panneau de validation ADV ===== */}
-        {!isReadOnly && (
-          <FormSection title="Décision ADV" icon={CheckCircle2}>
-            <div className="space-y-5">
-              {!isAutre && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Usine de fabrication <span className="text-red-500">*</span>
-                  </Label>
-                  <Select value={pickedUsine} onValueChange={setPickedUsine}>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Sélectionner l'usine qui produira l'article" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {USINES.map((u) => (
-                        <SelectItem key={u} value={u}>{u}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {usineSource && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-slate-700">
-                    Code EAN pour {usineSource}
-                  </Label>
-                  {isLoadingCodes ? (
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">Chargement des codes EAN…</span>
-                    </div>
-                  ) : codesEAN.length === 0 ? (
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <AlertDescription className="text-amber-700">
-                        Aucun code EAN disponible. 5 codes de test ont été créés automatiquement.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <>
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <p className="text-xs text-slate-600 mb-0.5">Code suggéré</p>
-                        <p className="font-bold text-base text-emerald-700 font-mono">{selectedEAN}</p>
-                      </div>
-                      <Select value={selectedEAN} onValueChange={setSelectedEAN}>
-                        <SelectTrigger className="h-11">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {codesEAN.map((c) => (
-                            <SelectItem key={c.id} value={c.code}>{c.code}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {selectedEAN && designation && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-xs text-slate-700 mb-0.5">Code chapeau qui sera généré</p>
-                  <p className="font-bold text-base text-primary font-mono">
-                    {selectedEAN} {designation}
-                  </p>
-                </div>
-              )}
-
+        {/* ===== Étape code chapeau ===== */}
+        {de.statut === 'en_attente_code_chapeau' && (
+          <FormSection title="Code chapeau" icon={CheckCircle2}>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                En attente du code chapeau pour ce projet. Cliquez ci-dessous une fois le code
+                chapeau reçu de SAP pour passer la demande en « En attente de DL ».
+              </p>
               {!showRefus ? (
-                <div className="flex flex-wrap justify-end gap-3 pt-2 border-t border-border">
+                <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border">
                   <Button
                     variant="outline"
                     onClick={() => setShowRefus(true)}
@@ -419,21 +274,12 @@ export default function TraiterDE() {
                     Refuser
                   </Button>
                   <Button
-                    variant="outline"
-                    onClick={() => handleValider({ createFL: false })}
-                    disabled={!selectedEAN || !usineSource || updateDEMutation.isPending || createFLMutation.isPending}
-                    className="border-primary/40 text-primary hover:bg-primary/5"
+                    onClick={handleCodeChapeauRecu}
+                    disabled={updateDEMutation.isPending}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Valider
-                  </Button>
-                  <Button
-                    onClick={() => handleValider({ createFL: true })}
-                    disabled={!selectedEAN || !usineSource || updateDEMutation.isPending || createFLMutation.isPending}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Valider + créer FL
+                    Code chapeau reçu
                   </Button>
                 </div>
               ) : (
@@ -448,13 +294,7 @@ export default function TraiterDE() {
                     className="min-h-[100px]"
                   />
                   <div className="flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowRefus(false);
-                        setMotifRefus('');
-                      }}
-                    >
+                    <Button variant="outline" onClick={() => { setShowRefus(false); setMotifRefus(''); }}>
                       Annuler
                     </Button>
                     <Button
@@ -470,6 +310,17 @@ export default function TraiterDE() {
               )}
             </div>
           </FormSection>
+        )}
+
+        {/* ===== Lien vers la DL une fois le code chapeau reçu ===== */}
+        {(de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl') && (
+          <div className="flex justify-end">
+            <Link to={createPageUrl(`DL?id=${de.id}`)}>
+              <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-md">
+                Ouvrir la Déclinaison Logistique
+              </Button>
+            </Link>
+          </div>
         )}
       </main>
     </div>
