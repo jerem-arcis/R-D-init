@@ -1,7 +1,8 @@
 # Récapitulatif — Cycle de vie projet DE → Code chapeau → DL → FL
 
-**Date :** 2026-06-18
+**Date :** 2026-06-18 (mis à jour le 2026-06-19)
 **Périmètre :** refonte du cycle de vie d'un projet (de la Demande d'Étude à la Déclinaison Logistique), avec génération de la Fiche de Lancement à la validation d'une DL.
+**MàJ 2026-06-19 :** import Excel réel du fichier de DE et découplage de l'état DL vis-à-vis de la DE (historique conservé sur les 3 onglets) — cf. §5.
 
 ---
 
@@ -20,12 +21,18 @@ En attente de DL ───────────────┐
    │  (import du fichier DL)     │  onglet « DL »
    ▼                            │  (DL en cours)
 En attente de validation DL ────┘
-   │  (Valider la DL → crée la FL)        (ou Refuser)
+   │  (Valider la DL → crée la FL)        (ou Refuser → motif)
    ▼                                          ▼
-Validée  ──► Fiche de Lancement créée      Refusée
+DL Validée ──► Fiche de Lancement créée    DL Refusée
+   (DE reste « Validée »)                  (DE reste « Validée »)
 ```
 
-Côté **liste des Demandes d'Étude**, dès que le projet passe en phase DL (ou est validé), il est affiché **« Validée »** : le suivi DL se fait dans l'onglet **DL**.
+L'état **en cours / validée / refusée** ci-dessus concerne la **DL** (porté par
+l'enregistrement `DeclinaisonLogistique`). La **DE** garde son propre historique :
+dès qu'un projet passe en phase DL, il est affiché **« Validée »** côté liste des
+Demandes d'Étude — **même si la DL est ensuite refusée**. Trois onglets =
+trois historiques indépendants : **DE** (étude validée), **DL** (état logistique),
+**Fiches de Lancement** (projets à DL validée).
 
 ---
 
@@ -69,25 +76,66 @@ Source unique : `src/lib/deStatus.js`.
 
 ## 5. Déclinaison Logistique (`src/pages/DL.jsx`)
 
+> **Mise à jour 2026-06-19** : import Excel réel (plus de données factices) et
+> découplage de l'état DL vis-à-vis de la DE — voir détails ci-dessous.
+
 Route unique `DL` :
-- **Sans `id`** → **liste des DL en cours** (statuts `en_attente_dl` + `en_attente_validation_dl`).
+- **Sans `id`** → **liste des DL** (en cours **et** finalisées).
 - **Avec `?id=<deId>`** → **détail DL**.
 
-Détail DL (un seul écran, deux temps) :
-1. **Importer le fichier** (Excel simulé) → préremplit les champs « type Synthèse FL », crée/maj l'enregistrement `DeclinaisonLogistique`, passe en **`en_attente_validation_dl`** et affiche la synthèse.
-2. **Valider la DL → FL** ou **Refuser** :
-   - **Valider** → crée une **FicheLancement** liée (`code_article` = code chapeau, `etat_global: en_attente`, `etape_courante: 1`), met la DL et la DE en **`validee`** avec `fiche_lancement_id`.
-   - **Refuser** → motif obligatoire, DL + DE en **`refusee`**.
-- Bouton **retour** = vrai retour navigateur (`navigate(-1)`).
+### Import réel du fichier Excel
 
-Nouvelle entité mock **`DeclinaisonLogistique`** (`src/api/base44Client.js`, `src/api/entities.js`), persistée en localStorage comme les autres.
+L'import lit **vraiment** le fichier `.xlsm`/`.xlsx` de la DE (plus aucun preset) :
+- **`src/lib/xlsxLite.js`** — mini-lecteur sans dépendance : un classeur est une
+  archive ZIP, décompressée via `DecompressionStream('deflate-raw')` (natif
+  navigateur) ; parsing XML en **fonctions pures** (`parseSharedStrings`,
+  `parseSheetCells`, `resolveSheetTarget`).
+- **`src/lib/parseDL.js`** — cible l'onglet **« Fiche Demande »** et extrait,
+  par ligne renseignée en **colonne G** (libellé), la **valeur DE (col H)** et la
+  **valeur DL (col I)**. Nombres formatés, erreurs Excel (`#DIV/0!`…) nettoyées.
+- **Bornage** : extraction jusqu'à **« Mise à dispo Client »** inclus
+  (en-tête « Dates Rétro-Planning du lancement » exclu, et tout ce qui suit —
+  Commentaires faisabilité, Notation — ignoré), puis ajout des **2 lignes DL
+  spécifiques** portées par la colonne H : *« pour DL seulement : Date 1ère
+  Fabrication »* et *« … Date 1ère livraison »*.
+- Les lignes extraites sont stockées dans `champs_dl` (tableau) sur
+  l'enregistrement DL et affichées en **table (Ligne · Valeur DE · Valeur DL)**.
+- **Changer le fichier** : tant que la DL n'est ni validée ni refusée, un bouton
+  « Changer le fichier » permet de ré-importer (régénère `champs_dl`).
+- Tests : `src/lib/parseDL.test.js` (parsing, bornage, lignes DL colonne H).
+
+### Cycle de vie découplé DE / DL
+
+L'**état de la DL** (en cours / validée / refusée + motif) est porté par
+l'enregistrement **`DeclinaisonLogistique`**, **pas** par la DE :
+- **Valider la DL → FL** → crée une **FicheLancement** liée (`code_article` =
+  code chapeau, `etat_global: en_attente`, `etape_courante: 1`), DL **`validee`**,
+  DE **`validee`** avec `fiche_lancement_id`.
+- **Refuser** → motif obligatoire ; seul l'enregistrement DL passe **`refusee`**
+  (+ `motif_refus`). **La DE n'est pas touchée et reste « Validée »** (sa partie
+  est terminée) → l'historique du projet est conservé.
+- Le détail DL lit son état via `dl.statut` (header « Statut DL », alerte de refus,
+  boutons figés si finalisée). Bouton **retour** = retour navigateur.
+
+### Liste DL
+
+Source de vérité = enregistrements `DeclinaisonLogistique` (joints aux DE) :
+- affiche **En attente de DL** (code chapeau reçu, pas encore importé),
+  **En attente de validation DL**, **Validée** (vert), **Refusée** (rouge) ;
+- tri : DL en cours d'abord, finalisées ensuite ;
+- sur une ligne **Refusée**, lien **« voir le motif »** → **modale** affichant le
+  motif (lu sur l'enregistrement DL).
+
+Entité mock **`DeclinaisonLogistique`** (`src/api/base44Client.js`,
+`src/api/entities.js`), persistée en localStorage. Le fichier Excel de test
+n'est **pas** versionné (`*.xlsm`/`*.xlsx` dans `.gitignore`).
 
 ---
 
 ## 6. Liste « Demandes d'Étude » (`src/pages/DemandesEtude.jsx`)
 
 - **Onglets DE-scoped** : Brouillon · En attente de code chapeau · Validée · Refusée · Toutes (les statuts DL ne sont pas exposés ici).
-- **Affichage « Validée »** pour tout projet en phase DL ou validé (`en_attente_dl`, `en_attente_validation_dl`, `validee`).
+- **Affichage « Validée »** pour tout projet en phase DL ou validé (`en_attente_dl`, `en_attente_validation_dl`, `validee`). Reste **« Validée » même si la DL est refusée** (le refus ne touche plus la DE — cf. §5).
 - **Alertes code chapeau** : badge `J+x` / `Relance J+x` sur les lignes concernées + carte compteur « Alertes code chapeau ».
 - **Cartes stats** : Attente code chapeau · Validées · Refusées · Alertes code chapeau.
 - **Routage des lignes** :
@@ -127,7 +175,8 @@ Nouvelle entité mock **`DeclinaisonLogistique`** (`src/api/base44Client.js`, `s
 ## 10. Tests
 
 - `src/lib/deStatus.test.js` : libellés/ordre des statuts + `codeChapeauAlert` (J+0, J+6, hors statut, date absente).
-- Suite complète : **20 tests** verts (`npm run test`).
+- `src/lib/parseDL.test.js` *(MàJ 2026-06-19)* : parsing xlsx (chaînes partagées, cellules, résolution de feuille), extraction G/H/I, bornage à « Mise à dispo Client », lignes DL de la colonne H.
+- Suite complète : **27 tests** verts (`npm run test`).
 - Build de production OK (`npm run build`).
 
 ---
@@ -158,3 +207,15 @@ Nouvelle entité mock **`DeclinaisonLogistique`** (`src/api/base44Client.js`, `s
 9. `chore(seed): DE de démo sur le pipeline + de_dl->de + bump seed v7`
 10. `feat(de): édition brouillon, code chapeau en saisie manuelle, onglet liste DL, FL à la validation DL`
 11. `feat: DE collapse en Validée hors phase DL, retour DL natif, FL en écriture simultanée, retrait onglet flux`
+12. `docs: récapitulatif complet du cycle de vie DE → DL → FL`
+
+### Compléments du 2026-06-19
+
+13. `feat(dl): import Excel réel + suivi du cycle de vie DL`
+    — lecteur xlsx/xlsm sans dépendance (`src/lib/xlsxLite.js`), extraction
+    réelle des champs G/H/I de l'onglet « Fiche Demande » (`src/lib/parseDL.js`
+    + tests), bornage à « Mise à dispo Client » + lignes « pour DL seulement »,
+    table des champs extraits, bouton « Changer le fichier », découplage de
+    l'état DL vis-à-vis de la DE (refus n'affecte plus la DE), liste DL avec
+    états + motif de refus consultable. Fichier Excel de test ignoré
+    (`*.xlsm`/`*.xlsx` dans `.gitignore`).
