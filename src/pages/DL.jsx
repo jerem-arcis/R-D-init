@@ -133,6 +133,7 @@ function DLDetail({ deId }) {
       date_envoi_validation: new Date().toISOString(),
     });
     await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
+    navigate(createPageUrl('DL'));
   };
 
   const imported = useMemo(
