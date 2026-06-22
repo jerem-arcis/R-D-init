@@ -700,6 +700,14 @@ export default function CreerDE() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Le code chapeau provient du bloc « Article d'origine » : code VL saisi, ou
+    // code généré par le flux « nouveau code ». La DE passe direct en phase DL.
+    const codeChapeau =
+      origine_mode === 'nouveau_code'
+        ? (nouveauCode || '').trim()
+        : origine_mode === 'vl'
+          ? (formData.code_vl || '').trim()
+          : '';
     saveMutation.mutate({
       ...formData,
       zug,
@@ -708,8 +716,9 @@ export default function CreerDE() {
       classe_valorisation_calc: autreClasseVal,
       centre_profit_calc: autreCentreProfit,
       secteur_activite_calc: autreSecteur,
-      statut: 'en_attente_code_chapeau',
-      date_demande_code_chapeau: new Date().toISOString(),
+      code_chapeau: codeChapeau,
+      date_code_chapeau: codeChapeau ? new Date().toISOString() : null,
+      statut: 'en_attente_dl',
     });
   };
 

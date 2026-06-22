@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle2, XCircle, Loader2, FileText, Layers, Settings2 } from 'lucide-react';
@@ -50,10 +49,6 @@ const TYPES_DEMANDE_AUTRE_LABELS = {
 export default function TraiterDE() {
   const [searchParams] = useSearchParams();
   const deId = searchParams.get('id');
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const [codeChapeauInput, setCodeChapeauInput] = useState('');
 
   const { data: de, isLoading } = useQuery({
     queryKey: ['demande_etude', deId],
@@ -64,31 +59,6 @@ export default function TraiterDE() {
 
   const typeDe = de?.type_de || 'de';
   const isAutre = typeDe === 'autre';
-
-  const updateDEMutation = useMutation({
-    mutationFn: ({ deId, data }) => base44.entities.DemandeEtude.update(deId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
-      queryClient.invalidateQueries({ queryKey: ['demande_etude', deId] });
-    },
-  });
-
-  const handleValiderCodeChapeau = async () => {
-    const code = codeChapeauInput.trim();
-    if (!code) {
-      alert('Veuillez saisir le code chapeau reçu');
-      return;
-    }
-    await updateDEMutation.mutateAsync({
-      deId,
-      data: {
-        statut: 'en_attente_dl',
-        code_chapeau: code,
-        date_code_chapeau: new Date().toISOString(),
-      },
-    });
-    navigate(createPageUrl('DemandesEtude'));
-  };
 
   if (isLoading || !de) {
     return (
@@ -240,40 +210,7 @@ export default function TraiterDE() {
           </>
         )}
 
-        {/* ===== Étape code chapeau ===== */}
-        {de.statut === 'en_attente_code_chapeau' && (
-          <FormSection title="Code chapeau" icon={CheckCircle2}>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                En attente du code chapeau pour ce projet. Saisissez le code chapeau reçu de SAP,
-                puis validez : la demande passera en « En attente de DL ».
-              </p>
-              <div className="space-y-2 max-w-md">
-                <Label className="text-xs font-semibold text-slate-700">
-                  Code chapeau reçu <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  value={codeChapeauInput}
-                  onChange={(e) => setCodeChapeauInput(e.target.value)}
-                  placeholder="Ex: CC-204815"
-                  className="h-11 font-mono"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2 border-t border-border">
-                <Button
-                  onClick={handleValiderCodeChapeau}
-                  disabled={!codeChapeauInput.trim() || updateDEMutation.isPending}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Valider le code chapeau
-                </Button>
-              </div>
-            </div>
-          </FormSection>
-        )}
-
-        {/* ===== Lien vers la DL une fois le code chapeau reçu ===== */}
+        {/* ===== Lien vers la DL ===== */}
         {(de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl') && (
           <div className="flex justify-end">
             <Link to={createPageUrl(`DL?id=${de.id}`)}>
