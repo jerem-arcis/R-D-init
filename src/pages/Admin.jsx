@@ -10,6 +10,7 @@ import {
   Trash2,
   ChevronRight,
   Loader2,
+  Upload,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -28,6 +29,7 @@ import {
   useOptionSetRows,
 } from '@/lib/adminLists';
 import { create, remove, update } from '@/api/optionSet';
+import { parseOptionListFile } from '@/lib/parseOptionList';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
@@ -94,6 +96,7 @@ export default function Admin() {
   const [selectedKey, setSelectedKey] = useState('reseaux');
   const [newValue, setNewValue] = useState('');
   const [toDelete, setToDelete] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   const currentRows = rows.filter((r) => r.dropdownId === selectedKey);
   const countByKey = (key) =>
@@ -149,7 +152,7 @@ export default function Admin() {
   });
 
   const busy =
-    createMut.isPending || updateMut.isPending || removeMut.isPending;
+    createMut.isPending || updateMut.isPending || removeMut.isPending || importing;
 
   const handleAdd = () => {
     const v = newValue.trim();
@@ -159,6 +162,43 @@ export default function Admin() {
       return;
     }
     createMut.mutate({ dropdownId: selectedKey, value: v });
+  };
+
+  // Ajout en masse depuis un fichier Excel à une colonne : chaque valeur est
+  // créée sur la liste sélectionnée (selectedKey -> cr04e_id_dd). Les doublons
+  // (déjà présents dans la liste) sont ignorés.
+  const handleBulkImport = async (file) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const { valeurs } = await parseOptionListFile(file);
+      const existing = new Set(currentRows.map((r) => r.value));
+      const aAjouter = valeurs.filter((v) => !existing.has(v));
+      const ignores = valeurs.length - aAjouter.length;
+      if (aAjouter.length === 0) {
+        toast({
+          title: 'Rien à ajouter',
+          description: `Les ${valeurs.length} valeur(s) du fichier existent déjà dans « ${LIST_LABELS[selectedKey]} ».`,
+        });
+        return;
+      }
+      await Promise.all(aAjouter.map((v) => create(selectedKey, v)));
+      invalidate();
+      toast({
+        title: 'Import terminé',
+        description: `${aAjouter.length} valeur(s) ajoutée(s) à « ${LIST_LABELS[selectedKey]} »${
+          ignores ? ` · ${ignores} doublon(s) ignoré(s)` : ''
+        }.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Échec de l'import",
+        description: err?.message || 'Impossible de lire ce fichier Excel.',
+        variant: 'destructive',
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const confirmDelete = () => {
@@ -264,6 +304,44 @@ export default function Admin() {
                   <Plus className="w-4 h-4 mr-1" />
                   Ajouter
                 </Button>
+              </div>
+
+              {/* Ajout en masse depuis un fichier Excel (1 colonne) */}
+              <div>
+                <label
+                  htmlFor="bulk-import"
+                  className={`flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-all ${
+                    importing
+                      ? 'border-primary/30 bg-primary/5 cursor-wait'
+                      : 'border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer'
+                  }`}
+                >
+                  {importing ? (
+                    <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+                  ) : (
+                    <Upload className="w-5 h-5 text-primary shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {importing ? 'Import en cours…' : 'Ajout en masse (fichier Excel)'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Fichier à une colonne, en-tête en 1ère ligne. Les valeurs seront ajoutées à « {LIST_LABELS[selectedKey]} ».
+                    </p>
+                  </div>
+                </label>
+                <input
+                  id="bulk-import"
+                  type="file"
+                  accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
+                  disabled={importing}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleBulkImport(f);
+                    e.target.value = '';
+                  }}
+                  className="sr-only"
+                />
               </div>
 
               <div className="border border-border rounded-lg divide-y divide-border">
