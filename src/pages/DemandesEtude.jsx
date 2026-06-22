@@ -15,13 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   FileText,
   Clock,
@@ -303,33 +297,29 @@ export default function DemandesEtude() {
             )}
           </div>
 
-          <Select value={typeDemandeFilter} onValueChange={setTypeDemandeFilter}>
-            <SelectTrigger className="w-[220px] h-9">
-              <SelectValue placeholder="Type de demande" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tous">Tous les types</SelectItem>
-              {TYPES_DEMANDE_OPTIONS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[220px]">
+            <SearchableSelect
+              value={typeDemandeFilter === 'tous' ? '' : typeDemandeFilter}
+              onChange={(v) => setTypeDemandeFilter(v || 'tous')}
+              options={TYPES_DEMANDE_OPTIONS}
+              placeholder="Tous les types"
+              searchPlaceholder="Rechercher un type…"
+              emptyText="Aucun type."
+              className="h-9"
+            />
+          </div>
 
-          <Select value={usineFilter} onValueChange={setUsineFilter}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Usine" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="toutes">Toutes les usines</SelectItem>
-              {USINES_OPTIONS.map((u) => (
-                <SelectItem key={u} value={u}>
-                  {u}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[180px]">
+            <SearchableSelect
+              value={usineFilter === 'toutes' ? '' : usineFilter}
+              onChange={(v) => setUsineFilter(v || 'toutes')}
+              options={USINES_OPTIONS}
+              placeholder="Toutes les usines"
+              searchPlaceholder="Rechercher une usine…"
+              emptyText="Aucune usine."
+              className="h-9"
+            />
+          </div>
 
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-muted-foreground font-medium">
