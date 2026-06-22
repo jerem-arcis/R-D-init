@@ -128,7 +128,8 @@ const SAP_FLOW_URL =
 // TODO(sécurité) : voir le bloc ci-dessus — cette URL contiendra elle aussi une
 // signature SAS exposée côté client ; à proxifier via un backend authentifié.
 // URL du flux Power Automate qui génère le prochain code chapeau (OData SAP).
-const NOUVEAU_CODE_FLOW_URL = 'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1677a6a5aae34cdf97672ae34548452b/triggers/manual/paths/invoke?api-version=1';
+const NOUVEAU_CODE_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1677a6a5aae34cdf97672ae34548452b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=a44EIOXAXlRvQYUq4N8PfB-DTXi2Pa3DQiRIKjxE0ZQ';
 
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
