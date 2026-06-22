@@ -615,9 +615,13 @@ export default function CreerDE() {
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
       }
-      // Le code peut venir du corps (recommandé) ou, en repli, d'un en-tête de réponse.
-      const headerCode = ['réponse', 'reponse', 'response', 'code', 'code_chapeau']
-        .map((h) => res.headers.get(h))
+      // Le code vient normalement du corps. Repli best-effort sur des en-têtes
+      // (noms ASCII valides uniquement ; get() lève sur un nom invalide).
+      const readHeader = (h) => {
+        try { return res.headers.get(h); } catch { return null; }
+      };
+      const headerCode = ['reponse', 'response', 'code', 'code_chapeau']
+        .map(readHeader)
         .find((v) => v != null && v !== '');
       const code = extractCodeChapeau(text) || (headerCode ? String(headerCode).trim() : '');
       if (!code) {
