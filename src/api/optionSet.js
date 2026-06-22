@@ -7,9 +7,22 @@ const toLogical = (row) => ({
 });
 
 export async function listAll() {
-  const result = await Cr04e_optionsetcodeappsesService.getAll();
-  const rows = result?.data ?? [];
-  return rows.map(toLogical);
+  // Dataverse pagine les résultats : on suit le skipToken pour tout récupérer
+  // (sinon seule la 1ère page — ~300 lignes — remonte).
+  const all = [];
+  let skipToken;
+  let guard = 0;
+  do {
+    const result = await Cr04e_optionsetcodeappsesService.getAll({
+      maxPageSize: 5000,
+      ...(skipToken ? { skipToken } : {}),
+    });
+    const rows = result?.data ?? [];
+    all.push(...rows.map(toLogical));
+    skipToken = result?.skipToken;
+    guard += 1;
+  } while (skipToken && guard < 100);
+  return all;
 }
 
 export async function create(dropdownId, value) {
