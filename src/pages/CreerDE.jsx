@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -816,36 +817,20 @@ export default function CreerDE() {
                       />
                     </Field>
                     <Field label="Axe stratégique">
-                      <Select
-                        key={`axe-${formData.axe_strategique}`}
+                      <SearchableSelect
                         value={formData.axe_strategique}
-                        onValueChange={(v) => handleChange('axe_strategique', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un axe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.axes_strategiques, formData.axe_strategique).map((a) => (
-                            <SelectItem key={a} value={a}>{a}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('axe_strategique', v)}
+                        options={withValue(adminLists.axes_strategiques, formData.axe_strategique)}
+                        placeholder="Sélectionner un axe"
+                      />
                     </Field>
                     <Field label="Réseau" required>
-                      <Select
-                        key={`res-${formData.reseau}`}
+                      <SearchableSelect
                         value={formData.reseau}
-                        onValueChange={(v) => handleChange('reseau', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un réseau" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.reseaux, formData.reseau).map((r) => (
-                            <SelectItem key={r} value={r}>{r}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('reseau', v)}
+                        options={withValue(adminLists.reseaux, formData.reseau)}
+                        placeholder="Sélectionner un réseau"
+                      />
                     </Field>
                     <Field label="Type de la demande">
                       <Select
@@ -905,36 +890,20 @@ export default function CreerDE() {
                       </Field>
                     </div>
                     <Field label="Hiérarchie produit famille" required>
-                      <Select
-                        key={`fam-${formData.famille_produit}`}
+                      <SearchableSelect
                         value={formData.famille_produit}
-                        onValueChange={(v) => handleChange('famille_produit', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner une famille" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.familles_produit, formData.famille_produit).map((f) => (
-                            <SelectItem key={f} value={f}>{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('famille_produit', v)}
+                        options={withValue(adminLists.familles_produit, formData.famille_produit)}
+                        placeholder="Sélectionner une famille"
+                      />
                     </Field>
                     <Field label="Secteur d'activité">
-                      <Select
-                        key={`sec-${formData.marque}`}
+                      <SearchableSelect
                         value={formData.marque}
-                        onValueChange={(v) => handleChange('marque', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un secteur" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.secteurs_activite, formData.marque).map((m) => (
-                            <SelectItem key={m} value={m}>{m}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('marque', v)}
+                        options={withValue(adminLists.secteurs_activite, formData.marque)}
+                        placeholder="Sélectionner un secteur"
+                      />
                     </Field>
                     <Field label="Poids net">
                       <Input
@@ -956,94 +925,52 @@ export default function CreerDE() {
                       />
                     </Field>
                     <Field label="Division (Usine)">
-                      <Select
+                      <SearchableSelect
                         value={formData.division}
-                        onValueChange={(v) => handleChange('division', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner une division" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.divisions, formData.division).map((d) => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('division', v)}
+                        options={withValue(adminLists.divisions, formData.division)}
+                        placeholder="Sélectionner une division"
+                      />
                     </Field>
                     <Field label="Classe de valorisation">
-                      <Select
+                      <SearchableSelect
                         value={formData.classe_valorisation}
-                        onValueChange={(v) => handleChange('classe_valorisation', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner une classe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.classes_valorisation, formData.classe_valorisation).map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('classe_valorisation', v)}
+                        options={withValue(adminLists.classes_valorisation, formData.classe_valorisation)}
+                        placeholder="Sélectionner une classe"
+                      />
                     </Field>
                     <Field label="Centre de profit">
-                      <Select
+                      <SearchableSelect
                         value={formData.centre_profit}
-                        onValueChange={(v) => handleChange('centre_profit', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un centre" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.centres_profit, formData.centre_profit).map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('centre_profit', v)}
+                        options={withValue(adminLists.centres_profit, formData.centre_profit)}
+                        placeholder="Sélectionner un centre"
+                      />
                     </Field>
                     <Field label="Groupe d'autorisation">
-                      <Select
+                      <SearchableSelect
                         value={formData.groupe_autorisation}
-                        onValueChange={(v) => handleChange('groupe_autorisation', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un groupe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.groupes_autorisation, formData.groupe_autorisation).map((g) => (
-                            <SelectItem key={g} value={g}>{g}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('groupe_autorisation', v)}
+                        options={withValue(adminLists.groupes_autorisation, formData.groupe_autorisation)}
+                        placeholder="Sélectionner un groupe"
+                      />
                     </Field>
                     <Field label="Groupe de frais généraux">
-                      <Select
+                      <SearchableSelect
                         value={formData.groupe_frais_generaux}
-                        onValueChange={(v) => handleChange('groupe_frais_generaux', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un groupe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {withValue(adminLists.groupes_frais_generaux, formData.groupe_frais_generaux).map((g) => (
-                            <SelectItem key={g} value={g}>{g}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('groupe_frais_generaux', v)}
+                        options={withValue(adminLists.groupes_frais_generaux, formData.groupe_frais_generaux)}
+                        placeholder="Sélectionner un groupe"
+                      />
                     </Field>
                     <Field label="Groupe article (division)" required>
-                      <Select
+                      <SearchableSelect
                         value={formData.groupe_article}
-                        onValueChange={(v) => handleChange('groupe_article', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un groupe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {adminLists.groupes_article.map((g) => (
-                            <SelectItem key={g} value={g}>{g}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('groupe_article', v)}
+                        options={adminLists.groupes_article}
+                        placeholder="Sélectionner un groupe"
+                      />
                     </Field>
                   </div>
                 </FormSection>
@@ -1120,19 +1047,12 @@ export default function CreerDE() {
                       />
                     </Field>
                     <Field label="Service du demandeur" required hint="Auto-détecté pour l'utilisateur connecté">
-                      <Select
+                      <SearchableSelect
                         value={formData.autre_service}
-                        onValueChange={(v) => handleChange('autre_service', v)}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Sélectionner un service" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {adminLists.services_demandeur.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={(v) => handleChange('autre_service', v)}
+                        options={adminLists.services_demandeur}
+                        placeholder="Sélectionner un service"
+                      />
                     </Field>
                     <Field label="Type de demande" required>
                       <Select
