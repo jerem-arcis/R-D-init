@@ -30,7 +30,6 @@ import {
   CheckCircle2,
   Circle,
   AlertCircle,
-  Plus,
   Search,
   X,
 } from 'lucide-react';
@@ -225,12 +224,6 @@ export default function Accueil() {
                 <p className="text-sm text-muted-foreground mt-0.5">Gestion des fiches de lancement produit</p>
               </div>
             </div>
-            <Link to={createPageUrl('CreerFL')}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
-                <Plus className="w-4 h-4 mr-2" />
-                Créer une FL
-              </Button>
-            </Link>
           </div>
         </div>
       </header>
