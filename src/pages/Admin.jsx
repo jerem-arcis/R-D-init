@@ -47,6 +47,22 @@ const LIST_LABELS = {
   services_demandeur: 'Services demandeur',
 };
 
+// Exécute `fn` sur chaque item par salves de `size` (Promise.allSettled) pour
+// éviter de saturer Dataverse (throttling) avec des centaines d'appels simultanés.
+async function runInBatches(items, fn, size = 20) {
+  let ok = 0;
+  const errors = [];
+  for (let i = 0; i < items.length; i += size) {
+    const chunk = items.slice(i, i + size);
+    const results = await Promise.allSettled(chunk.map((it) => fn(it)));
+    results.forEach((r, j) => {
+      if (r.status === 'fulfilled') ok += 1;
+      else errors.push({ item: chunk[j], reason: r.reason });
+    });
+  }
+  return { ok, errors };
+}
+
 function EditableRow({ row, onSave, onAskDelete, disabled }) {
   const [draft, setDraft] = useState(row.value);
 
@@ -96,7 +112,9 @@ export default function Admin() {
   const [selectedKey, setSelectedKey] = useState('reseaux');
   const [newValue, setNewValue] = useState('');
   const [toDelete, setToDelete] = useState(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const currentRows = rows.filter((r) => r.dropdownId === selectedKey);
   const countByKey = (key) =>
@@ -152,7 +170,32 @@ export default function Admin() {
   });
 
   const busy =
-    createMut.isPending || updateMut.isPending || removeMut.isPending || importing;
+    createMut.isPending || updateMut.isPending || removeMut.isPending || importing || deletingAll;
+
+  // Suppression de toutes les valeurs de la liste sélectionnée, par salves.
+  const handleDeleteAll = async () => {
+    const ids = currentRows.map((r) => r.id);
+    setConfirmDeleteAll(false);
+    if (ids.length === 0) return;
+    setDeletingAll(true);
+    try {
+      const { ok, errors } = await runInBatches(ids, (id) => remove(id));
+      invalidate();
+      toast({
+        title: errors.length ? 'Suppression partielle' : 'Liste vidée',
+        description: `${ok} valeur(s) supprimée(s)${errors.length ? ` · ${errors.length} échec(s)` : ''}.`,
+        variant: errors.length ? 'destructive' : undefined,
+      });
+    } catch (err) {
+      toast({
+        title: 'Erreur',
+        description: err?.message || 'La suppression a échoué.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingAll(false);
+    }
+  };
 
   const handleAdd = () => {
     const v = newValue.trim();
@@ -182,13 +225,16 @@ export default function Admin() {
         });
         return;
       }
-      await Promise.all(aAjouter.map((v) => create(selectedKey, v)));
+      // Ajout par salves pour ne pas saturer Dataverse sur les gros fichiers.
+      const { ok, errors } = await runInBatches(aAjouter, (v) => create(selectedKey, v));
       invalidate();
+      const parts = [`${ok} valeur(s) ajoutée(s) à « ${LIST_LABELS[selectedKey]} »`];
+      if (ignores) parts.push(`${ignores} doublon(s) ignoré(s)`);
+      if (errors.length) parts.push(`${errors.length} échec(s)`);
       toast({
-        title: 'Import terminé',
-        description: `${aAjouter.length} valeur(s) ajoutée(s) à « ${LIST_LABELS[selectedKey]} »${
-          ignores ? ` · ${ignores} doublon(s) ignoré(s)` : ''
-        }.`,
+        title: errors.length ? 'Import partiel' : 'Import terminé',
+        description: parts.join(' · ') + '.',
+        variant: errors.length ? 'destructive' : undefined,
       });
     } catch (err) {
       toast({
@@ -274,6 +320,21 @@ export default function Admin() {
               <span className="ml-auto text-xs text-muted-foreground">
                 {currentRows.length} valeur{currentRows.length > 1 ? 's' : ''}
               </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDeleteAll(true)}
+                disabled={busy || currentRows.length === 0}
+                className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                {deletingAll ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                )}
+                Tout supprimer
+              </Button>
             </div>
             <div className="p-6 space-y-5">
               <div className="flex gap-2">
@@ -395,6 +456,30 @@ export default function Admin() {
               className="bg-rose-600 hover:bg-rose-700 text-white"
             >
               Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDeleteAll}
+        onOpenChange={(open) => !open && setConfirmDeleteAll(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tout supprimer ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Les {currentRows.length} valeur(s) de la liste « {LIST_LABELS[selectedKey]} » seront
+              définitivement supprimées. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAll}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Tout supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
