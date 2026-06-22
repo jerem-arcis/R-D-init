@@ -615,9 +615,13 @@ export default function CreerDE() {
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
       }
-      const code = extractCodeChapeau(text);
+      // Le code peut venir du corps (recommandé) ou, en repli, d'un en-tête de réponse.
+      const headerCode = ['réponse', 'reponse', 'response', 'code', 'code_chapeau']
+        .map((h) => res.headers.get(h))
+        .find((v) => v != null && v !== '');
+      const code = extractCodeChapeau(text) || (headerCode ? String(headerCode).trim() : '');
       if (!code) {
-        throw new Error('Réponse du flux vide : aucun code reçu.');
+        throw new Error('Réponse du flux vide : le code doit être renvoyé dans le corps (Body) de l\'action Réponse.');
       }
       // Affichage seul : le code n'est pas stocké dans la DE.
       setNouveauCode(code);
