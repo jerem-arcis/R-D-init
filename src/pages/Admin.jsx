@@ -40,7 +40,7 @@ const LIST_LABELS = {
   groupes_autorisation: "Groupe d'autorisation",
   groupes_frais_generaux: 'Groupe de frais généraux',
   axes_strategiques: 'Axes stratégiques',
-  familles_produit: 'Familles produit',
+  familles_produit: 'Hiérarchie produit famille',
   secteurs_activite: "Secteurs d'activité",
   categories_vif: 'Catégories (Vif)',
   types_logistique: 'Types de logistique',
