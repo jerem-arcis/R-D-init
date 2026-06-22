@@ -139,8 +139,14 @@ const extractCodeChapeau = (text) => {
   try {
     const json = JSON.parse(raw);
     if (typeof json === 'string' || typeof json === 'number') return String(json).trim();
-    for (const key of ['code_chapeau', 'codeChapeau', 'code', 'Code', 'Product', 'product', 'value', 'result', 'body']) {
-      if (json && json[key] != null) return String(json[key]).trim();
+    // Le flux renvoie le code dans headers.réponse — on regarde aussi cet objet.
+    const candidates = [json, json?.headers, json?.body];
+    const keys = ['réponse', 'reponse', 'response', 'code_chapeau', 'codeChapeau', 'code', 'Code', 'Product', 'product', 'value', 'result'];
+    for (const obj of candidates) {
+      if (!obj || typeof obj !== 'object') continue;
+      for (const key of keys) {
+        if (obj[key] != null && typeof obj[key] !== 'object') return String(obj[key]).trim();
+      }
     }
     return raw;
   } catch {
