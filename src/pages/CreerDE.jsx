@@ -128,7 +128,24 @@ const SAP_FLOW_URL =
 // TODO(sécurité) : voir le bloc ci-dessus — cette URL contiendra elle aussi une
 // signature SAS exposée côté client ; à proxifier via un backend authentifié.
 // URL du flux Power Automate qui génère le prochain code chapeau (OData SAP).
-const NOUVEAU_CODE_FLOW_URL = 'https://REPLACE_ME_NOUVEAU_CODE_FLOW_URL';
+const NOUVEAU_CODE_FLOW_URL = 'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1677a6a5aae34cdf97672ae34548452b/triggers/manual/paths/invoke?api-version=1';
+
+// Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
+// clés usuelles ; sinon retourne le texte brut nettoyé.
+const extractCodeChapeau = (text) => {
+  const raw = (text || '').trim();
+  if (!raw) return '';
+  try {
+    const json = JSON.parse(raw);
+    if (typeof json === 'string' || typeof json === 'number') return String(json).trim();
+    for (const key of ['code_chapeau', 'codeChapeau', 'code', 'Code', 'Product', 'product', 'value', 'result', 'body']) {
+      if (json && json[key] != null) return String(json[key]).trim();
+    }
+    return raw;
+  } catch {
+    return raw;
+  }
+};
 
 // ---------- Sous-composants ----------
 const FormSection = ({ title, icon: Icon, children }) => (
@@ -561,7 +578,7 @@ export default function CreerDE() {
   // origine_mode pilote l'affichage / l'activation ('vl' | 'nouveau_code' | null).
   const [origine_mode, setOrigineMode] = useState(null);
   const [isRequestingCode, setIsRequestingCode] = useState(false);
-  const [nouveauCodeSent, setNouveauCodeSent] = useState(false); // notif discrète de succès
+  const [nouveauCode, setNouveauCode] = useState(''); // code chapeau renvoyé par le flux (affichage seul)
 
   const handleToggleVL = (checked) => {
     if (checked) {
@@ -583,20 +600,20 @@ export default function CreerDE() {
     handleChange('code_vl', '');
     handleChange('besoin_nouveau_code', true);
     setIsRequestingCode(true);
-    setNouveauCodeSent(false);
+    setNouveauCode('');
     try {
-      const res = await fetch(NOUVEAU_CODE_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ProductDescription: formData.designation_article }),
-      });
+      // Déclenchement sans corps ; on attend la réponse du flux (le code chapeau).
+      const res = await fetch(NOUVEAU_CODE_FLOW_URL, { method: 'POST' });
       const text = await res.text().catch(() => '');
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
       }
-      // Succès (HTTP 2xx) : petite notif inline discrète, masquée après 4 s.
-      setNouveauCodeSent(true);
-      setTimeout(() => setNouveauCodeSent(false), 4000);
+      const code = extractCodeChapeau(text);
+      if (!code) {
+        throw new Error('Réponse du flux vide : aucun code reçu.');
+      }
+      // Affichage seul : le code n'est pas stocké dans la DE.
+      setNouveauCode(code);
     } catch (err) {
       toast({
         title: 'Échec de la demande de nouveau code',
@@ -1030,10 +1047,10 @@ export default function CreerDE() {
                       )}
                       Besoin d'un nouveau code
                     </Button>
-                    {nouveauCodeSent && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Demande de code envoyée
+                    {nouveauCode && (
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Nouveau code : <span className="font-mono font-semibold text-foreground">{nouveauCode}</span>
                       </span>
                     )}
                   </div>
