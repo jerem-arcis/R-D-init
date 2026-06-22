@@ -181,9 +181,13 @@ export default function Admin() {
     try {
       const { ok, errors } = await runInBatches(ids, (id) => remove(id));
       invalidate();
+      const firstErr = errors[0]?.reason;
+      const firstMsg = firstErr?.message || (firstErr ? String(firstErr) : '');
       toast({
         title: errors.length ? 'Suppression partielle' : 'Liste vidée',
-        description: `${ok} valeur(s) supprimée(s)${errors.length ? ` · ${errors.length} échec(s)` : ''}.`,
+        description:
+          `${ok} valeur(s) supprimée(s)${errors.length ? ` · ${errors.length} échec(s)` : ''}.` +
+          (firstMsg ? ` Erreur : ${firstMsg}` : ''),
         variant: errors.length ? 'destructive' : undefined,
       });
     } catch (err) {
