@@ -27,5 +27,6 @@ export async function update(id, value) {
 }
 
 export async function remove(id) {
+  if (!id) throw new Error('Identifiant de ligne manquant (cr04e_optionsetcodeappsid vide).');
   await Cr04e_optionsetcodeappsesService.delete(id);
 }
