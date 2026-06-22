@@ -76,9 +76,9 @@ function DLDetail({ deId }) {
         champs_dl: champs,
         imported_file: fichier,
         date_import: new Date().toISOString(),
-        statut: 'en_attente_validation_dl',
+        statut: 'en_attente_dl',
       });
-      await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
+      await updateDE.mutateAsync({ data: { statut: 'en_attente_dl' } });
     } catch (err) {
       setImportError(err?.message || "Impossible de lire ce fichier. Vérifiez qu'il s'agit bien du fichier de Demande d'Étude (.xlsm/.xlsx).");
     } finally {
@@ -121,8 +121,18 @@ function DLDetail({ deId }) {
     navigate(createPageUrl('DL'));
   };
 
+  const handleEnvoyerValidation = async () => {
+    // Passage de l'étape « En attente de DL » à « En attente de validation DL ».
+    // DL et DE basculent ensemble vers la phase de validation.
+    await upsertDL.mutateAsync({
+      statut: 'en_attente_validation_dl',
+      date_envoi_validation: new Date().toISOString(),
+    });
+    await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
+  };
+
   const imported = useMemo(
-    () => !!dl && (dl.statut === 'en_attente_validation_dl' || dl.statut === 'validee' || dl.statut === 'refusee'),
+    () => !!dl?.imported_file,
     [dl]
   );
 
@@ -271,7 +281,15 @@ function DLDetail({ deId }) {
               </Alert>
             )}
 
-            {!isFinal && !showRefus && (
+            {!isFinal && !showRefus && dlStatut === 'en_attente_dl' && (
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button onClick={handleEnvoyerValidation} disabled={upsertDL.isPending || updateDE.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Envoyer en validation
+                </Button>
+              </div>
+            )}
+
+            {!isFinal && !showRefus && dlStatut === 'en_attente_validation_dl' && (
               <div className="flex flex-wrap justify-end gap-3">
                 <Button variant="outline" onClick={() => setShowRefus(true)} className="border-red-300 text-red-600 hover:bg-red-50">
                   <XCircle className="w-4 h-4 mr-2" /> Refuser

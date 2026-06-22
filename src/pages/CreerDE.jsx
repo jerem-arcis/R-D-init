@@ -125,6 +125,11 @@ const BECPG_FLOW_URL =
 const SAP_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3bb2973cf1f04b5d96faf9c178abab3f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=RiXc-MYGR9LYdZ8b1sizYPHOUijB3SKwtI1eK-73c4w';
 
+// TODO(sécurité) : voir le bloc ci-dessus — cette URL contiendra elle aussi une
+// signature SAS exposée côté client ; à proxifier via un backend authentifié.
+// URL du flux Power Automate qui génère le prochain code chapeau (OData SAP).
+const NOUVEAU_CODE_FLOW_URL = 'https://REPLACE_ME_NOUVEAU_CODE_FLOW_URL';
+
 // ---------- Sous-composants ----------
 const FormSection = ({ title, icon: Icon, children }) => (
   <div className="bg-card rounded-xl border border-border shadow-md overflow-hidden">
@@ -431,6 +436,11 @@ export default function CreerDE() {
     groupe_autorisation: '',
     groupe_frais_generaux: '',
 
+    // Article d'origine (DE)
+    besoin_vl: false,
+    code_vl: '',
+    besoin_nouveau_code: false,
+
     // Autre
     autre_demandeur: '',
     autre_date: new Date().toISOString().slice(0, 10),
@@ -465,6 +475,10 @@ export default function CreerDE() {
     if (editDE) {
       setFormType(editDE.type_de || 'de');
       setFormData((prev) => ({ ...prev, ...editDE }));
+      // Restaure le mode d'origine à partir des booléens persistés.
+      setOrigineMode(
+        editDE.besoin_vl ? 'vl' : editDE.besoin_nouveau_code ? 'nouveau_code' : null
+      );
       setStep('form');
     }
   }, [editDE]);
@@ -540,6 +554,57 @@ export default function CreerDE() {
       });
     } finally {
       setIsSendingSAP(false);
+    }
+  };
+
+  // Bloc « Article d'origine » (DE) : VL et nouveau code sont mutuellement exclusifs.
+  // origine_mode pilote l'affichage / l'activation ('vl' | 'nouveau_code' | null).
+  const [origine_mode, setOrigineMode] = useState(null);
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [nouveauCodeSent, setNouveauCodeSent] = useState(false); // notif discrète de succès
+
+  const handleToggleVL = (checked) => {
+    if (checked) {
+      setOrigineMode('vl');
+      handleChange('besoin_vl', true);
+      handleChange('besoin_nouveau_code', false);
+    } else {
+      setOrigineMode(null);
+      handleChange('besoin_vl', false);
+      handleChange('code_vl', '');
+    }
+  };
+
+  // Déclenche le flux Power Automate qui génère le prochain code chapeau.
+  const handleDemanderNouveauCode = async () => {
+    // Active le mode « nouveau code » : décoche / masque la VL.
+    setOrigineMode('nouveau_code');
+    handleChange('besoin_vl', false);
+    handleChange('code_vl', '');
+    handleChange('besoin_nouveau_code', true);
+    setIsRequestingCode(true);
+    setNouveauCodeSent(false);
+    try {
+      const res = await fetch(NOUVEAU_CODE_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ProductDescription: formData.designation_article }),
+      });
+      const text = await res.text().catch(() => '');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+      }
+      // Succès (HTTP 2xx) : petite notif inline discrète, masquée après 4 s.
+      setNouveauCodeSent(true);
+      setTimeout(() => setNouveauCodeSent(false), 4000);
+    } catch (err) {
+      toast({
+        title: 'Échec de la demande de nouveau code',
+        description: err?.message || 'Une erreur est survenue lors de la demande.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRequestingCode(false);
     }
   };
 
@@ -941,6 +1006,55 @@ export default function CreerDE() {
                     </Field>
                   </div>
                 </FormSection>
+
+                <FormSection title="Article d'origine" icon={Layers}>
+                  <div className="flex flex-wrap items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={origine_mode === 'vl'}
+                        disabled={origine_mode === 'nouveau_code'}
+                        onCheckedChange={(v) => handleToggleVL(!!v)}
+                      />
+                      <span className="text-sm font-medium text-foreground">Besoin d'une VL</span>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDemanderNouveauCode}
+                      disabled={origine_mode === 'vl' || isRequestingCode}
+                    >
+                      {isRequestingCode ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Database className="w-4 h-4 mr-2" />
+                      )}
+                      Besoin d'un nouveau code
+                    </Button>
+                    {nouveauCodeSent && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Demande de code envoyée
+                      </span>
+                    )}
+                  </div>
+
+                  {origine_mode === 'vl' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                      <Field
+                        label="Code d'article d'origine"
+                        hint="Code à 6 ou 8 chiffres requis"
+                      >
+                        <Input
+                          value={formData.code_vl}
+                          onChange={(e) => handleChange('code_vl', e.target.value)}
+                          placeholder="Ex: 12345678"
+                          maxLength={8}
+                          className="h-11 font-mono"
+                        />
+                      </Field>
+                    </div>
+                  )}
+                </FormSection>
               </>
             )}
 
@@ -1189,37 +1303,6 @@ export default function CreerDE() {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              {formType === 'de' && (
-                <div className="mr-auto flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setSapPreviewOpen(true)}
-                  >
-                    <Monitor className="w-4 h-4 mr-2" />
-                    Aperçu pour SAP
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleSendToSAP}
-                    disabled={isSendingSAP}
-                  >
-                    {isSendingSAP ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Database className="w-4 h-4 mr-2" />
-                    )}
-                    Envoyer vers SAP
-                  </Button>
-                  {sapSent && (
-                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Envoi SAP réussi
-                    </span>
-                  )}
-                </div>
-              )}
               <Button
                 type="button"
                 variant="outline"
@@ -1235,7 +1318,7 @@ export default function CreerDE() {
                 disabled={saveMutation.isPending}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Envoyer (demande code chapeau)
+                Valider la DE
               </Button>
             </div>
 
