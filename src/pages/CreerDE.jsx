@@ -426,6 +426,11 @@ export default function CreerDE() {
   const { toast } = useToast();
   const adminLists = useAdminLists();
   const adminOptions = useAdminOptions();
+  // Hiérarchie produit famille : ne conserver que les codes dont les 2 premiers
+  // chiffres sont 21, 22 ou 27.
+  const famillesProduitOptions = adminOptions.familles_produit.filter((o) =>
+    ['21', '22', '27'].includes(String(o.value).slice(0, 2)),
+  );
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon existant
 
@@ -894,7 +899,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.famille_produit}
                         onChange={(v) => handleChange('famille_produit', v)}
-                        options={buildOptions(adminOptions.familles_produit, formData.famille_produit)}
+                        options={buildOptions(famillesProduitOptions, formData.famille_produit)}
                         placeholder="Sélectionner une famille"
                       />
                     </Field>
