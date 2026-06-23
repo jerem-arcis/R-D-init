@@ -1,8 +1,10 @@
-// Lecture d'un fichier Excel à une seule colonne pour l'ajout en masse de
-// valeurs de liste déroulante (Admin).
+// Lecture d'un fichier Excel pour l'ajout en masse de valeurs de liste
+// déroulante (Admin).
 //
-// Format attendu (cf. modèle Classeur1.xlsx) : une table Excel sur la 1ère
-// feuille, colonne A, avec un en-tête en A1 (ignoré) puis une valeur par ligne.
+// Format attendu (cf. modèle Classeur2.xlsx) : une table Excel sur la 1ère
+// feuille, en-tête en ligne 1 (ignoré), puis :
+//   - colonne A : la valeur (obligatoire)
+//   - colonne B : la désignation (facultative)
 
 import { parseSharedStrings, parseSheetCells, unzipXlsx } from './xlsxLite';
 
@@ -31,23 +33,25 @@ function pickFirstSheet(sheets) {
   return sheets[keys[0]];
 }
 
-// cells -> liste de valeurs de la colonne A (en-tête A1 ignoré), nettoyées et
-// dédupliquées en préservant l'ordre.
-export function extractColumnA(cells, maxRow = 5000) {
+// cells -> liste de lignes { value, designation } (en-tête ligne 1 ignoré),
+// nettoyées et dédupliquées sur la valeur (colonne A) en préservant l'ordre.
+// La désignation (colonne B) est facultative.
+export function extractRows(cells, maxRow = 5000) {
   const out = [];
   const seen = new Set();
   for (let r = 2; r <= maxRow; r++) {
     const raw = cells['A' + r];
     if (raw == null) continue;
-    const val = formatValeur(raw);
-    if (val === '' || seen.has(val)) continue;
-    seen.add(val);
-    out.push(val);
+    const value = formatValeur(raw);
+    if (value === '' || seen.has(value)) continue;
+    seen.add(value);
+    out.push({ value, designation: formatValeur(cells['B' + r]) });
   }
   return out;
 }
 
-// Entrée navigateur : un File -> { valeurs, fichier }.
+// Entrée navigateur : un File -> { lignes, fichier }.
+// `lignes` : [{ value, designation }] (désignation = '' si colonne B vide).
 export async function parseOptionListFile(file) {
   const buf = await file.arrayBuffer();
   const entries = await unzipXlsx(buf, ['xl/sharedStrings.xml', 'xl/worksheets/']);
@@ -55,9 +59,9 @@ export async function parseOptionListFile(file) {
   if (!sheetXml) throw new Error('Aucune feuille trouvée dans le fichier.');
   const shared = parseSharedStrings(entries['xl/sharedStrings.xml']);
   const cells = parseSheetCells(sheetXml, shared);
-  const valeurs = extractColumnA(cells);
-  if (valeurs.length === 0) {
+  const lignes = extractRows(cells);
+  if (lignes.length === 0) {
     throw new Error('Aucune valeur trouvée dans la colonne A (en-tête en ligne 1).');
   }
-  return { valeurs, fichier: file.name };
+  return { lignes, fichier: file.name };
 }

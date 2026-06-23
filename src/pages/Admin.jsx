@@ -65,14 +65,25 @@ async function runInBatches(items, fn, size = 20) {
 
 function EditableRow({ row, onSave, onAskDelete, disabled }) {
   const [draft, setDraft] = useState(row.value);
+  const [draftDesignation, setDraftDesignation] = useState(row.designation ?? '');
 
   const handleBlur = () => {
     const v = draft.trim();
-    if (!v || v === row.value) {
+    const d = draftDesignation.trim();
+    if (!v) {
       setDraft(row.value);
+      setDraftDesignation(row.designation ?? '');
       return;
     }
-    onSave(row.id, v);
+    if (v === row.value && d === (row.designation ?? '')) return;
+    onSave(row.id, v, d);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
   };
 
   return (
@@ -81,12 +92,16 @@ function EditableRow({ row, onSave, onAskDelete, disabled }) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          }
-        }}
+        onKeyDown={handleKeyDown}
+        className="h-9 flex-1"
+        disabled={disabled}
+      />
+      <Input
+        value={draftDesignation}
+        onChange={(e) => setDraftDesignation(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder="Désignation…"
         className="h-9 flex-1"
         disabled={disabled}
       />
@@ -111,6 +126,7 @@ export default function Admin() {
 
   const [selectedKey, setSelectedKey] = useState('reseaux');
   const [newValue, setNewValue] = useState('');
+  const [newDesignation, setNewDesignation] = useState('');
   const [toDelete, setToDelete] = useState(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -124,10 +140,12 @@ export default function Admin() {
     qc.invalidateQueries({ queryKey: OPTIONSET_QUERY_KEY });
 
   const createMut = useMutation({
-    mutationFn: ({ dropdownId, value }) => create(dropdownId, value),
+    mutationFn: ({ dropdownId, value, designation }) =>
+      create(dropdownId, value, designation),
     onSuccess: () => {
       invalidate();
       setNewValue('');
+      setNewDesignation('');
       toast({ title: 'Valeur ajoutée' });
     },
     onError: (err) => {
@@ -140,7 +158,7 @@ export default function Admin() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, value }) => update(id, value),
+    mutationFn: ({ id, value, designation }) => update(id, value, designation),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Valeur modifiée' });
@@ -208,29 +226,36 @@ export default function Admin() {
       toast({ title: 'Doublon', description: 'Cette valeur existe déjà.' });
       return;
     }
-    createMut.mutate({ dropdownId: selectedKey, value: v });
+    createMut.mutate({
+      dropdownId: selectedKey,
+      value: v,
+      designation: newDesignation.trim(),
+    });
   };
 
-  // Ajout en masse depuis un fichier Excel à une colonne : chaque valeur est
-  // créée sur la liste sélectionnée (selectedKey -> cr04e_id_dd). Les doublons
-  // (déjà présents dans la liste) sont ignorés.
+  // Ajout en masse depuis un fichier Excel à deux colonnes (A = valeur,
+  // B = désignation) : chaque ligne est créée sur la liste sélectionnée
+  // (selectedKey -> cr04e_id_dd). Les doublons (valeur déjà présente dans la
+  // liste) sont ignorés.
   const handleBulkImport = async (file) => {
     if (!file) return;
     setImporting(true);
     try {
-      const { valeurs } = await parseOptionListFile(file);
+      const { lignes } = await parseOptionListFile(file);
       const existing = new Set(currentRows.map((r) => r.value));
-      const aAjouter = valeurs.filter((v) => !existing.has(v));
-      const ignores = valeurs.length - aAjouter.length;
+      const aAjouter = lignes.filter((l) => !existing.has(l.value));
+      const ignores = lignes.length - aAjouter.length;
       if (aAjouter.length === 0) {
         toast({
           title: 'Rien à ajouter',
-          description: `Les ${valeurs.length} valeur(s) du fichier existent déjà dans « ${LIST_LABELS[selectedKey]} ».`,
+          description: `Les ${lignes.length} valeur(s) du fichier existent déjà dans « ${LIST_LABELS[selectedKey]} ».`,
         });
         return;
       }
       // Ajout par salves pour ne pas saturer Dataverse sur les gros fichiers.
-      const { ok, errors } = await runInBatches(aAjouter, (v) => create(selectedKey, v));
+      const { ok, errors } = await runInBatches(aAjouter, (l) =>
+        create(selectedKey, l.value, l.designation),
+      );
       invalidate();
       const parts = [`${ok} valeur(s) ajoutée(s) à « ${LIST_LABELS[selectedKey]} »`];
       if (ignores) parts.push(`${ignores} doublon(s) ignoré(s)`);
@@ -360,6 +385,24 @@ export default function Admin() {
                     disabled={createMut.isPending}
                   />
                 </div>
+                <div className="flex-1">
+                  <Label className="text-slate-700 font-medium text-sm">
+                    Désignation
+                  </Label>
+                  <Input
+                    value={newDesignation}
+                    onChange={(e) => setNewDesignation(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAdd();
+                      }
+                    }}
+                    placeholder="Désignation (facultatif)…"
+                    className="h-11 mt-2"
+                    disabled={createMut.isPending}
+                  />
+                </div>
                 <Button
                   type="button"
                   onClick={handleAdd}
@@ -371,7 +414,7 @@ export default function Admin() {
                 </Button>
               </div>
 
-              {/* Ajout en masse depuis un fichier Excel (1 colonne) */}
+              {/* Ajout en masse depuis un fichier Excel (2 colonnes : valeur, désignation) */}
               <div>
                 <label
                   htmlFor="bulk-import"
@@ -391,7 +434,7 @@ export default function Admin() {
                       {importing ? 'Import en cours…' : 'Ajout en masse (fichier Excel)'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Fichier à une colonne, en-tête en 1ère ligne. Les valeurs seront ajoutées à « {LIST_LABELS[selectedKey]} ».
+                      Fichier à deux colonnes (A = valeur, B = désignation), en-tête en 1ère ligne. Les valeurs seront ajoutées à « {LIST_LABELS[selectedKey]} ».
                     </p>
                   </div>
                 </label>
@@ -424,7 +467,9 @@ export default function Admin() {
                     <EditableRow
                       key={row.id}
                       row={row}
-                      onSave={(id, value) => updateMut.mutate({ id, value })}
+                      onSave={(id, value, designation) =>
+                        updateMut.mutate({ id, value, designation })
+                      }
                       onAskDelete={(r) => setToDelete(r)}
                       disabled={busy}
                     />

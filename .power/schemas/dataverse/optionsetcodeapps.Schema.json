@@ -10,6 +10,14 @@
       "x-ms-dataverse-primary-id": "cr04e_optionsetcodeappsid",
       "x-ms-dataverse-primary-name": "cr04e_id_dd",
       "properties": {
+        "cr04e_designation": {
+          "type": "string",
+          "title": "Désignation",
+          "x-ms-dataverse-attribute": "cr04e_designation",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Designation",
+          "maxLength": 1000
+        },
         "cr04e_id_dd": {
           "type": "string",
           "title": "ID_DD",

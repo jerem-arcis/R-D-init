@@ -14,6 +14,7 @@ export const Cr04e_optionsetcodeappsesstatuscode = {
 export type Cr04e_optionsetcodeappsesstatuscode = keyof typeof Cr04e_optionsetcodeappsesstatuscode;
 
 export interface Cr04e_optionsetcodeappsesBase {
+  cr04e_designation?: string;
   cr04e_id_dd?: string;
   cr04e_optionsetcodeappsid: string;
   cr04e_valeur_dd?: string;
