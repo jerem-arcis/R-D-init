@@ -11,9 +11,24 @@ import {
 } from '@/components/ui/command';
 import { CommandItem } from '@/components/ui/command';
 
+// Normalise une option : accepte une chaîne ("code") ou un objet
+// { value, label, keywords }. `value` = ce qui est stocké (le code),
+// `label` = ce qui est affiché, `keywords` = texte sur lequel porte la recherche.
+function normalizeOption(opt) {
+  if (opt == null) return { value: '', label: '', keywords: '' };
+  if (typeof opt === 'string') return { value: opt, label: opt, keywords: opt };
+  const value = opt.value ?? '';
+  const designation = opt.designation ?? '';
+  const label = opt.label ?? (designation ? `${value} — ${designation}` : value);
+  const keywords = opt.keywords ?? `${value} ${designation}`.trim();
+  return { value, label, keywords };
+}
+
 // Liste déroulante avec recherche intégrée (Popover + Command).
 // Remplace un <Select> quand la liste peut être longue (valeurs alimentées
 // depuis l'Admin). API volontairement proche : value / onChange / options.
+// Les options peuvent porter une désignation (affichage « code — désignation »
+// et recherche sur le code ET la désignation).
 export function SearchableSelect({
   value,
   onChange,
@@ -25,6 +40,8 @@ export function SearchableSelect({
   className,
 }) {
   const [open, setOpen] = useState(false);
+  const items = options.map(normalizeOption);
+  const selected = items.find((it) => it.value === value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -39,7 +56,7 @@ export function SearchableSelect({
             className
           )}
         >
-          <span className="truncate">{value || placeholder}</span>
+          <span className="truncate">{selected?.label || value || placeholder}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
@@ -49,17 +66,19 @@ export function SearchableSelect({
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              {options.map((opt) => (
+              {items.map((opt) => (
                 <CommandItem
-                  key={opt}
-                  value={opt}
+                  key={opt.value}
+                  // cmdk filtre sur `value` : on y met les keywords (code + désignation)
+                  // pour permettre la recherche par l'un ou l'autre.
+                  value={opt.keywords}
                   onSelect={() => {
-                    onChange(opt === value ? '' : opt);
+                    onChange(opt.value === value ? '' : opt.value);
                     setOpen(false);
                   }}
                 >
-                  <Check className={cn('mr-2 h-4 w-4', value === opt ? 'opacity-100' : 'opacity-0')} />
-                  <span className="truncate">{opt}</span>
+                  <Check className={cn('mr-2 h-4 w-4', value === opt.value ? 'opacity-100' : 'opacity-0')} />
+                  <span className="truncate">{opt.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

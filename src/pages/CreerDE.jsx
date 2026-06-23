@@ -15,7 +15,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Search, XCircle, Database, Monitor, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { useAdminLists, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
+import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 
@@ -425,6 +425,7 @@ export default function CreerDE() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const adminLists = useAdminLists();
+  const adminOptions = useAdminOptions();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon existant
 
@@ -820,7 +821,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.axe_strategique}
                         onChange={(v) => handleChange('axe_strategique', v)}
-                        options={withValue(adminLists.axes_strategiques, formData.axe_strategique)}
+                        options={buildOptions(adminOptions.axes_strategiques, formData.axe_strategique)}
                         placeholder="Sélectionner un axe"
                       />
                     </Field>
@@ -828,7 +829,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.reseau}
                         onChange={(v) => handleChange('reseau', v)}
-                        options={withValue(adminLists.reseaux, formData.reseau)}
+                        options={buildOptions(adminOptions.reseaux, formData.reseau)}
                         placeholder="Sélectionner un réseau"
                       />
                     </Field>
@@ -893,7 +894,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.famille_produit}
                         onChange={(v) => handleChange('famille_produit', v)}
-                        options={withValue(adminLists.familles_produit, formData.famille_produit)}
+                        options={buildOptions(adminOptions.familles_produit, formData.famille_produit)}
                         placeholder="Sélectionner une famille"
                       />
                     </Field>
@@ -901,7 +902,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.marque}
                         onChange={(v) => handleChange('marque', v)}
-                        options={withValue(adminLists.secteurs_activite, formData.marque)}
+                        options={buildOptions(adminOptions.secteurs_activite, formData.marque)}
                         placeholder="Sélectionner un secteur"
                       />
                     </Field>
@@ -928,7 +929,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.division}
                         onChange={(v) => handleChange('division', v)}
-                        options={withValue(adminLists.divisions, formData.division)}
+                        options={buildOptions(adminOptions.divisions, formData.division)}
                         placeholder="Sélectionner une division"
                       />
                     </Field>
@@ -936,7 +937,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.classe_valorisation}
                         onChange={(v) => handleChange('classe_valorisation', v)}
-                        options={withValue(adminLists.classes_valorisation, formData.classe_valorisation)}
+                        options={buildOptions(adminOptions.classes_valorisation, formData.classe_valorisation)}
                         placeholder="Sélectionner une classe"
                       />
                     </Field>
@@ -944,7 +945,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.centre_profit}
                         onChange={(v) => handleChange('centre_profit', v)}
-                        options={withValue(adminLists.centres_profit, formData.centre_profit)}
+                        options={buildOptions(adminOptions.centres_profit, formData.centre_profit)}
                         placeholder="Sélectionner un centre"
                       />
                     </Field>
@@ -952,7 +953,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_autorisation}
                         onChange={(v) => handleChange('groupe_autorisation', v)}
-                        options={withValue(adminLists.groupes_autorisation, formData.groupe_autorisation)}
+                        options={buildOptions(adminOptions.groupes_autorisation, formData.groupe_autorisation)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
@@ -960,7 +961,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_frais_generaux}
                         onChange={(v) => handleChange('groupe_frais_generaux', v)}
-                        options={withValue(adminLists.groupes_frais_generaux, formData.groupe_frais_generaux)}
+                        options={buildOptions(adminOptions.groupes_frais_generaux, formData.groupe_frais_generaux)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
@@ -968,7 +969,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_article}
                         onChange={(v) => handleChange('groupe_article', v)}
-                        options={adminLists.groupes_article}
+                        options={buildOptions(adminOptions.groupes_article, formData.groupe_article)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
@@ -1050,7 +1051,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.autre_service}
                         onChange={(v) => handleChange('autre_service', v)}
-                        options={adminLists.services_demandeur}
+                        options={buildOptions(adminOptions.services_demandeur, formData.autre_service)}
                         placeholder="Sélectionner un service"
                       />
                     </Field>

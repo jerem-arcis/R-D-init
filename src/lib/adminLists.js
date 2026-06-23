@@ -39,3 +39,32 @@ export function useAdminLists() {
   }
   return grouped;
 }
+
+// Variante qui conserve la désignation : par clé, un tableau de
+// { value, designation }. Sert à alimenter les SearchableSelect (affichage
+// « code — désignation » et recherche sur les deux).
+export function useAdminOptions() {
+  const { data = [] } = useOptionSetRows();
+  const grouped = emptyByKey();
+  for (const row of data) {
+    if (row.dropdownId && grouped[row.dropdownId]) {
+      grouped[row.dropdownId].push({ value: row.value, designation: row.designation ?? '' });
+    }
+  }
+  return grouped;
+}
+
+// Construit les options d'un SearchableSelect à partir des lignes
+// { value, designation } d'une liste. `current` (le code déjà sélectionné) est
+// ajouté s'il n'est pas présent, pour ne jamais perdre une valeur existante.
+export function buildOptions(rows = [], current) {
+  const options = rows.map(({ value, designation }) => ({
+    value,
+    label: designation ? `${value} — ${designation}` : value,
+    keywords: designation ? `${value} ${designation}` : value,
+  }));
+  if (current && !options.some((o) => o.value === current)) {
+    options.push({ value: current, label: current, keywords: current });
+  }
+  return options;
+}
