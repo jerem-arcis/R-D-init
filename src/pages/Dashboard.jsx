@@ -1,11 +1,9 @@
 import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, CalendarOff, Radar, RotateCcw } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, CalendarOff, Radar } from 'lucide-react';
 import { buildAlertEntries } from '@/lib/launchAlert';
 import { getStaleWaitingTransitions } from '@/lib/cycleStats';
-import { resetMockDemoData } from '@/lib/mockSeed';
-import { Button } from '@/components/ui/button';
 import RadarHero from '@/components/dashboard/RadarHero';
 import CycleStatsSection from '@/components/dashboard/CycleStatsSection';
 
@@ -17,14 +15,6 @@ const FADE_UP_KEYFRAMES = `
 `;
 
 export default function Dashboard() {
-  const qc = useQueryClient();
-
-  const handleReset = () => {
-    if (!window.confirm('Recharger les données de démo ? Toutes les fiches et demandes actuelles seront remplacées.')) return;
-    resetMockDemoData();
-    qc.invalidateQueries();
-  };
-
   const fichesQuery = useQuery({
     queryKey: ['fiches'],
     queryFn: () => base44.entities.FicheLancement.list('-created_date'),
@@ -86,16 +76,6 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="uppercase text-[10px] font-bold tracking-wider"
-              title="Remplace toutes les fiches actuelles par les données de démo"
-            >
-              <RotateCcw className="w-3.5 h-3.5 mr-2" />
-              Données de démo
-            </Button>
           </div>
         </div>
       </header>

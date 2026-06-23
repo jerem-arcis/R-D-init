@@ -141,6 +141,5 @@ if ($DropTables) {
     Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Tables conservees (vides)." -ForegroundColor Gray
-    Write-Host "  Pour re-remplir : .\template-seed-data.ps1" -ForegroundColor Gray
 }
 Write-Host ""
