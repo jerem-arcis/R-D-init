@@ -133,6 +133,12 @@ const SAP_FLOW_URL =
 const NOUVEAU_CODE_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1677a6a5aae34cdf97672ae34548452b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=a44EIOXAXlRvQYUq4N8PfB-DTXi2Pa3DQiRIKjxE0ZQ';
 
+// URL du flux Power Automate déclenché à la validation d'une DE : on lui envoie
+// le code chapeau dans { "Numéro": <code> }. (Même host que les flux ci-dessus,
+// donc déjà couvert par le CSP connect-src.) Même TODO sécurité : SAS exposée.
+const VALIDATION_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/daa73024b17f4d6e942c316d4ec09901/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=wjYyxeqhqDI_Jh65wFt7fZopDmKlLqt_ahz-shnkS48';
+
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
 const extractCodeChapeau = (text) => {
@@ -650,6 +656,29 @@ export default function CreerDE() {
     }
   };
 
+  // Déclenche le flux Power Automate de validation avec le code chapeau dans le
+  // corps { "Numéro": <code> }. Non bloquant : un échec n'empêche pas la
+  // validation de la DE, il affiche seulement un avertissement.
+  const triggerValidationFlow = async (numero) => {
+    try {
+      const res = await fetch(VALIDATION_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'Numéro': numero }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+      }
+    } catch (err) {
+      toast({
+        title: 'Flux non déclenché',
+        description: `La DE est validée, mais l'appel au flux a échoué : ${err?.message || 'erreur inconnue'}.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   // Champs auto-calculés (Section Autre)
   const autreCodeDivision = useMemo(() => {
@@ -708,16 +737,32 @@ export default function CreerDE() {
     saveMutation.mutate({ ...formData, zug, type_de: formType, statut: 'brouillon' });
   };
 
-  const handleSubmit = (e) => {
+  // Code chapeau issu du bloc « Article d'origine » : code VL saisi, ou code
+  // généré par le flux « nouveau code ». Dérivé pour servir à la fois au blocage
+  // du bouton et à la soumission.
+  const codeChapeau =
+    origine_mode === 'nouveau_code'
+      ? (nouveauCode || '').trim()
+      : origine_mode === 'vl'
+        ? (formData.code_vl || '').trim()
+        : '';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Le code chapeau provient du bloc « Article d'origine » : code VL saisi, ou
-    // code généré par le flux « nouveau code ». La DE passe direct en phase DL.
-    const codeChapeau =
-      origine_mode === 'nouveau_code'
-        ? (nouveauCode || '').trim()
-        : origine_mode === 'vl'
-          ? (formData.code_vl || '').trim()
-          : '';
+    // Pour une DE, la validation est bloquée tant qu'aucun code chapeau n'a été
+    // obtenu (VL saisie ou nouveau code demandé).
+    if (formType === 'de' && !codeChapeau) {
+      toast({
+        title: 'Code chapeau requis',
+        description: "Coche « Besoin d'une VL » et saisis le code, ou clique « Besoin d'un nouveau code ».",
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Déclenche le flux de validation avec le code chapeau (non bloquant : on
+    // attend l'envoi avant de naviguer, mais un échec ne stoppe pas la DE).
+    if (codeChapeau) await triggerValidationFlow(codeChapeau);
+    // La DE passe direct en phase DL.
     saveMutation.mutate({
       ...formData,
       zug,
@@ -1285,7 +1330,7 @@ export default function CreerDE() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || (formType === 'de' && !codeChapeau)}
               >
                 <Send className="w-4 h-4 mr-2" />
                 Valider la DE
