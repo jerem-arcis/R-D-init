@@ -46,5 +46,12 @@ export const dataSourcesInfo = {
     "primaryKey": "cr04e_optionsetcodeappsid",
     "dataSourceType": "Dataverse",
     "apis": {}
+  },
+  "cr04e_projets": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_projetid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
   }
 };

@@ -11,6 +11,7 @@ export * as Cr04e_groupearticledivisionsModel from './models/Cr04e_groupearticle
 export * as Cr04e_groupedefraisgenerauxesModel from './models/Cr04e_groupedefraisgenerauxesModel';
 export * as Cr04e_hierarchieproduitfamillesModel from './models/Cr04e_hierarchieproduitfamillesModel';
 export * as Cr04e_optionsetcodeappsesModel from './models/Cr04e_optionsetcodeappsesModel';
+export * as Cr04e_projetsModel from './models/Cr04e_projetsModel';
 
 // Services
 export * from './services/Cr04e_classedevalorisationsService';
@@ -19,3 +20,4 @@ export * from './services/Cr04e_groupearticledivisionsService';
 export * from './services/Cr04e_groupedefraisgenerauxesService';
 export * from './services/Cr04e_hierarchieproduitfamillesService';
 export * from './services/Cr04e_optionsetcodeappsesService';
+export * from './services/Cr04e_projetsService';

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
+import { createProjetFromDE } from '@/api/projet';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 
@@ -758,6 +759,20 @@ export default function CreerDE() {
         variant: 'destructive',
       });
       return;
+    }
+    // Création de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
+    // la table Projet est la sortie principale de la validation).
+    if (formType === 'de') {
+      try {
+        await createProjetFromDE(formData, { codeChapeau, zug, sapOptions });
+      } catch (err) {
+        toast({
+          title: 'Création du projet échouée',
+          description: `La DE n'a pas été validée : ${err?.message || 'erreur inconnue'}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     // Déclenche le flux de validation avec le code chapeau (non bloquant : on
     // attend l'envoi avant de naviguer, mais un échec ne stoppe pas la DE).

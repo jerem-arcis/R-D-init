@@ -35,6 +35,10 @@
         "classedevalorisation": {
           "entitySetName": "cr04e_classedevalorisations",
           "logicalName": "cr04e_classedevalorisation"
+        },
+        "projet": {
+          "entitySetName": "cr04e_projets",
+          "logicalName": "cr04e_projet"
         }
       },
       "environmentVariableName": ""
