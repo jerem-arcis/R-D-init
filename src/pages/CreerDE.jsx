@@ -436,11 +436,13 @@ export default function CreerDE() {
   const adminOptions = useAdminOptions();
   // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
   const sapOptions = useSapOptions();
-  // Hiérarchie produit famille : ne conserver que les codes dont les 2 premiers
-  // chiffres sont 21, 22 ou 27.
-  const famillesProduitOptions = sapOptions.familles_produit.filter((o) =>
-    ['21', '22', '27'].includes(String(o.value).slice(0, 2)),
-  );
+  // Hiérarchie produit famille : valeurs figées pour l'instant (pas de
+  // récupération SAP). À rebrancher sur sapOptions.familles_produit plus tard.
+  const famillesProduitOptions = [
+    { value: '21 DE DE DE' },
+    { value: '22 DE DE DE' },
+    { value: '27 DE DE DE' },
+  ];
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon existant
 
