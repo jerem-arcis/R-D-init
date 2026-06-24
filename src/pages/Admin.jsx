@@ -33,7 +33,6 @@ import { parseOptionListFile } from '@/lib/parseOptionList';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
-  centres_profit: 'Centre de profit',
   groupes_autorisation: "Groupe d'autorisation",
   axes_strategiques: 'Axes stratégiques',
   secteurs_activite: "Secteurs d'activité",

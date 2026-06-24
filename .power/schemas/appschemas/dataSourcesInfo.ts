@@ -5,6 +5,20 @@
  */
 
 export const dataSourcesInfo = {
+  "cr04e_centredeprofitcepcts": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_centredeprofitcepctid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "cr04e_centredeprofittkao2s": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_centredeprofittkao2id",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_classedevalorisations": {
     "tableId": "",
     "version": "",

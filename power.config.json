@@ -39,6 +39,14 @@
         "projet": {
           "entitySetName": "cr04e_projets",
           "logicalName": "cr04e_projet"
+        },
+        "centredeprofittkao2": {
+          "entitySetName": "cr04e_centredeprofittkao2s",
+          "logicalName": "cr04e_centredeprofittkao2"
+        },
+        "centredeprofitcepct": {
+          "entitySetName": "cr04e_centredeprofitcepcts",
+          "logicalName": "cr04e_centredeprofitcepct"
         }
       },
       "environmentVariableName": ""

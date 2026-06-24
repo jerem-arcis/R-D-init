@@ -1097,7 +1097,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.centre_profit}
                         onChange={(v) => handleChange('centre_profit', v)}
-                        options={buildOptions(adminOptions.centres_profit, formData.centre_profit)}
+                        options={buildOptions(sapOptions.centres_profit, formData.centre_profit)}
                         placeholder="Sélectionner un centre"
                       />
                     </Field>

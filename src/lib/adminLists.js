@@ -7,7 +7,6 @@ import { listAll } from '@/api/optionSet';
 // table Dataverse et sont gérés via @/lib/sapLists — voir SAP_LIST_KEYS.
 export const DROPDOWN_KEYS = [
   'reseaux',
-  'centres_profit',
   'groupes_autorisation',
   'axes_strategiques',
   'secteurs_activite',

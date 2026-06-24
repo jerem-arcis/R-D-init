@@ -4,6 +4,7 @@ import {
   Cr04e_groupearticledivisionsService,
   Cr04e_groupedefraisgenerauxesService,
   Cr04e_hierarchieproduitfamillesService,
+  Cr04e_centredeprofitcepctsService,
 } from '@/generated';
 
 // Référentiels alimentés par SAP : chaque liste déroulante est désormais une
@@ -46,6 +47,15 @@ export const SAP_LIST_CONFIG = {
     idField: 'cr04e_hierarchieproduitfamilleid',
     entitySet: 'cr04e_hierarchieproduitfamilles',
   },
+  // Centre de profit (table CEPCT, alimentée SAP). Plusieurs lignes par centre
+  // (une par périmètre analytique) -> dédupliqué par code dans listSapTable.
+  centres_profit: {
+    service: Cr04e_centredeprofitcepctsService,
+    valueField: 'cr04e_centredeprofit',
+    designationField: 'cr04e_designation',
+    idField: 'cr04e_centredeprofitcepctid',
+    entitySet: 'cr04e_centredeprofitcepcts',
+  },
 };
 
 export const SAP_LIST_KEYS = Object.keys(SAP_LIST_CONFIG);
@@ -80,8 +90,12 @@ export async function listSapTable(key) {
     guard += 1;
   } while (skipToken && guard < 100);
 
-  all.sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
-  return all;
+  // Déduplication par code (CEPCT a plusieurs lignes par centre de profit) :
+  // on conserve la 1ère occurrence.
+  const seen = new Set();
+  const deduped = all.filter((r) => (seen.has(r.value) ? false : seen.add(r.value)));
+  deduped.sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+  return deduped;
 }
 
 // Construit la valeur d'un lookup @odata.bind vers une table SAP à partir du code
