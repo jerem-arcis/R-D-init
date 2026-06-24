@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { listProjets } from '@/api/projet';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -91,10 +92,28 @@ export default function DemandesEtude() {
   const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
   const [usineFilter, setUsineFilter] = useState('toutes');
 
+  // Liste branchée sur Dataverse (cr04e_projet).
   const { data: demandes = [], isLoading } = useQuery({
+    queryKey: ['projets-de'],
+    queryFn: listProjets,
+  });
+
+  // DE locales (localStorage) : sert à retrouver l'id local pour l'édition d'un
+  // brouillon dans le navigateur courant (la création/édition reste locale).
+  const { data: localDEs = [] } = useQuery({
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
+  const localIdByChapeau = new Map();
+  const localIdByProjet = new Map();
+  localDEs.forEach((d) => {
+    if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
+    if (d.code_projet) localIdByProjet.set(d.code_projet, d.id);
+  });
+  const localIdFor = (de) =>
+    (de.code_chapeau && localIdByChapeau.get(de.code_chapeau)) ||
+    (de.code_projet && localIdByProjet.get(de.code_projet)) ||
+    null;
 
   const searchTerm = normalize(search.trim());
   const filteredDemandes = demandes.filter(de => {
@@ -416,13 +435,21 @@ export default function DemandesEtude() {
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      <Link to={createPageUrl(
-                        de.statut === 'brouillon'
-                          ? `CreerDE?id=${de.id}`
-                          : de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl'
-                            ? `DL?id=${de.id}`
-                            : `TraiterDE?id=${de.id}`
-                      )}>
+                      {(() => {
+                        const localId = localIdFor(de);
+                        // Brouillon : on édite la DE locale (si présente dans ce
+                        // navigateur). Sinon (DE envoyée) : lien profond DL par
+                        // code chapeau, ou détail local s'il existe.
+                        const target =
+                          de.statut === 'brouillon'
+                            ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
+                            : de.code_chapeau
+                              ? `DL?code_chapeau=${encodeURIComponent(de.code_chapeau)}`
+                              : localId
+                                ? `DL?id=${localId}`
+                                : 'DL';
+                        return (
+                      <Link to={createPageUrl(target)}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -431,6 +458,8 @@ export default function DemandesEtude() {
                           <ChevronRight className="w-5 h-5 text-primary" />
                         </Button>
                       </Link>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                   );

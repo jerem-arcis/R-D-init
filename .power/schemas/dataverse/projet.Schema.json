@@ -194,6 +194,14 @@
           "x-ms-schema-name": "cr04e_Secteurdactivite",
           "maxLength": 100
         },
+        "cr04e_statut_en_cours": {
+          "type": "string",
+          "title": "Statut_en_cours",
+          "x-ms-dataverse-attribute": "cr04e_statut_en_cours",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Statut_en_cours",
+          "maxLength": 100
+        },
         "cr04e_typedelademande": {
           "type": "string",
           "title": "Type de la demande",

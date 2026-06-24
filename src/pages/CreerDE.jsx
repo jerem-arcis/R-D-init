@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE } from '@/api/projet';
+import { createProjetFromDE, updateProjetFromDE, PROJET_STATUT } from '@/api/projet';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 
@@ -482,6 +482,9 @@ export default function CreerDE() {
     code_vl: '',
     besoin_nouveau_code: false,
 
+    // GUID de la ligne cr04e_projet liée (Dataverse) — pour maj au lieu de recréer.
+    projet_id: '',
+
     // Autre
     autre_demandeur: '',
     autre_date: new Date().toISOString().slice(0, 10),
@@ -734,8 +737,29 @@ export default function CreerDE() {
   // ZUG = poids net × 1000 (champ calculé, non modifiable).
   const zug = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
 
-  const handleSaveBrouillon = () => {
-    saveMutation.mutate({ ...formData, zug, type_de: formType, statut: 'brouillon' });
+  const handleSaveBrouillon = async () => {
+    let projetId = formData.projet_id;
+    // Pour une DE, on reflète le brouillon dans cr04e_projet (Dataverse) pour
+    // qu'il apparaisse dans la liste. Non bloquant : si Dataverse échoue, le
+    // brouillon est tout de même enregistré localement.
+    if (formType === 'de') {
+      const ctx = { codeChapeau, zug, sapOptions, statut: PROJET_STATUT.brouillon };
+      try {
+        if (projetId) {
+          await updateProjetFromDE(projetId, formData, ctx);
+        } else {
+          const created = await createProjetFromDE(formData, ctx);
+          projetId = created?.cr04e_projetid || '';
+        }
+      } catch (err) {
+        toast({
+          title: 'Projet non synchronisé',
+          description: `Brouillon enregistré localement, mais la synchro Dataverse a échoué : ${err?.message || 'erreur inconnue'}.`,
+          variant: 'destructive',
+        });
+      }
+    }
+    saveMutation.mutate({ ...formData, projet_id: projetId, zug, type_de: formType, statut: 'brouillon' });
   };
 
   // Code chapeau issu du bloc « Article d'origine » : code VL saisi, ou code
@@ -760,15 +784,22 @@ export default function CreerDE() {
       });
       return;
     }
-    // Création de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
-    // la table Projet est la sortie principale de la validation).
+    // Écriture de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
+    // la table Projet est la sortie principale de l'envoi vers SAP). Statut
+    // « en attente de DL » => la partie DE est validée. Maj si un projet existe
+    // déjà (brouillon), sinon création.
     if (formType === 'de') {
+      const ctx = { codeChapeau, zug, sapOptions, statut: PROJET_STATUT.en_attente_dl };
       try {
-        await createProjetFromDE(formData, { codeChapeau, zug, sapOptions });
+        if (formData.projet_id) {
+          await updateProjetFromDE(formData.projet_id, formData, ctx);
+        } else {
+          await createProjetFromDE(formData, ctx);
+        }
       } catch (err) {
         toast({
-          title: 'Création du projet échouée',
-          description: `La DE n'a pas été validée : ${err?.message || 'erreur inconnue'}.`,
+          title: 'Envoi vers SAP échoué',
+          description: `La DE n'a pas été envoyée : ${err?.message || 'erreur inconnue'}.`,
           variant: 'destructive',
         });
         return;

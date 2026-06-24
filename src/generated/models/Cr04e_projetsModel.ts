@@ -32,6 +32,7 @@ export interface Cr04e_projetsBase {
   cr04e_qteprevisionnelleannuelle?: number;
   cr04e_reseau?: string;
   cr04e_secteurdactivite?: string;
+  cr04e_statut_en_cours?: string;
   cr04e_typedelademande?: string;
   cr04e_zug?: number;
   importsequencenumber?: number;
