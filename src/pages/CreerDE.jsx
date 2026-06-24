@@ -140,6 +140,11 @@ const NOUVEAU_CODE_FLOW_URL =
 const VALIDATION_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/daa73024b17f4d6e942c316d4ec09901/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=wjYyxeqhqDI_Jh65wFt7fZopDmKlLqt_ahz-shnkS48';
 
+// Flux Power Automate « Envoyer vers SAP » : reçoit l'ensemble des champs de la
+// DE (codes bruts, pas les libellés « code — désignation »). Même host -> CSP OK.
+const SAP_SEND_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f89cbd33946f49bb883505142eb04762/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=psCae2PoNO_IPL3XmafnxQOr74NMGJdC6skIO9yFAJo';
+
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
 const extractCodeChapeau = (text) => {
@@ -689,6 +694,44 @@ export default function CreerDE() {
     }
   };
 
+  // Envoi vers SAP : POST l'ensemble des champs de la DE au flux dédié. On envoie
+  // les CODES bruts (formData.<champ> = code, pas le libellé « code — désignation »).
+  // La hiérarchie produit est figée (« 21 DE DE DE ») -> on n'envoie que le code
+  // de tête (« 21 »). Non bloquant : un échec n'annule pas la validation.
+  const triggerSapSend = async (codeChapeau) => {
+    const hierarchieCode = (formData.famille_produit || '').trim().split(/\s+/)[0] || '';
+    const body = {
+      CodeChapeau: codeChapeau || '',
+      NomProduit: formData.designation_article || '',
+      HierarchieProduitFamille: hierarchieCode,
+      SecteurActivite: formData.marque || '',
+      PoidsNet: formData.poids_net === '' || formData.poids_net == null ? '' : String(formData.poids_net),
+      DivisionUsine: formData.division || '',
+      ClasseValorisation: formData.classe_valorisation || '',
+      CentreProfit: formData.centre_profit || '',
+      GroupeAutorisation: formData.groupe_autorisation || '',
+      GroupeFraisGeneraux: formData.groupe_frais_generaux || '',
+      GroupeArticleDivision: formData.groupe_article || '',
+    };
+    try {
+      const res = await fetch(SAP_SEND_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+      }
+    } catch (err) {
+      toast({
+        title: 'Envoi SAP non déclenché',
+        description: `La DE est validée, mais l'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
 
   // Champs auto-calculés (Section Autre)
   const autreCodeDivision = useMemo(() => {
@@ -812,8 +855,11 @@ export default function CreerDE() {
         return;
       }
     }
-    // Déclenche le flux de validation avec le code chapeau (non bloquant : on
-    // attend l'envoi avant de naviguer, mais un échec ne stoppe pas la DE).
+    // Déclenche les flux (non bloquant : on attend l'envoi avant de naviguer,
+    // mais un échec ne stoppe pas la DE) :
+    //  - notification « en attente de DL » (code chapeau seul) ;
+    //  - envoi vers SAP (ensemble des champs).
+    if (formType === 'de') await triggerSapSend(codeChapeau);
     if (codeChapeau) await triggerValidationFlow(codeChapeau);
     // La DE passe direct en phase DL.
     saveMutation.mutate({
