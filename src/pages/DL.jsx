@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { listProjets } from '@/api/projet';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -350,33 +351,52 @@ function DLList({ initialCode = '' }) {
   const [filter, setFilter] = useState('toutes');
   const [search, setSearch] = useState(initialCode);
 
-  const { data: demandes = [], isLoading } = useQuery({
-    queryKey: ['demandes_etude'],
-    queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
+  // Liste branchée sur Dataverse : les projets en phase DL (statut en_attente_dl).
+  const { data: projets = [], isLoading } = useQuery({
+    queryKey: ['projets-de'],
+    queryFn: listProjets,
   });
+  // DL locales (localStorage) : portent l'avancement DL (import, validation,
+  // refus) et l'id local nécessaire au détail. Jointes au projet par code chapeau.
   const { data: declinaisons = [] } = useQuery({
     queryKey: ['declinaisons'],
     queryFn: () => base44.entities.DeclinaisonLogistique.list('-created_date'),
   });
+  const { data: localDEs = [] } = useQuery({
+    queryKey: ['demandes_etude'],
+    queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
+  });
 
-  // L'état d'une DL est porté par son enregistrement DeclinaisonLogistique.
-  // On liste : chaque DL (en cours / validée / refusée) + les DE passées en
-  // phase DL dont le fichier n'est pas encore importé (« En attente de DL »).
+  // L'état d'une DL est porté par son enregistrement DeclinaisonLogistique local.
+  // On part des projets « en attente de DL » (Dataverse) et on y rattache la DL
+  // locale + l'id local via le code chapeau, quand ils existent dans ce navigateur.
   const rows = useMemo(() => {
-    const deById = new Map(demandes.map((d) => [d.id, d]));
-    const dlByDeId = new Map(declinaisons.map((dl) => [dl.demande_etude_id, dl]));
-    const out = [];
+    const localDEById = new Map(localDEs.map((d) => [d.id, d]));
+    const localIdByChapeau = new Map();
+    const dlByChapeau = new Map();
+    localDEs.forEach((d) => {
+      if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
+    });
     declinaisons.forEach((dl) => {
-      const de = deById.get(dl.demande_etude_id);
-      if (de) out.push({ key: `dl-${dl.id}`, de, dl, statut: dl.statut });
+      const de = localDEById.get(dl.demande_etude_id);
+      if (de?.code_chapeau) dlByChapeau.set(de.code_chapeau, dl);
     });
-    demandes.forEach((de) => {
-      if (de.statut === 'en_attente_dl' && !dlByDeId.has(de.id)) {
-        out.push({ key: `de-${de.id}`, de, dl: null, statut: 'en_attente_dl' });
-      }
-    });
+
+    const out = projets
+      .filter((p) => p.statut === 'en_attente_dl')
+      .map((p) => {
+        const dl = p.code_chapeau ? dlByChapeau.get(p.code_chapeau) || null : null;
+        const localId = p.code_chapeau ? localIdByChapeau.get(p.code_chapeau) || null : null;
+        return {
+          key: `projet-${p.id}`,
+          de: p,
+          dl,
+          localId,
+          statut: dl?.statut || 'en_attente_dl',
+        };
+      });
     return out.sort((a, b) => (DL_ORDRE[a.statut] ?? 9) - (DL_ORDRE[b.statut] ?? 9));
-  }, [demandes, declinaisons]);
+  }, [projets, declinaisons, localDEs]);
 
   const count = (statut) => rows.filter((r) => r.statut === statut).length;
 
@@ -386,8 +406,10 @@ function DLList({ initialCode = '' }) {
   useEffect(() => {
     if (!codeNorm || isLoading) return;
     const matches = rows.filter((r) => normalize(r.de.code_chapeau) === codeNorm);
-    if (matches.length === 1) {
-      navigate(createPageUrl(`DL?id=${matches[0].de.id}`), { replace: true });
+    // Ouverture directe du détail seulement si la DL locale existe (id local) ;
+    // sinon on reste sur la liste filtrée/surlignée.
+    if (matches.length === 1 && matches[0].localId) {
+      navigate(createPageUrl(`DL?id=${matches[0].localId}`), { replace: true });
     }
   }, [codeNorm, isLoading, rows, navigate]);
 
@@ -550,7 +572,7 @@ function DLList({ initialCode = '' }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRows.map(({ key, de, dl, statut }) => {
+                {filteredRows.map(({ key, de, dl, statut, localId }) => {
                   const badge = DL_STATUT_BADGE[statut] || DL_STATUT_BADGE.en_attente_dl;
                   const estRefusee = statut === 'refusee';
                   const dateRef = dl?.date_import || de.created_date;
@@ -585,7 +607,7 @@ function DLList({ initialCode = '' }) {
                         {dateRef ? format(new Date(dateRef), 'dd MMM yyyy', { locale: fr }) : '—'}
                       </TableCell>
                       <TableCell>
-                        <Link to={createPageUrl(`DL?id=${de.id}`)}>
+                        <Link to={createPageUrl(localId ? `DL?id=${localId}` : `DL?code_chapeau=${encodeURIComponent(de.code_chapeau || '')}`)}>
                           <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-violet-500/10">
                             <ChevronRight className="w-5 h-5 text-violet-600" />
                           </Button>
