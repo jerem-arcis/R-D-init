@@ -15,6 +15,26 @@
         "optionsetcodeapps": {
           "entitySetName": "cr04e_optionsetcodeappses",
           "logicalName": "cr04e_optionsetcodeapps"
+        },
+        "hi_rarchieproduitfamille": {
+          "entitySetName": "cr04e_hierarchieproduitfamilles",
+          "logicalName": "cr04e_hierarchieproduitfamille"
+        },
+        "groupedefraisg_n_raux": {
+          "entitySetName": "cr04e_groupedefraisgenerauxes",
+          "logicalName": "cr04e_groupedefraisgeneraux"
+        },
+        "groupearticle_division_": {
+          "entitySetName": "cr04e_groupearticledivisions",
+          "logicalName": "cr04e_groupearticledivision"
+        },
+        "division_usine_": {
+          "entitySetName": "cr04e_divisionusines",
+          "logicalName": "cr04e_divisionusine"
+        },
+        "classedevalorisation": {
+          "entitySetName": "cr04e_classedevalorisations",
+          "logicalName": "cr04e_classedevalorisation"
         }
       },
       "environmentVariableName": ""

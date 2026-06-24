@@ -16,6 +16,7 @@ import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Loade
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
+import { useSapOptions } from '@/lib/sapLists';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 
@@ -426,9 +427,11 @@ export default function CreerDE() {
   const { toast } = useToast();
   const adminLists = useAdminLists();
   const adminOptions = useAdminOptions();
+  // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
+  const sapOptions = useSapOptions();
   // Hiérarchie produit famille : ne conserver que les codes dont les 2 premiers
   // chiffres sont 21, 22 ou 27.
-  const famillesProduitOptions = adminOptions.familles_produit.filter((o) =>
+  const famillesProduitOptions = sapOptions.familles_produit.filter((o) =>
     ['21', '22', '27'].includes(String(o.value).slice(0, 2)),
   );
   const [searchParams] = useSearchParams();
@@ -934,7 +937,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.division}
                         onChange={(v) => handleChange('division', v)}
-                        options={buildOptions(adminOptions.divisions, formData.division)}
+                        options={buildOptions(sapOptions.divisions, formData.division)}
                         placeholder="Sélectionner une division"
                       />
                     </Field>
@@ -942,7 +945,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.classe_valorisation}
                         onChange={(v) => handleChange('classe_valorisation', v)}
-                        options={buildOptions(adminOptions.classes_valorisation, formData.classe_valorisation)}
+                        options={buildOptions(sapOptions.classes_valorisation, formData.classe_valorisation)}
                         placeholder="Sélectionner une classe"
                       />
                     </Field>
@@ -966,7 +969,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_frais_generaux}
                         onChange={(v) => handleChange('groupe_frais_generaux', v)}
-                        options={buildOptions(adminOptions.groupes_frais_generaux, formData.groupe_frais_generaux)}
+                        options={buildOptions(sapOptions.groupes_frais_generaux, formData.groupe_frais_generaux)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
@@ -974,7 +977,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_article}
                         onChange={(v) => handleChange('groupe_article', v)}
-                        options={buildOptions(adminOptions.groupes_article, formData.groupe_article)}
+                        options={buildOptions(sapOptions.groupes_article, formData.groupe_article)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>

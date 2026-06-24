@@ -5,7 +5,17 @@
 
 // Models
 export * as CommonModels from './models/CommonModels';
+export * as Cr04e_classedevalorisationsModel from './models/Cr04e_classedevalorisationsModel';
+export * as Cr04e_divisionusinesModel from './models/Cr04e_divisionusinesModel';
+export * as Cr04e_groupearticledivisionsModel from './models/Cr04e_groupearticledivisionsModel';
+export * as Cr04e_groupedefraisgenerauxesModel from './models/Cr04e_groupedefraisgenerauxesModel';
+export * as Cr04e_hierarchieproduitfamillesModel from './models/Cr04e_hierarchieproduitfamillesModel';
 export * as Cr04e_optionsetcodeappsesModel from './models/Cr04e_optionsetcodeappsesModel';
 
 // Services
+export * from './services/Cr04e_classedevalorisationsService';
+export * from './services/Cr04e_divisionusinesService';
+export * from './services/Cr04e_groupearticledivisionsService';
+export * from './services/Cr04e_groupedefraisgenerauxesService';
+export * from './services/Cr04e_hierarchieproduitfamillesService';
 export * from './services/Cr04e_optionsetcodeappsesService';

@@ -44,12 +44,13 @@ export function withValue(list, value) {
   return [...list, value];
 }
 
-// Champs beCPG adossés à un dropdown Dataverse géré par l'Admin → leur dropdownId.
-// (type_demande_de et client sont codés en dur, non gérés par l'Admin : exclus.)
+// Champs beCPG adossés à un dropdown option-set géré par l'Admin → leur dropdownId.
+// (type_demande_de et client sont codés en dur, non gérés par l'Admin : exclus.
+// famille_produit est désormais un référentiel SAP en lecture seule, donc pas
+// d'auto-création : exclu.)
 export const BECPG_FIELD_TO_DROPDOWN = {
   axe_strategique: "axes_strategiques",
   reseau: "reseaux",
-  famille_produit: "familles_produit",
   marque: "secteurs_activite",
 };
 

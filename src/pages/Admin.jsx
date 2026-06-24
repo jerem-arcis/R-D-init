@@ -33,14 +33,9 @@ import { parseOptionListFile } from '@/lib/parseOptionList';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
-  divisions: 'Division (Usine)',
-  groupes_article: 'Groupes article',
-  classes_valorisation: 'Classe de valorisation',
   centres_profit: 'Centre de profit',
   groupes_autorisation: "Groupe d'autorisation",
-  groupes_frais_generaux: 'Groupe de frais généraux',
   axes_strategiques: 'Axes stratégiques',
-  familles_produit: 'Hiérarchie produit famille',
   secteurs_activite: "Secteurs d'activité",
   categories_vif: 'Catégories (Vif)',
   types_logistique: 'Types de logistique',

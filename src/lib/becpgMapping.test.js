@@ -104,21 +104,19 @@ describe("dropdownAdditionsFromMapping", () => {
   const adminLists = {
     axes_strategiques: ["Business Courant"],
     reseaux: ["RMN", "MDD"],
-    familles_produit: ["Traiteur", "Mochi", "Pâtisseries"],
     secteurs_activite: ["Boncolac"],
   };
 
-  it("ne propose que les valeurs absentes des dropdowns Dataverse", () => {
+  it("ne propose que les valeurs absentes des dropdowns option-set", () => {
     const mapped = {
       axe_strategique: "Business Courant", // déjà présent
       reseau: "RMN", // déjà présent
-      famille_produit: "TARTES", // absent → à créer
+      famille_produit: "TARTES", // référentiel SAP → non géré, ignoré
       marque: "BONLOC", // absent → à créer
       type_demande_de: "Retravail Produit - CA existant", // non géré → ignoré
       client: "BONCOLAC", // non géré → ignoré
     };
     expect(dropdownAdditionsFromMapping(mapped, adminLists)).toEqual([
-      { dropdownId: "familles_produit", value: "TARTES" },
       { dropdownId: "secteurs_activite", value: "BONLOC" },
     ]);
   });
