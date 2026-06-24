@@ -443,6 +443,10 @@ export default function CreerDE() {
     { value: '22 DE DE DE' },
     { value: '27 DE DE DE' },
   ];
+  // Groupe article (division) : ne conserver que les codes commençant par « PF ».
+  const groupesArticleOptions = sapOptions.groupes_article.filter((o) =>
+    String(o.value).toUpperCase().startsWith('PF'),
+  );
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon existant
 
@@ -1071,7 +1075,7 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_article}
                         onChange={(v) => handleChange('groupe_article', v)}
-                        options={buildOptions(sapOptions.groupes_article, formData.groupe_article)}
+                        options={buildOptions(groupesArticleOptions, formData.groupe_article)}
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
