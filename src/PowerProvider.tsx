@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 interface PowerContextType {
     isInitialized: boolean;
-    powerContext: ReturnType<typeof getContext> | null;
+    powerContext: Awaited<ReturnType<typeof getContext>> | null;
 }
 
 const PowerContext = createContext<PowerContextType>({
@@ -15,18 +15,22 @@ export const usePowerPlatform = () => useContext(PowerContext);
 
 export default function PowerProvider({ children }: { children: ReactNode }) {
     const [isInitialized, setIsInitialized] = useState(false);
-    const [powerContext, setPowerContext] = useState<ReturnType<typeof getContext> | null>(null);
+    const [powerContext, setPowerContext] = useState<Awaited<ReturnType<typeof getContext>> | null>(null);
 
     useEffect(() => {
-        try {
-            const ctx = getContext();
-            setPowerContext(ctx);
-            console.log('Power Platform context retrieved:', ctx);
-            setIsInitialized(true);
-        } catch (error) {
-            console.error('Failed to get Power Platform context:', error);
-            setIsInitialized(true); // Continue pour dev local
-        }
+        // getContext() est asynchrone (renvoie une Promise) : il faut l'await,
+        // sinon powerContext.app.queryParams est undefined.
+        (async () => {
+            try {
+                const ctx = await getContext();
+                setPowerContext(ctx);
+                console.log('Power Platform context retrieved:', ctx);
+            } catch (error) {
+                console.error('Failed to get Power Platform context:', error);
+            } finally {
+                setIsInitialized(true); // Continue pour dev local
+            }
+        })();
     }, []);
 
     return (
