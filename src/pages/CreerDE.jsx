@@ -730,6 +730,7 @@ export default function CreerDE() {
         : base44.entities.DemandeEtude.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
+      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
       navigate(createPageUrl('DemandesEtude'));
     }
   });

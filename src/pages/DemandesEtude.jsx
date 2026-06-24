@@ -104,13 +104,19 @@ export default function DemandesEtude() {
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
+  // Clé de jointure principale : projet_id (stocké sur la DE locale au moment de
+  // l'écriture du projet). Robuste même quand code_projet/code_chapeau sont vides
+  // (brouillon). On garde code_chapeau/code_projet en repli.
+  const localIdByProjetId = new Map();
   const localIdByChapeau = new Map();
   const localIdByProjet = new Map();
   localDEs.forEach((d) => {
+    if (d.projet_id) localIdByProjetId.set(d.projet_id, d.id);
     if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
     if (d.code_projet) localIdByProjet.set(d.code_projet, d.id);
   });
   const localIdFor = (de) =>
+    (de.id && localIdByProjetId.get(de.id)) ||
     (de.code_chapeau && localIdByChapeau.get(de.code_chapeau)) ||
     (de.code_projet && localIdByProjet.get(de.code_projet)) ||
     null;

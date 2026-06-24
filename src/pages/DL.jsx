@@ -373,9 +373,11 @@ function DLList({ initialCode = '' }) {
   const rows = useMemo(() => {
     const localDEById = new Map(localDEs.map((d) => [d.id, d]));
     const localIdByChapeau = new Map();
+    const localIdByProjetId = new Map();
     const dlByChapeau = new Map();
     localDEs.forEach((d) => {
       if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
+      if (d.projet_id) localIdByProjetId.set(d.projet_id, d.id);
     });
     declinaisons.forEach((dl) => {
       const de = localDEById.get(dl.demande_etude_id);
@@ -386,7 +388,9 @@ function DLList({ initialCode = '' }) {
       .filter((p) => p.statut === 'en_attente_dl')
       .map((p) => {
         const dl = p.code_chapeau ? dlByChapeau.get(p.code_chapeau) || null : null;
-        const localId = p.code_chapeau ? localIdByChapeau.get(p.code_chapeau) || null : null;
+        const localId =
+          localIdByProjetId.get(p.id) ||
+          (p.code_chapeau ? localIdByChapeau.get(p.code_chapeau) || null : null);
         return {
           key: `projet-${p.id}`,
           de: p,
