@@ -19,8 +19,21 @@ export default function DeepLink() {
     handled.current = true;
     let cancelled = false;
 
+    // On ne redirige qu'une fois par session de navigateur et par code : sinon
+    // chaque F5 relit queryParams (toujours présent côté player) et renverrait
+    // l'utilisateur sur la DL, l'empêchant de rester ailleurs après un refresh.
+    // Un nouveau lien (code différent) re-déclenche bien la redirection.
+    const SS_KEY = 'deeplink:code_chapeau';
     const go = (code) => {
-      if (code && !cancelled) {
+      if (!code || cancelled) return;
+      let alreadyHandled = false;
+      try {
+        alreadyHandled = sessionStorage.getItem(SS_KEY) === code;
+        if (!alreadyHandled) sessionStorage.setItem(SS_KEY, code);
+      } catch {
+        // sessionStorage indisponible : on redirige quand même (comportement initial).
+      }
+      if (!alreadyHandled) {
         navigate(`/DL?code_chapeau=${encodeURIComponent(code)}`, { replace: true });
       }
     };
