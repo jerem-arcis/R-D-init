@@ -1348,7 +1348,7 @@ export default function CreerDE() {
                 disabled={saveMutation.isPending || (formType === 'de' && !codeChapeau)}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Valider la DE
+                Envoyer vers SAP
               </Button>
             </div>
 
