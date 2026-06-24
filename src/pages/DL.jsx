@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -344,10 +344,11 @@ const normalize = (v) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
-function DLList() {
+function DLList({ initialCode = '' }) {
+  const navigate = useNavigate();
   const [motifDL, setMotifDL] = useState(null);
   const [filter, setFilter] = useState('toutes');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialCode);
 
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ['demandes_etude'],
@@ -378,6 +379,17 @@ function DLList() {
   }, [demandes, declinaisons]);
 
   const count = (statut) => rows.filter((r) => r.statut === statut).length;
+
+  // Lien profond : si le code chapeau du mail correspond à exactement une demande
+  // présente (localStorage), on ouvre directement son détail DL.
+  const codeNorm = normalize(initialCode.trim());
+  useEffect(() => {
+    if (!codeNorm || isLoading) return;
+    const matches = rows.filter((r) => normalize(r.de.code_chapeau) === codeNorm);
+    if (matches.length === 1) {
+      navigate(createPageUrl(`DL?id=${matches[0].de.id}`), { replace: true });
+    }
+  }, [codeNorm, isLoading, rows, navigate]);
 
   const searchTerm = normalize(search.trim());
   const filteredRows = rows.filter(({ de, statut }) => {
@@ -542,8 +554,9 @@ function DLList() {
                   const badge = DL_STATUT_BADGE[statut] || DL_STATUT_BADGE.en_attente_dl;
                   const estRefusee = statut === 'refusee';
                   const dateRef = dl?.date_import || de.created_date;
+                  const isMatch = codeNorm && normalize(de.code_chapeau) === codeNorm;
                   return (
-                    <TableRow key={key} className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border">
+                    <TableRow key={key} className={`hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border ${isMatch ? 'bg-violet-50 ring-2 ring-inset ring-violet-400' : ''}`}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {de.code_chapeau || <span className="text-muted-foreground/50">—</span>}
                       </TableCell>
@@ -612,10 +625,12 @@ function DLList() {
   );
 }
 
-// Route "DL" : liste si aucun id, détail sinon.
+// Route "DL" : détail si ?id, sinon liste. ?code_chapeau (lien profond e-mail)
+// pré-remplit la recherche et surligne / ouvre la demande correspondante.
 export default function DL() {
   const [searchParams] = useSearchParams();
   const deId = searchParams.get('id');
-  if (!deId) return <DLList />;
+  const codeChapeau = searchParams.get('code_chapeau') || '';
+  if (!deId) return <DLList initialCode={codeChapeau} />;
   return <DLDetail deId={deId} />;
 }
