@@ -152,6 +152,26 @@ const SAP_SEND_FLOW_URL =
 const VL_CODE_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f20ba3d982c47388445509a6e992efd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=pa5adaOQtjiBlP_I8ePM-C3svlLl7t1Ah-XiNnff5dY';
 
+// Génère un EAN-13 « bidon » mais valide (clé de contrôle correcte). `prefix`
+// distingue les niveaux (UV / carton / palette) pour des codes lisiblement
+// différents. Purement décoratif tant que la vraie source EAN n'est pas branchée.
+const genEAN13 = (prefix = '30') => {
+  let base = String(prefix).replace(/\D/g, '').slice(0, 12);
+  while (base.length < 12) base += Math.floor(Math.random() * 10);
+  const sum = base
+    .split('')
+    .reduce((acc, d, i) => acc + Number(d) * (i % 2 === 0 ? 1 : 3), 0);
+  const check = (10 - (sum % 10)) % 10;
+  return base + check;
+};
+
+// Génère le jeu EAN UV / Carton / Palette (préfixes distincts pour les distinguer).
+const genEANSet = () => ({
+  ean_uv: genEAN13('30'),
+  ean_carton: genEAN13('31'),
+  ean_palette: genEAN13('32'),
+});
+
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
 const extractCodeChapeau = (text) => {
@@ -500,6 +520,12 @@ export default function CreerDE() {
     code_vl: '',
     besoin_nouveau_code: false,
 
+    // Codes EAN (bloc optionnel) — codes générés à l'activation.
+    besoin_ean: false,
+    ean_uv: '',
+    ean_carton: '',
+    ean_palette: '',
+
     // GUID de la ligne cr04e_projet liée (Dataverse) — pour maj au lieu de recréer.
     projet_id: '',
 
@@ -546,6 +572,10 @@ export default function CreerDE() {
       // persisté, sinon le bouton « Envoyer vers SAP » resterait bloqué.
       if (editDE.besoin_nouveau_code && editDE.code_chapeau) {
         setNouveauCode(editDE.code_chapeau);
+      }
+      // Idem côté VL : le code résolu sauvegardé est le code_chapeau.
+      if (editDE.besoin_vl && editDE.code_chapeau) {
+        setVlResolvedCode(editDE.code_chapeau);
       }
       setStep('form');
     }
@@ -633,6 +663,9 @@ export default function CreerDE() {
   const [origine_mode, setOrigineMode] = useState(null);
   const [isRequestingCode, setIsRequestingCode] = useState(false);
   const [nouveauCode, setNouveauCode] = useState(''); // code chapeau renvoyé par le flux (affichage seul)
+  // Mode VL : code chapeau résolu via le bouton « Demander mon code » (flux VL).
+  const [vlResolvedCode, setVlResolvedCode] = useState('');
+  const [isRequestingVlCode, setIsRequestingVlCode] = useState(false);
 
   const handleToggleVL = (checked) => {
     if (checked) {
@@ -647,6 +680,49 @@ export default function CreerDE() {
       setOrigineMode(null);
       handleChange('besoin_vl', false);
       handleChange('code_vl', '');
+      setVlResolvedCode('');
+    }
+  };
+
+  // Bouton « Demander mon code » (VL) : appelle le flux VL avec le code de base
+  // saisi et affiche le code chapeau renvoyé. Le code résolu sert ensuite à
+  // l'envoi vers SAP (plus besoin de le re-demander). Si on change le code de
+  // base, le code résolu est effacé (voir onChange du champ).
+  const handleRequestVlCode = async () => {
+    const base = (formData.code_vl || '').trim();
+    if (!base) return;
+    setIsRequestingVlCode(true);
+    setVlResolvedCode('');
+    try {
+      const code = await requestVlCodeChapeau(base);
+      setVlResolvedCode(code);
+    } catch (err) {
+      toast({
+        title: 'Code chapeau VL non obtenu',
+        description: `Impossible de récupérer le code à partir de la VL : ${err?.message || 'erreur inconnue'}.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRequestingVlCode(false);
+    }
+  };
+
+  // Active/désactive le bloc EAN. À l'activation, génère un jeu de codes bidons
+  // (UV / carton / palette) une seule fois ; à la désactivation, on les vide.
+  const handleToggleEAN = (checked) => {
+    if (checked) {
+      handleChange('besoin_ean', true);
+      if (!formData.ean_uv) {
+        setFormData((prev) => ({ ...prev, ...genEANSet() }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        besoin_ean: false,
+        ean_uv: '',
+        ean_carton: '',
+        ean_palette: '',
+      }));
     }
   };
 
@@ -864,14 +940,14 @@ export default function CreerDE() {
     });
   };
 
-  // Code chapeau issu du bloc « Article d'origine » : code VL saisi, ou code
-  // généré par le flux « nouveau code ». Dérivé pour servir à la fois au blocage
-  // du bouton et à la soumission.
+  // Code chapeau issu du bloc « Article d'origine ». Dans les deux modes il est
+  // désormais RÉSOLU en amont (bouton « Demander mon code » côté VL, ou flux
+  // « nouveau code »), donc l'envoi vers SAP n'a plus à le re-demander.
   const codeChapeau =
     origine_mode === 'nouveau_code'
       ? (nouveauCode || '').trim()
       : origine_mode === 'vl'
-        ? (formData.code_vl || '').trim()
+        ? (vlResolvedCode || '').trim()
         : '';
 
   const handleSubmit = async (e) => {
@@ -881,7 +957,7 @@ export default function CreerDE() {
     if (formType === 'de' && !codeChapeau) {
       toast({
         title: 'Code chapeau requis',
-        description: "Coche « Besoin d'une VL » et saisis le code, ou clique « Besoin d'un nouveau code ».",
+        description: "Coche « Besoin d'une VL » puis clique « Demander mon code », ou clique « Besoin d'un nouveau code ».",
         variant: 'destructive',
       });
       return;
@@ -889,23 +965,9 @@ export default function CreerDE() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-    // Mode VL : le code saisi (code_vl) est un CODE DE BASE. On résout d'abord le
-    // vrai code chapeau via le flux VL ({ "Numéro": <code de base> } -> « 741603 »)
-    // AVANT d'enchaîner le process classique. BLOQUANT : sans code on s'arrête.
-    // (Le mode « nouveau code » a déjà son code chapeau, on ne touche à rien.)
-    let effectiveCode = codeChapeau;
-    if (formType === 'de' && origine_mode === 'vl') {
-      try {
-        effectiveCode = await requestVlCodeChapeau(codeChapeau);
-      } catch (err) {
-        toast({
-          title: 'Code chapeau VL non obtenu',
-          description: `Impossible de récupérer le code chapeau à partir de la VL : ${err?.message || 'erreur inconnue'}.`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
+    // Le code chapeau est déjà résolu en amont (bouton « Demander mon code » en VL,
+    // ou flux « nouveau code »). On l'utilise directement pour le process classique.
+    const effectiveCode = codeChapeau;
     // Écriture de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
     // la table Projet est la sortie principale de l'envoi vers SAP). Statut
     // « en attente de DL » => la partie DE est validée. Maj si un projet existe
@@ -1225,28 +1287,92 @@ export default function CreerDE() {
                       )}
                       Besoin d'un nouveau code
                     </Button>
-                    {origine_mode === 'nouveau_code' && nouveauCode && (
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Nouveau code : <span className="font-mono font-semibold text-foreground">{nouveauCode}</span>
-                      </span>
-                    )}
                   </div>
 
                   {origine_mode === 'vl' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-                      <Field
-                        label="Code d'article d'origine"
-                        hint="Code à 6 ou 8 chiffres requis"
-                      >
-                        <Input
-                          value={formData.code_vl}
-                          onChange={(e) => handleChange('code_vl', e.target.value)}
-                          placeholder="Ex: 12345678"
-                          maxLength={8}
-                          className="h-11 font-mono"
-                        />
-                      </Field>
+                    <div className="space-y-4 pt-1">
+                      <div className="space-y-1.5">
+                        <Label className="text-slate-700 font-medium text-sm">
+                          Code d'article d'origine
+                        </Label>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            value={formData.code_vl}
+                            onChange={(e) => {
+                              handleChange('code_vl', e.target.value);
+                              setVlResolvedCode(''); // le code base change -> code résolu obsolète
+                            }}
+                            placeholder="Ex: 12345678"
+                            maxLength={8}
+                            className="h-11 font-mono max-w-[260px]"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleRequestVlCode}
+                            disabled={!formData.code_vl.trim() || isRequestingVlCode}
+                            className="h-10 bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                          >
+                            {isRequestingVlCode ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Database className="w-4 h-4 mr-2" />
+                            )}
+                            Demander mon code
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground italic">
+                          Code à 6 ou 8 chiffres requis
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Emplacement partagé : affiche le code chapeau résolu, quel que
+                      soit le mode (VL via « Demander mon code », ou nouveau code). */}
+                  {codeChapeau && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 mt-1">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">
+                          Code chapeau
+                        </p>
+                        <p className="text-3xl font-black font-mono text-emerald-900 leading-tight">
+                          {codeChapeau}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </FormSection>
+
+                <FormSection title="Codes EAN" icon={ShoppingCart}>
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <Checkbox
+                      checked={formData.besoin_ean}
+                      onCheckedChange={(v) => handleToggleEAN(!!v)}
+                    />
+                    <span className="text-sm font-medium text-foreground">Besoin des codes EAN</span>
+                  </label>
+
+                  {formData.besoin_ean && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
+                      {[
+                        { label: 'EAN UV', value: formData.ean_uv },
+                        { label: 'EAN Carton', value: formData.ean_carton },
+                        { label: 'EAN Palette', value: formData.ean_palette },
+                      ].map((e) => (
+                        <div
+                          key={e.label}
+                          className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3"
+                        >
+                          <p className="text-[11px] uppercase tracking-wider font-semibold text-violet-700 mb-1">
+                            {e.label}
+                          </p>
+                          <p className="text-lg font-mono font-bold text-foreground tracking-wide">
+                            {e.value || '—'}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </FormSection>
