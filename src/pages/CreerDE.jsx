@@ -145,6 +145,13 @@ const VALIDATION_FLOW_URL =
 const SAP_SEND_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f89cbd33946f49bb883505142eb04762/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=psCae2PoNO_IPL3XmafnxQOr74NMGJdC6skIO9yFAJo';
 
+// Flux « code chapeau à partir d'une VL » : en mode « Besoin d'une VL », le code
+// saisi est un CODE DE BASE. À l'envoi, on appelle d'abord ce flux avec
+// { "Numéro": <code de base> } ; il renvoie le vrai code chapeau (texte simple,
+// ex. « 741603 ») qui alimente ensuite le process classique. Même host -> CSP OK.
+const VL_CODE_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f20ba3d982c47388445509a6e992efd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=pa5adaOQtjiBlP_I8ePM-C3svlLl7t1Ah-XiNnff5dY';
+
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
 const extractCodeChapeau = (text) => {
@@ -155,7 +162,7 @@ const extractCodeChapeau = (text) => {
     if (typeof json === 'string' || typeof json === 'number') return String(json).trim();
     // Le flux renvoie le code dans headers.réponse — on regarde aussi cet objet.
     const candidates = [json, json?.headers, json?.body];
-    const keys = ['réponse', 'reponse', 'response', 'code_chapeau', 'codeChapeau', 'code', 'Code', 'Product', 'product', 'value', 'result', 'body'];
+    const keys = ['réponse', 'reponse', 'response', 'code_chapeau', 'codeChapeau', 'code', 'Code', 'Numéro', 'Numero', 'numero', 'Product', 'product', 'value', 'result', 'body'];
     for (const obj of candidates) {
       if (!obj || typeof obj !== 'object') continue;
       for (const key of keys) {
@@ -534,6 +541,12 @@ export default function CreerDE() {
       setOrigineMode(
         editDE.besoin_vl ? 'vl' : editDE.besoin_nouveau_code ? 'nouveau_code' : null
       );
+      // Restaure le code chapeau généré (« nouveau code ») : il vit dans le state
+      // `nouveauCode` (hors formData), donc on le repeuple depuis code_chapeau
+      // persisté, sinon le bouton « Envoyer vers SAP » resterait bloqué.
+      if (editDE.besoin_nouveau_code && editDE.code_chapeau) {
+        setNouveauCode(editDE.code_chapeau);
+      }
       setStep('form');
     }
   }, [editDE]);
@@ -574,6 +587,9 @@ export default function CreerDE() {
 
   // Envoi de la désignation produit vers SAP via le flux Power Automate.
   const [isSendingSAP, setIsSendingSAP] = useState(false);
+  // Soumission « Envoyer vers SAP » en cours (résolution VL + écriture projet +
+  // flux). Désactive le bouton pour éviter un double-envoi (double création projet).
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sapSent, setSapSent] = useState(false); // notif discrète de succès
   const [sapPreviewOpen, setSapPreviewOpen] = useState(false); // aperçu "vue SAP"
   const handleSendToSAP = async () => {
@@ -620,9 +636,13 @@ export default function CreerDE() {
 
   const handleToggleVL = (checked) => {
     if (checked) {
+      // Bascule vers VL : on annule un éventuel « nouveau code » déjà demandé
+      // (mode + code affiché) pour éviter toute confusion. Les deux restent
+      // librement interchangeables, sans retour arrière.
       setOrigineMode('vl');
       handleChange('besoin_vl', true);
       handleChange('besoin_nouveau_code', false);
+      setNouveauCode('');
     } else {
       setOrigineMode(null);
       handleChange('besoin_vl', false);
@@ -669,6 +689,27 @@ export default function CreerDE() {
     } finally {
       setIsRequestingCode(false);
     }
+  };
+
+  // Mode VL : résout le vrai code chapeau à partir du code de base saisi.
+  // Appelle VL_CODE_FLOW_URL avec { "Numéro": <code de base> } et renvoie le code
+  // chapeau (texte simple, ex. « 741603 »). BLOQUANT côté appelant : sans ce code
+  // on ne peut pas enchaîner le process classique.
+  const requestVlCodeChapeau = async (numero) => {
+    const res = await fetch(VL_CODE_FLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 'Numéro': numero }),
+    });
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+    }
+    const code = extractCodeChapeau(text);
+    if (!code) {
+      throw new Error("Réponse du flux VL vide : le code chapeau doit être renvoyé dans le corps (Body) de l'action Réponse.");
+    }
+    return code;
   };
 
   // Déclenche le flux Power Automate de validation avec le code chapeau dans le
@@ -809,7 +850,18 @@ export default function CreerDE() {
         });
       }
     }
-    saveMutation.mutate({ ...formData, projet_id: projetId, zug, type_de: formType, statut: 'brouillon' });
+    // On persiste AUSSI le code chapeau dans le brouillon local : sinon le code
+    // VL / nouveau code (state `nouveauCode`, hors formData) est perdu à la
+    // réouverture du brouillon. Stocké ici, il est restauré au chargement (voir
+    // l'effet editDE plus haut) pour repeupler le bloc « Article d'origine ».
+    saveMutation.mutate({
+      ...formData,
+      projet_id: projetId,
+      zug,
+      type_de: formType,
+      code_chapeau: codeChapeau,
+      statut: 'brouillon',
+    });
   };
 
   // Code chapeau issu du bloc « Article d'origine » : code VL saisi, ou code
@@ -834,12 +886,32 @@ export default function CreerDE() {
       });
       return;
     }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+    // Mode VL : le code saisi (code_vl) est un CODE DE BASE. On résout d'abord le
+    // vrai code chapeau via le flux VL ({ "Numéro": <code de base> } -> « 741603 »)
+    // AVANT d'enchaîner le process classique. BLOQUANT : sans code on s'arrête.
+    // (Le mode « nouveau code » a déjà son code chapeau, on ne touche à rien.)
+    let effectiveCode = codeChapeau;
+    if (formType === 'de' && origine_mode === 'vl') {
+      try {
+        effectiveCode = await requestVlCodeChapeau(codeChapeau);
+      } catch (err) {
+        toast({
+          title: 'Code chapeau VL non obtenu',
+          description: `Impossible de récupérer le code chapeau à partir de la VL : ${err?.message || 'erreur inconnue'}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
     // Écriture de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
     // la table Projet est la sortie principale de l'envoi vers SAP). Statut
     // « en attente de DL » => la partie DE est validée. Maj si un projet existe
     // déjà (brouillon), sinon création.
     if (formType === 'de') {
-      const ctx = { codeChapeau, zug, sapOptions, statut: PROJET_STATUT.en_attente_dl };
+      const ctx = { codeChapeau: effectiveCode, zug, sapOptions, statut: PROJET_STATUT.en_attente_dl };
       try {
         if (formData.projet_id) {
           await updateProjetFromDE(formData.projet_id, formData, ctx);
@@ -859,8 +931,8 @@ export default function CreerDE() {
     // mais un échec ne stoppe pas la DE) :
     //  - notification « en attente de DL » (code chapeau seul) ;
     //  - envoi vers SAP (ensemble des champs).
-    if (formType === 'de') await triggerSapSend(codeChapeau);
-    if (codeChapeau) await triggerValidationFlow(codeChapeau);
+    if (formType === 'de') await triggerSapSend(effectiveCode);
+    if (effectiveCode) await triggerValidationFlow(effectiveCode);
     // La DE passe direct en phase DL.
     saveMutation.mutate({
       ...formData,
@@ -870,10 +942,13 @@ export default function CreerDE() {
       classe_valorisation_calc: autreClasseVal,
       centre_profit_calc: autreCentreProfit,
       secteur_activite_calc: autreSecteur,
-      code_chapeau: codeChapeau,
-      date_code_chapeau: codeChapeau ? new Date().toISOString() : null,
+      code_chapeau: effectiveCode,
+      date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
       statut: 'en_attente_dl',
     });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -1133,7 +1208,6 @@ export default function CreerDE() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
                         checked={origine_mode === 'vl'}
-                        disabled={origine_mode === 'nouveau_code'}
                         onCheckedChange={(v) => handleToggleVL(!!v)}
                       />
                       <span className="text-sm font-medium text-foreground">Besoin d'une VL</span>
@@ -1142,7 +1216,7 @@ export default function CreerDE() {
                       type="button"
                       variant="outline"
                       onClick={handleDemanderNouveauCode}
-                      disabled={origine_mode === 'vl' || isRequestingCode}
+                      disabled={isRequestingCode}
                     >
                       {isRequestingCode ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1151,7 +1225,7 @@ export default function CreerDE() {
                       )}
                       Besoin d'un nouveau code
                     </Button>
-                    {nouveauCode && (
+                    {origine_mode === 'nouveau_code' && nouveauCode && (
                       <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 animate-in fade-in slide-in-from-left-2">
                         <CheckCircle2 className="w-4 h-4" />
                         Nouveau code : <span className="font-mono font-semibold text-foreground">{nouveauCode}</span>
@@ -1429,10 +1503,14 @@ export default function CreerDE() {
               <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                disabled={saveMutation.isPending || (formType === 'de' && !codeChapeau)}
+                disabled={isSubmitting || saveMutation.isPending || (formType === 'de' && !codeChapeau)}
               >
-                <Send className="w-4 h-4 mr-2" />
-                Envoyer vers SAP
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                {isSubmitting ? 'Envoi en cours…' : 'Envoyer vers SAP'}
               </Button>
             </div>
 

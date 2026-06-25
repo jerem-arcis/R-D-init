@@ -73,6 +73,17 @@ export async function updateProjetFromDE(id, formData, ctx) {
   return result?.data ?? null;
 }
 
+// Met à jour UNIQUEMENT le statut du projet (cr04e_statut_en_cours). Sert aux
+// transitions DL (envoi en validation, validation, refus) pour faire remonter
+// l'état dans Dataverse sans réécrire l'ensemble des champs de la DE.
+export async function updateProjetStatut(id, statut) {
+  if (!id || !statut) return null;
+  const result = await Cr04e_projetsService.update(id, {
+    cr04e_statut_en_cours: statut,
+  });
+  return result?.data ?? null;
+}
+
 // Mappe une ligne cr04e_projet vers la forme attendue par la liste DE
 // (DemandesEtude). Type toujours « de » ; usine = nom du lookup Division/Usine.
 const toListShape = (p) => ({

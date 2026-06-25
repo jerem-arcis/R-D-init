@@ -446,14 +446,16 @@ export default function DemandesEtude() {
                         // Brouillon : on édite la DE locale (si présente dans ce
                         // navigateur). Sinon (DE envoyée) : lien profond DL par
                         // code chapeau, ou détail local s'il existe.
+                        // Brouillon : édition (DE locale si présente). Sinon : détail
+                        // DL — par id local si dispo (détail enrichi), sinon par
+                        // projet_id Dataverse (marche sans localStorage : nav privée,
+                        // autre poste). de.id = cr04e_projetid (vient de listProjets).
                         const target =
                           de.statut === 'brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
-                            : de.code_chapeau
-                              ? `DL?code_chapeau=${encodeURIComponent(de.code_chapeau)}`
-                              : localId
-                                ? `DL?id=${localId}`
-                                : 'DL';
+                            : localId
+                              ? `DL?id=${localId}`
+                              : `DL?projet_id=${de.id}`;
                         return (
                       <Link to={createPageUrl(target)}>
                         <Button

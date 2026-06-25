@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { listProjets } from '@/api/projet';
+import { listProjets, updateProjetStatut } from '@/api/projet';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -21,22 +21,46 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getStatutMeta } from '@/lib/deStatus';
 import { parseDLFile } from '@/lib/parseDL';
+import { useToast } from '@/components/ui/use-toast';
 
-function DLDetail({ deId }) {
+// Détail DL. Peut s'ouvrir de deux façons :
+//  - ?id=<id local>      : DE présente dans le localStorage de ce navigateur
+//                          (enrichissement : fichier importé, champs DL, motif).
+//  - ?projet_id=<guid>   : ouverture DIRECTE depuis Dataverse (cr04e_projet),
+//                          sans aucune donnée locale. Indispensable en navigation
+//                          privée / sur un autre poste : la donnée vit dans
+//                          Dataverse, plus dans le localStorage. Le statut et les
+//                          transitions passent par Dataverse ; le détail d'import
+//                          reste un bonus affiché seulement si le local existe.
+function DLDetail({ deId, projetId }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [showRefus, setShowRefus] = useState(false);
   const [motifRefus, setMotifRefus] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
 
-  const { data: de, isLoading } = useQuery({
+  const { data: de, isLoading: deLoading } = useQuery({
     queryKey: ['demande_etude', deId],
     queryFn: () => base44.entities.DemandeEtude.filter({ id: deId }),
     enabled: !!deId,
     select: (data) => data[0] || null,
   });
+
+  // Projets Dataverse (cache partagé avec la liste) : source de vérité du projet
+  // et de son statut quand on ouvre par projet_id (ou en repli quand le local manque).
+  const { data: projets = [], isLoading: projetsLoading } = useQuery({
+    queryKey: ['projets-de'],
+    queryFn: listProjets,
+  });
+  const projet = useMemo(() => {
+    if (!projets.length) return null;
+    const wantedId = projetId || de?.projet_id;
+    if (wantedId) return projets.find((p) => p.id === wantedId) || null;
+    return null;
+  }, [projets, projetId, de]);
 
   const { data: dl } = useQuery({
     queryKey: ['declinaison_logistique', deId],
@@ -44,6 +68,10 @@ function DLDetail({ deId }) {
     enabled: !!deId,
     select: (data) => data[0] || null,
   });
+
+  // GUID du projet Dataverse à mettre à jour (présent dans les deux modes).
+  const resolvedProjetId = projet?.id || de?.projet_id || projetId || null;
+  const isLoading = (deId ? deLoading : false) || (projetId && !de ? projetsLoading : false);
 
   const updateDE = useMutation({
     mutationFn: ({ data }) => base44.entities.DemandeEtude.update(deId, data),
@@ -69,6 +97,24 @@ function DLDetail({ deId }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiches'] }),
   });
 
+  // Fait remonter le statut DL dans Dataverse (cr04e_statut_en_cours) pour que
+  // la liste DL et le suivi reflètent l'avancement réel. Le détail/refus restent
+  // stockés localement (périmètre « afficher l'existant »), mais le STATUT, lui,
+  // est persisté côté Dataverse — sinon il retomberait sur « en attente de DL ».
+  const persistProjetStatut = async (statut) => {
+    if (!resolvedProjetId) return;
+    try {
+      await updateProjetStatut(resolvedProjetId, statut);
+      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
+    } catch (err) {
+      toast({
+        title: 'Statut non synchronisé',
+        description: `Le statut a changé localement mais la synchro Dataverse a échoué : ${err?.message || 'erreur inconnue'}.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleImport = async (file) => {
     if (!file) return;
     setImportError('');
@@ -92,48 +138,56 @@ function DLDetail({ deId }) {
   };
 
   const handleValider = async () => {
-    const designationVal = de.designation_article || de.autre_designation;
-    // La validation d'une DL génère la Fiche de Lancement (FL) liée.
-    const fl = await createFLMutation.mutateAsync({
-      code_article: de.code_chapeau,
-      code_chapeau: de.code_chapeau,
-      libelle_article: designationVal,
-      demande_etude_id: deId,
-      declinaison_logistique_id: dl?.id || null,
-      etat_global: 'en_attente',
-      etape_courante: 1,
-    });
-    await upsertDL.mutateAsync({
-      statut: 'validee',
-      date_validation: new Date().toISOString(),
-      fiche_lancement_id: fl.id,
-    });
-    await updateDE.mutateAsync({
-      data: {
+    // Statut Dataverse d'abord (marche dans les deux modes, y compris sans local).
+    await persistProjetStatut('validee');
+    // Enrichissement local (FL + DL + DE) uniquement si la DE locale existe.
+    if (deId && de) {
+      const designationVal = de.designation_article || de.autre_designation;
+      const fl = await createFLMutation.mutateAsync({
+        code_article: de.code_chapeau,
+        code_chapeau: de.code_chapeau,
+        libelle_article: designationVal,
+        demande_etude_id: deId,
+        declinaison_logistique_id: dl?.id || null,
+        etat_global: 'en_attente',
+        etape_courante: 1,
+      });
+      await upsertDL.mutateAsync({
         statut: 'validee',
         date_validation: new Date().toISOString(),
         fiche_lancement_id: fl.id,
-      },
-    });
+      });
+      await updateDE.mutateAsync({
+        data: {
+          statut: 'validee',
+          date_validation: new Date().toISOString(),
+          fiche_lancement_id: fl.id,
+        },
+      });
+    }
     navigate(createPageUrl('DemandesEtude'));
   };
 
   const handleRefuser = async () => {
     if (!motifRefus.trim()) { alert('Veuillez saisir un motif de refus'); return; }
-    // Le refus porte sur la DL uniquement : la DE reste « validée » (sa partie
-    // est terminée). L'historique du refus vit sur l'enregistrement DL.
-    await upsertDL.mutateAsync({ statut: 'refusee', motif_refus: motifRefus, date_refus: new Date().toISOString() });
+    // Le refus porte sur la DL uniquement. Statut Dataverse + historique local si présent.
+    await persistProjetStatut('refusee');
+    if (deId) {
+      await upsertDL.mutateAsync({ statut: 'refusee', motif_refus: motifRefus, date_refus: new Date().toISOString() });
+    }
     navigate(createPageUrl('DL'));
   };
 
   const handleEnvoyerValidation = async () => {
-    // Passage de l'étape « En attente de DL » à « En attente de validation DL ».
-    // DL et DE basculent ensemble vers la phase de validation.
-    await upsertDL.mutateAsync({
-      statut: 'en_attente_validation_dl',
-      date_envoi_validation: new Date().toISOString(),
-    });
-    await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
+    // Passage « En attente de DL » -> « En attente de validation DL ».
+    await persistProjetStatut('en_attente_validation_dl');
+    if (deId) {
+      await upsertDL.mutateAsync({
+        statut: 'en_attente_validation_dl',
+        date_envoi_validation: new Date().toISOString(),
+      });
+      await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
+    }
     navigate(createPageUrl('DL'));
   };
 
@@ -142,7 +196,7 @@ function DLDetail({ deId }) {
     [dl]
   );
 
-  if (isLoading || !de) {
+  if (isLoading || (!de && !projet)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -150,10 +204,16 @@ function DLDetail({ deId }) {
     );
   }
 
-  const designation = de.designation_article || de.autre_designation;
-  // L'état final de la DL est porté par l'enregistrement DL, pas par la DE.
-  const dlStatut = dl?.statut || de.statut;
+  // Valeurs unifiées : local en priorité (plus riche), repli Dataverse.
+  const designation =
+    de?.designation_article || de?.autre_designation || projet?.designation_article || '';
+  const codeChapeauVal = de?.code_chapeau || projet?.code_chapeau || '';
+  // Statut = Dataverse (source de vérité, écrit à chaque transition), repli local.
+  const dlStatut = projet?.statut || dl?.statut || de?.statut || 'en_attente_dl';
   const isFinal = dlStatut === 'validee' || dlStatut === 'refusee';
+  // Vrai dès qu'on a un contexte local (permet l'import de fichier). En mode
+  // Dataverse-seul, l'import détaillé n'est pas disponible mais le statut l'est.
+  const hasLocal = !!deId && !!de;
 
   return (
     <div className="min-h-screen bg-background">
@@ -177,14 +237,27 @@ function DLDetail({ deId }) {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Code chapeau : <span className="font-mono">{de.code_chapeau || '—'}</span> · Statut DL : {getStatutMeta(dlStatut).label}
+              Code chapeau : <span className="font-mono">{codeChapeauVal || '—'}</span> · Statut DL : {getStatutMeta(dlStatut).label}
             </p>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {!imported ? (
+        {/* Zone d'import : le fichier importé vit dans le localStorage, donc on ne
+            la propose qu'avec un contexte local (?id). En mode Dataverse-seul
+            (?projet_id, ex. navigation privée), on l'indique simplement — le
+            statut et les actions ci-dessous restent pleinement opérationnels. */}
+        {!hasLocal ? (
+          <Alert className="bg-violet-50 border-violet-200">
+            <FileText className="w-4 h-4 text-violet-600" />
+            <AlertDescription className="text-violet-700">
+              Détail d'import non disponible dans cette session (le fichier est stocké
+              localement sur le poste d'origine). Le statut et les actions ci-dessous
+              sont gérés via Dataverse et restent disponibles.
+            </AlertDescription>
+          </Alert>
+        ) : !imported ? (
           <div className="bg-gradient-to-r from-violet-500/5 via-violet-500/10 to-violet-500/5 rounded-xl border-2 border-dashed border-violet-500/30 p-8 text-center">
             <Upload className="w-10 h-10 text-violet-600 mx-auto mb-3" />
             <h2 className="text-base font-bold text-foreground">Importer le fichier de Demande de Lancement</h2>
@@ -279,46 +352,50 @@ function DLDetail({ deId }) {
                 <p className="p-6 text-sm text-muted-foreground text-center">Aucune ligne extraite du fichier.</p>
               )}
             </div>
-
-            {dlStatut === 'refusee' && (
-              <Alert className="bg-red-50 border-red-200">
-                <XCircle className="w-4 h-4 text-red-600" />
-                <AlertDescription className="text-red-700">DL refusée — Motif : {dl?.motif_refus}</AlertDescription>
-              </Alert>
-            )}
-
-            {!isFinal && !showRefus && dlStatut === 'en_attente_dl' && (
-              <div className="flex flex-wrap justify-end gap-3">
-                <Button onClick={handleEnvoyerValidation} disabled={upsertDL.isPending || updateDE.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-                  <CheckCircle2 className="w-4 h-4 mr-2" /> Envoyer en validation
-                </Button>
-              </div>
-            )}
-
-            {!isFinal && !showRefus && dlStatut === 'en_attente_validation_dl' && (
-              <div className="flex flex-wrap justify-end gap-3">
-                <Button variant="outline" onClick={() => setShowRefus(true)} className="border-red-300 text-red-600 hover:bg-red-50">
-                  <XCircle className="w-4 h-4 mr-2" /> Refuser
-                </Button>
-                <Button onClick={handleValider} disabled={updateDE.isPending || createFLMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-                  <CheckCircle2 className="w-4 h-4 mr-2" /> Valider la DL → FL
-                </Button>
-              </div>
-            )}
-
-            {!isFinal && showRefus && (
-              <div className="space-y-3 bg-card rounded-xl border border-border p-5">
-                <Label className="text-xs font-semibold text-slate-700">Motif de refus <span className="text-red-500">*</span></Label>
-                <Textarea value={motifRefus} onChange={(e) => setMotifRefus(e.target.value)} placeholder="Expliquer le refus…" className="min-h-[100px]" />
-                <div className="flex justify-end gap-3">
-                  <Button variant="outline" onClick={() => { setShowRefus(false); setMotifRefus(''); }}>Annuler</Button>
-                  <Button onClick={handleRefuser} disabled={updateDE.isPending} className="bg-red-600 hover:bg-red-700 text-white">
-                    <XCircle className="w-4 h-4 mr-2" /> Confirmer le refus
-                  </Button>
-                </div>
-              </div>
-            )}
           </>
+        )}
+
+        {/* Actions de transition : pilotées par le STATUT Dataverse, hors de la
+            zone d'import — disponibles aussi en mode Dataverse-seul. */}
+        {dlStatut === 'refusee' && (
+          <Alert className="bg-red-50 border-red-200">
+            <XCircle className="w-4 h-4 text-red-600" />
+            <AlertDescription className="text-red-700">
+              DL refusée{dl?.motif_refus ? ` — Motif : ${dl.motif_refus}` : ''}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isFinal && !showRefus && dlStatut === 'en_attente_dl' && (
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button onClick={handleEnvoyerValidation} disabled={upsertDL.isPending || updateDE.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Envoyer en validation
+            </Button>
+          </div>
+        )}
+
+        {!isFinal && !showRefus && dlStatut === 'en_attente_validation_dl' && (
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowRefus(true)} className="border-red-300 text-red-600 hover:bg-red-50">
+              <XCircle className="w-4 h-4 mr-2" /> Refuser
+            </Button>
+            <Button onClick={handleValider} disabled={updateDE.isPending || createFLMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Valider la DL → FL
+            </Button>
+          </div>
+        )}
+
+        {!isFinal && showRefus && (
+          <div className="space-y-3 bg-card rounded-xl border border-border p-5">
+            <Label className="text-xs font-semibold text-slate-700">Motif de refus <span className="text-red-500">*</span></Label>
+            <Textarea value={motifRefus} onChange={(e) => setMotifRefus(e.target.value)} placeholder="Expliquer le refus…" className="min-h-[100px]" />
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setShowRefus(false); setMotifRefus(''); }}>Annuler</Button>
+              <Button onClick={handleRefuser} disabled={updateDE.isPending} className="bg-red-600 hover:bg-red-700 text-white">
+                <XCircle className="w-4 h-4 mr-2" /> Confirmer le refus
+              </Button>
+            </div>
+          </div>
         )}
       </main>
     </div>
@@ -337,6 +414,8 @@ const DL_ORDRE = { en_attente_dl: 0, en_attente_validation_dl: 1, validee: 2, re
 
 // Onglets de la liste DL (par statut).
 const DL_TABS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
+// Statuts portés par un projet en phase DL (ceux affichés dans cette liste).
+const DL_PHASE_STATUTS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
 
 const normalize = (v) =>
   (v ?? '')
@@ -385,7 +464,12 @@ function DLList({ initialCode = '' }) {
     });
 
     const out = projets
-      .filter((p) => p.statut === 'en_attente_dl')
+      // On retient tous les projets entrés en phase DL. Le STATUT vient de
+      // Dataverse (cr04e_statut_en_cours) — source de vérité unique, écrite à
+      // chaque transition (envoi en validation / validation / refus). On ne
+      // dépend plus du localStorage pour l'état (qui était vide sans seed et
+      // figeait tout sur « en attente de DL »).
+      .filter((p) => DL_PHASE_STATUTS.includes(p.statut))
       .map((p) => {
         const dl = p.code_chapeau ? dlByChapeau.get(p.code_chapeau) || null : null;
         const localId =
@@ -396,7 +480,7 @@ function DLList({ initialCode = '' }) {
           de: p,
           dl,
           localId,
-          statut: dl?.statut || 'en_attente_dl',
+          statut: p.statut || dl?.statut || 'en_attente_dl',
         };
       });
     return out.sort((a, b) => (DL_ORDRE[a.statut] ?? 9) - (DL_ORDRE[b.statut] ?? 9));
@@ -404,16 +488,18 @@ function DLList({ initialCode = '' }) {
 
   const count = (statut) => rows.filter((r) => r.statut === statut).length;
 
-  // Lien profond : si le code chapeau du mail correspond à exactement une demande
-  // présente (localStorage), on ouvre directement son détail DL.
+  // Lien profond (email) : si le code chapeau correspond à exactement un projet,
+  // on ouvre directement son détail DL. On ouvre par id local s'il existe (détail
+  // enrichi), sinon par projet_id Dataverse — ce qui marche aussi en navigation
+  // privée / sur un autre poste, où le localStorage est vide.
   const codeNorm = normalize(initialCode.trim());
   useEffect(() => {
     if (!codeNorm || isLoading) return;
     const matches = rows.filter((r) => normalize(r.de.code_chapeau) === codeNorm);
-    // Ouverture directe du détail seulement si la DL locale existe (id local) ;
-    // sinon on reste sur la liste filtrée/surlignée.
-    if (matches.length === 1 && matches[0].localId) {
-      navigate(createPageUrl(`DL?id=${matches[0].localId}`), { replace: true });
+    if (matches.length === 1) {
+      const m = matches[0];
+      const target = m.localId ? `DL?id=${m.localId}` : `DL?projet_id=${m.de.id}`;
+      navigate(createPageUrl(target), { replace: true });
     }
   }, [codeNorm, isLoading, rows, navigate]);
 
@@ -611,7 +697,7 @@ function DLList({ initialCode = '' }) {
                         {dateRef ? format(new Date(dateRef), 'dd MMM yyyy', { locale: fr }) : '—'}
                       </TableCell>
                       <TableCell>
-                        <Link to={createPageUrl(localId ? `DL?id=${localId}` : `DL?code_chapeau=${encodeURIComponent(de.code_chapeau || '')}`)}>
+                        <Link to={createPageUrl(localId ? `DL?id=${localId}` : `DL?projet_id=${de.id}`)}>
                           <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-violet-500/10">
                             <ChevronRight className="w-5 h-5 text-violet-600" />
                           </Button>
@@ -651,12 +737,14 @@ function DLList({ initialCode = '' }) {
   );
 }
 
-// Route "DL" : détail si ?id, sinon liste. ?code_chapeau (lien profond e-mail)
-// pré-remplit la recherche et surligne / ouvre la demande correspondante.
+// Route "DL" : détail si ?id (local) ou ?projet_id (Dataverse), sinon liste.
+// ?code_chapeau (lien profond e-mail) pré-remplit la recherche et ouvre la
+// demande correspondante (par id local si dispo, sinon par projet_id Dataverse).
 export default function DL() {
   const [searchParams] = useSearchParams();
   const deId = searchParams.get('id');
+  const projetId = searchParams.get('projet_id');
   const codeChapeau = searchParams.get('code_chapeau') || '';
-  if (!deId) return <DLList initialCode={codeChapeau} />;
-  return <DLDetail deId={deId} />;
+  if (!deId && !projetId) return <DLList initialCode={codeChapeau} />;
+  return <DLDetail deId={deId} projetId={projetId} />;
 }
