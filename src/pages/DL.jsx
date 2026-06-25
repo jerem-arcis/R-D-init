@@ -58,7 +58,14 @@ function DLDetail({ deId, projetId }) {
   const projet = useMemo(() => {
     if (!projets.length) return null;
     const wantedId = projetId || de?.projet_id;
-    if (wantedId) return projets.find((p) => p.id === wantedId) || null;
+    if (wantedId) {
+      const byId = projets.find((p) => p.id === wantedId);
+      if (byId) return byId;
+    }
+    // Repli : DE locale sans projet_id (créée avant le fix) -> on retrouve le
+    // projet Dataverse par code chapeau, pour pouvoir mettre à jour son statut.
+    const cc = de?.code_chapeau;
+    if (cc) return projets.find((p) => p.code_chapeau === cc) || null;
     return null;
   }, [projets, projetId, de]);
 

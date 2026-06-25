@@ -581,12 +581,20 @@ export default function CreerDE() {
     }
   }, [editDE]);
 
-  // Applique les champs récupérés depuis beCPG (écrase les valeurs existantes).
-  // Retourne le nombre de champs renseignés pour le message de confirmation.
+  // Champs volontairement EXCLUS de l'auto-remplissage beCPG : la Hiérarchie
+  // produit famille est figée (21/22/27, référentiel SAP) et le Secteur
+  // d'activité est saisi manuellement — beCPG ne doit pas les écraser.
+  const BECPG_EXCLUDED_FIELDS = ['famille_produit', 'marque'];
+
+  // Applique les champs récupérés depuis beCPG (écrase les valeurs existantes),
+  // hors champs exclus. Retourne le nombre de champs réellement appliqués.
   const handleApplyBeCPG = (mapped) => {
-    setFormData((prev) => ({ ...prev, ...mapped }));
-    void persistNewDropdownValues(mapped);
-    return Object.keys(mapped).length;
+    const filtered = Object.fromEntries(
+      Object.entries(mapped || {}).filter(([k]) => !BECPG_EXCLUDED_FIELDS.includes(k))
+    );
+    setFormData((prev) => ({ ...prev, ...filtered }));
+    void persistNewDropdownValues(filtered);
+    return Object.keys(filtered).length;
   };
 
   // Crée dans Dataverse (comme un ajout Admin) les valeurs de dropdown renvoyées
@@ -972,13 +980,17 @@ export default function CreerDE() {
     // la table Projet est la sortie principale de l'envoi vers SAP). Statut
     // « en attente de DL » => la partie DE est validée. Maj si un projet existe
     // déjà (brouillon), sinon création.
+    // On capture le GUID du projet Dataverse pour le stocker sur la DE locale :
+    // indispensable pour que la phase DL puisse mettre à jour cr04e_statut_en_cours.
+    let projetId = formData.projet_id;
     if (formType === 'de') {
       const ctx = { codeChapeau: effectiveCode, zug, sapOptions, statut: PROJET_STATUT.en_attente_dl };
       try {
-        if (formData.projet_id) {
-          await updateProjetFromDE(formData.projet_id, formData, ctx);
+        if (projetId) {
+          await updateProjetFromDE(projetId, formData, ctx);
         } else {
-          await createProjetFromDE(formData, ctx);
+          const created = await createProjetFromDE(formData, ctx);
+          projetId = created?.cr04e_projetid || '';
         }
       } catch (err) {
         toast({
@@ -998,6 +1010,7 @@ export default function CreerDE() {
     // La DE passe direct en phase DL.
     saveMutation.mutate({
       ...formData,
+      projet_id: projetId,
       zug,
       type_de: formType,
       code_division_calc: autreCodeDivision,
