@@ -1561,15 +1561,6 @@ export default function CreerDE() {
 
                 <FormSection title="Code d'origine" icon={Layers}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Code article d'origine" hint="Code à 6 ou 8 chiffres">
-                      <Input
-                        value={formData.autre_code_origine}
-                        onChange={(e) => handleChange('autre_code_origine', e.target.value)}
-                        placeholder="Ex: 12345678"
-                        maxLength={8}
-                        className="h-11 font-mono"
-                      />
-                    </Field>
                     <Field label="Usine de fabrication d'origine" required>
                       <Select
                         value={formData.autre_usine_origine}
@@ -1615,23 +1606,38 @@ export default function CreerDE() {
                   </div>
 
                   {origine_mode === 'vl' && (
-                    <div className="pt-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleRequestVlCode}
-                        disabled={!(formData.autre_code_origine || '').trim() || isRequestingVlCode}
-                        className="h-10 bg-violet-600 hover:bg-violet-700 text-white"
-                      >
-                        {isRequestingVlCode ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Database className="w-4 h-4 mr-2" />
-                        )}
-                        Demander mon code
-                      </Button>
-                      <p className="text-xs text-muted-foreground italic mt-1.5">
-                        Utilise le « Code article d'origine » saisi ci-dessus (6 ou 8 chiffres).
+                    <div className="space-y-1.5 pt-1">
+                      <Label className="text-slate-700 font-medium text-sm">
+                        Code article d'origine
+                      </Label>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          value={formData.autre_code_origine}
+                          onChange={(e) => {
+                            handleChange('autre_code_origine', e.target.value);
+                            setVlResolvedCode(''); // le code base change -> code résolu obsolète
+                          }}
+                          placeholder="Ex: 12345678"
+                          maxLength={8}
+                          className="h-11 font-mono max-w-[260px]"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleRequestVlCode}
+                          disabled={!(formData.autre_code_origine || '').trim() || isRequestingVlCode}
+                          className="h-10 bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                        >
+                          {isRequestingVlCode ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Database className="w-4 h-4 mr-2" />
+                          )}
+                          Demander mon code
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        Code à 6 ou 8 chiffres requis
                       </p>
                     </div>
                   )}
