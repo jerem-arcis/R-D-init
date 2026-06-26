@@ -10,6 +10,14 @@
       "x-ms-dataverse-primary-id": "cr04e_projetid",
       "x-ms-dataverse-primary-name": "cr04e_codeprojet",
       "properties": {
+        "cr04e_activite_ds": {
+          "type": "string",
+          "title": "Activité_DS",
+          "x-ms-dataverse-attribute": "cr04e_activite_ds",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Activite_DS",
+          "maxLength": 100
+        },
         "cr04e_axestrategique": {
           "type": "string",
           "title": "Axe stratégique",
