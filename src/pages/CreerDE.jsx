@@ -1636,8 +1636,10 @@ export default function CreerDE() {
                     </div>
                   )}
 
-                  {/* Emplacement partagé : code chapeau résolu (VL ou nouveau code). */}
-                  {codeChapeau && (
+                  {/* Emplacement partagé : code chapeau résolu (VL ou nouveau code).
+                      À la réouverture ADV, origine_mode n'est pas restauré : on retombe
+                      donc sur formData.code_chapeau persisté pour rester visible. */}
+                  {(codeChapeau || formData.code_chapeau) && (
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 mt-3">
                       <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                       <div>
@@ -1645,7 +1647,7 @@ export default function CreerDE() {
                           Code chapeau
                         </p>
                         <p className="text-3xl font-black font-mono text-emerald-900 leading-tight">
-                          {codeChapeau}
+                          {codeChapeau || formData.code_chapeau}
                         </p>
                       </div>
                     </div>
