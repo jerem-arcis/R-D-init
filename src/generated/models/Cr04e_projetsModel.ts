@@ -14,6 +14,7 @@ export const Cr04e_projetsstatuscode = {
 export type Cr04e_projetsstatuscode = keyof typeof Cr04e_projetsstatuscode;
 
 export interface Cr04e_projetsBase {
+  cr04e_activite_ds?: string;
   cr04e_axestrategique?: string;
   "cr04e_Centredeprofit@odata.bind"?: string;
   "cr04e_Classedevalorisation@odata.bind"?: string;

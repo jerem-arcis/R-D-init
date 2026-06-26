@@ -46,7 +46,7 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_codedivisionorigine).toBe('2859'); // Aire origine
     expect(p.cr04e_service).toBe('Marketing');
     expect(p.cr04e_descriptiondubesoin).toBe('Besoin X');
-    expect(p.cr04e_activite).toBe('PATISSERIES');
+    expect(p.cr04e_activite_ds).toBe('PATISSERIES');
     // lookups résolus
     expect(p['cr04e_DivisionUsine@odata.bind']).toBe('/cr04e_divisionusines(dBon)'); // fab Bonloc
     expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c7012)');
