@@ -65,6 +65,7 @@ const TYPE_BADGE = {
   de: { label: 'DE', cls: 'bg-primary/15 text-primary border-primary/30' },
   de_dl: { label: 'DE / DL', cls: 'bg-violet-100 text-violet-700 border-violet-300' },
   autre: { label: 'Autre', cls: 'bg-amber-100 text-amber-700 border-amber-300' },
+  ds: { label: 'DS', cls: 'bg-teal-100 text-teal-700 border-teal-300' },
 };
 
 const TYPES_DEMANDE_OPTIONS = [
@@ -231,6 +232,7 @@ export default function DemandesEtude() {
               { id: 'de', label: 'DE' },
               { id: 'de_dl', label: 'DE / DL' },
               { id: 'autre', label: 'Autre' },
+              { id: 'ds', label: 'DS' },
             ].map((t) => (
               <button
                 key={t.id}
@@ -458,11 +460,13 @@ export default function DemandesEtude() {
                         const target =
                           de.statut === 'brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
-                            : de.statut === 'en_attente_code_chapeau'
-                              ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
-                              : localId
-                                ? `DL?id=${localId}`
-                                : `DL?projet_id=${de.id}`;
+                            : de.statut === 'ds_brouillon' || de.statut === 'en_attente_creation_code_chapeau'
+                              ? `CreerDE?projet_id=${de.id}`
+                              : de.statut === 'en_attente_code_chapeau'
+                                ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
+                                : localId
+                                  ? `DL?id=${localId}`
+                                  : `DL?projet_id=${de.id}`;
                         return (
                       <Link to={createPageUrl(target)}>
                         <Button
