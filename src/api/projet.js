@@ -1,5 +1,6 @@
 import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
+import { DS_STATUTS } from '@/api/ds';
 
 const toNumber = (v) => {
   if (v === '' || v == null) return undefined;
@@ -124,10 +125,11 @@ export async function updateProjetStatut(id, statut) {
 }
 
 // Mappe une ligne cr04e_projet vers la forme attendue par la liste DE
-// (DemandesEtude). Type toujours « de » ; usine = nom du lookup Division/Usine.
+// (DemandesEtude). Type « ds » si le statut est un statut DS, sinon « de » ;
+// usine = nom du lookup Division/Usine.
 const toListShape = (p) => ({
   id: p.cr04e_projetid,
-  type_de: 'de',
+  type_de: DS_STATUTS.includes(p.cr04e_statut_en_cours) ? 'ds' : 'de',
   code_projet: p.cr04e_codeprojet ?? '',
   designation_article: p.cr04e_nomduproduitdesignation ?? '',
   demandeur: p.cr04e_demandeur ?? '',
@@ -137,6 +139,9 @@ const toListShape = (p) => ({
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,
 });
+
+// Alias d'export pour les tests (la fonction reste interne par ailleurs).
+export const listShapeForTest = toListShape;
 
 // Liste tous les projets (Dataverse, paginé) pour la liste des demandes d'étude.
 export async function listProjets() {
