@@ -594,10 +594,13 @@ export default function CreerDE() {
     setIsCreatingDs(true);
     try {
       const ctx = { sapOptions, statut };
+      // Si le code chapeau a déjà été obtenu (VL ou nouveau code), on le persiste.
+      // Non obligatoire à la création (statut « en attente de création de code chapeau »).
+      const dsData = { ...formData, code_chapeau: codeChapeau || formData.code_chapeau || '' };
       let projetId = formData.projet_id;
-      if (projetId) await updateDsFromForm(projetId, formData, ctx);
+      if (projetId) await updateDsFromForm(projetId, dsData, ctx);
       else {
-        const created = await createDsFromForm(formData, ctx);
+        const created = await createDsFromForm(dsData, ctx);
         projetId = created?.cr04e_projetid || '';
       }
       queryClient.invalidateQueries({ queryKey: ['projets-de'] });
@@ -610,9 +613,9 @@ export default function CreerDE() {
     }
   };
 
-  const triggerSapSendDs = async () => {
+  const triggerSapSendDs = async (effectiveCode) => {
     const body = {
-      CodeChapeau: formData.code_chapeau || '',
+      CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       NomProduit: formData.autre_designation || '',
       HierarchieProduitFamille: (dsHierarchie || '').split(/\s+/)[0] || '',
       SecteurActivite: dsSecteur || '',
@@ -634,10 +637,20 @@ export default function CreerDE() {
   };
   const handleDsPushSap = async () => {
     if (isCreatingDs) return;
+    // Le code chapeau est obligatoire pour l'ADV avant l'envoi vers SAP.
+    const effectiveCode = codeChapeau || formData.code_chapeau || '';
+    if (!effectiveCode) {
+      toast({
+        title: 'Code chapeau requis',
+        description: "Obtenez le code chapeau (« Besoin d'une VL » → « Demander mon code », ou « Besoin d'un nouveau code ») avant l'envoi vers SAP.",
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsCreatingDs(true);
     try {
-      await triggerSapSendDs();
-      if (formData.projet_id) await updateDsFromForm(formData.projet_id, formData, { sapOptions, statut: 'ds_validee' });
+      await triggerSapSendDs(effectiveCode);
+      if (formData.projet_id) await updateDsFromForm(formData.projet_id, { ...formData, code_chapeau: effectiveCode }, { sapOptions, statut: 'ds_validee' });
       queryClient.invalidateQueries({ queryKey: ['projets-de'] });
       toast({ title: 'DS envoyée vers SAP', description: 'La DS est passée en « DS validée ».' });
       navigate(createPageUrl('DemandesEtude'));
@@ -722,7 +735,8 @@ export default function CreerDE() {
   // l'envoi vers SAP (plus besoin de le re-demander). Si on change le code de
   // base, le code résolu est effacé (voir onChange du champ).
   const handleRequestVlCode = async () => {
-    const base = (formData.code_vl || '').trim();
+    // En DS, la base VL est le « Code article d'origine » déjà saisi ; en DE c'est code_vl.
+    const base = ((formType === 'autre' ? formData.autre_code_origine : formData.code_vl) || '').trim();
     if (!base) return;
     setIsRequestingVlCode(true);
     setVlResolvedCode('');
@@ -1577,22 +1591,65 @@ export default function CreerDE() {
                       hint="Auto selon l'usine d'origine"
                     />
                   </div>
-                  <div className="flex flex-wrap gap-6 pt-2">
+                  <div className="flex flex-wrap items-center gap-6 pt-2">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
-                        checked={formData.autre_besoin_vl}
-                        onCheckedChange={(v) => handleChange('autre_besoin_vl', !!v)}
+                        checked={origine_mode === 'vl'}
+                        onCheckedChange={(v) => handleToggleVL(!!v)}
                       />
                       <span className="text-sm font-medium text-foreground">Besoin d'une VL</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={formData.autre_besoin_nouveau_code}
-                        onCheckedChange={(v) => handleChange('autre_besoin_nouveau_code', !!v)}
-                      />
-                      <span className="text-sm font-medium text-foreground">Besoin d'un nouveau code</span>
-                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDemanderNouveauCode}
+                      disabled={isRequestingCode}
+                    >
+                      {isRequestingCode ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Database className="w-4 h-4 mr-2" />
+                      )}
+                      Besoin d'un nouveau code
+                    </Button>
                   </div>
+
+                  {origine_mode === 'vl' && (
+                    <div className="pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleRequestVlCode}
+                        disabled={!(formData.autre_code_origine || '').trim() || isRequestingVlCode}
+                        className="h-10 bg-violet-600 hover:bg-violet-700 text-white"
+                      >
+                        {isRequestingVlCode ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Database className="w-4 h-4 mr-2" />
+                        )}
+                        Demander mon code
+                      </Button>
+                      <p className="text-xs text-muted-foreground italic mt-1.5">
+                        Utilise le « Code article d'origine » saisi ci-dessus (6 ou 8 chiffres).
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Emplacement partagé : code chapeau résolu (VL ou nouveau code). */}
+                  {codeChapeau && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 mt-3">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">
+                          Code chapeau
+                        </p>
+                        <p className="text-3xl font-black font-mono text-emerald-900 leading-tight">
+                          {codeChapeau}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </FormSection>
 
                 <FormSection title="Produit" icon={Settings2}>
@@ -1732,11 +1789,23 @@ export default function CreerDE() {
             <div className="flex justify-end gap-3 pt-2">
               {formType === 'autre' ? (
                 (formData.statut === 'en_attente_creation_code_chapeau' || formData.statut === 'ds_validee') && formData.projet_id ? (
-                  // DS ouverte par l'ADV : action push SAP
-                  <Button type="button" onClick={handleDsPushSap} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                    {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                    Envoyer vers SAP
-                  </Button>
+                  // DS ouverte par l'ADV : obtention du code chapeau puis push SAP
+                  <div className="flex items-center gap-3">
+                    {!(codeChapeau || formData.code_chapeau) && (
+                      <span className="text-xs text-amber-700 italic">
+                        Obtenez d'abord le code chapeau (VL ou nouveau code).
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={handleDsPushSap}
+                      disabled={isCreatingDs || !(codeChapeau || formData.code_chapeau)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      Envoyer vers SAP
+                    </Button>
+                  </div>
                 ) : (
                   // DS créée par le Commerce
                   <>
