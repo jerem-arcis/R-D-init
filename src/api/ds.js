@@ -63,6 +63,9 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
     cr04e_codedivisionorigine: trimOrUndef(c.divisionOrigine),
     cr04e_service: trimOrUndef(formData.autre_service),
     cr04e_descriptiondubesoin: trimOrUndef(formData.autre_description),
+    // Activité (PATISSERIES/TRAITEUR/MOCHIS) stockée en propre — distincte du
+    // secteur d'activité. Permet de recalculer la hiérarchie à la réouverture.
+    cr04e_activite: trimOrUndef(formData.autre_activite),
     cr04e_statut_en_cours: trimOrUndef(statut),
   };
 
@@ -117,7 +120,8 @@ export async function getDsById(id, sapOptions = {}) {
     autre_poids_net_uv: p.cr04e_poidsnet ?? '',
     autre_usine_origine: usineOrigineFromDivision(divisionOrigine),
     autre_usine_fab: usineFab,
-    autre_activite: activiteFromHierarchie(hierarchie),
+    // Activité : colonne dédiée en priorité ; repli sur la déduction depuis la hiérarchie.
+    autre_activite: (p.cr04e_activite ?? '') || activiteFromHierarchie(hierarchie),
     autre_type_marque: typeMarqueFromSecteur(secteur),
     autre_agen_type: usineFab === 'Agen' ? agenTypeFromDivision(divisionFab) : '',
     autre_agen_choix: usineFab === 'Agen' ? agenChoixFromCentre(centreProfit) : '',
