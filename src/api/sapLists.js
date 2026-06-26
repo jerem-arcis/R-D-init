@@ -108,3 +108,12 @@ export function lookupBind(key, code, rows = []) {
   if (!match || !match.id) return null;
   return `/${cfg.entitySet}(${match.id})`;
 }
+
+// Rétro-résolution : à partir du GUID d'un lookup (_..._value renvoyé par Dataverse)
+// et des lignes déjà chargées ({ id, value }), retrouve le code affiché. Sert à
+// réhydrater un formulaire (DE/DS) ouvert depuis Dataverse. '' si introuvable.
+export function codeFromLookupValue(key, guid, rows = []) {
+  if (!guid) return '';
+  const match = rows.find((r) => r.id === guid);
+  return match ? String(match.value) : '';
+}
