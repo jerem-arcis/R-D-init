@@ -3,9 +3,16 @@
 
 export const STATUTS = {
   brouillon: { key: "brouillon", label: "Brouillon", tone: "amber", order: 0 },
+  ds_brouillon: { key: "ds_brouillon", label: "Brouillon DS", tone: "amber", order: 0 },
   en_attente_code_chapeau: {
     key: "en_attente_code_chapeau",
     label: "En attente de code chapeau",
+    tone: "blue",
+    order: 1,
+  },
+  en_attente_creation_code_chapeau: {
+    key: "en_attente_creation_code_chapeau",
+    label: "En attente de création de code chapeau",
     tone: "blue",
     order: 1,
   },
@@ -22,6 +29,7 @@ export const STATUTS = {
     order: 3,
   },
   validee: { key: "validee", label: "Validée", tone: "emerald", order: 4 },
+  ds_validee: { key: "ds_validee", label: "DS validée", tone: "emerald", order: 4 },
   refusee: { key: "refusee", label: "Refusée", tone: "red", order: 5 },
 };
 

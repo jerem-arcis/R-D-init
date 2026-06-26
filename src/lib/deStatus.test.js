@@ -1,14 +1,28 @@
 import { describe, it, expect } from "vitest";
 import { STATUTS, STATUT_ORDER, getStatutMeta, codeChapeauAlert } from "./deStatus";
 
+describe('statuts DS', () => {
+  it('expose les 3 statuts DS', () => {
+    expect(STATUTS.ds_brouillon?.label).toBe('Brouillon DS');
+    expect(STATUTS.en_attente_creation_code_chapeau?.label).toBe('En attente de création de code chapeau');
+    expect(STATUTS.ds_validee?.label).toBe('DS validée');
+  });
+  it('getStatutMeta retombe sur brouillon si inconnu', () => {
+    expect(getStatutMeta('zzz').key).toBe('brouillon');
+  });
+});
+
 describe("STATUTS", () => {
-  it("expose les 6 statuts du pipeline dans l'ordre", () => {
+  it("expose tous les statuts du pipeline dans l'ordre", () => {
     expect(STATUT_ORDER).toEqual([
       "brouillon",
+      "ds_brouillon",
       "en_attente_code_chapeau",
+      "en_attente_creation_code_chapeau",
       "en_attente_dl",
       "en_attente_validation_dl",
       "validee",
+      "ds_validee",
       "refusee",
     ]);
   });

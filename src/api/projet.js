@@ -26,6 +26,9 @@ export const PROJET_STATUT = {
   brouillon: 'brouillon',
   en_attente_code_chapeau: 'en_attente_code_chapeau',
   en_attente_dl: 'en_attente_dl',
+  ds_brouillon: 'ds_brouillon',
+  en_attente_creation_code_chapeau: 'en_attente_creation_code_chapeau',
+  ds_validee: 'ds_validee',
 };
 
 // Mappe une DE (formData) + valeurs calculées vers le payload cr04e_projet.
