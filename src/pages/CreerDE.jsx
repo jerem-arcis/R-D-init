@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
 import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } from '@/api/projet';
+import { createDsFromForm, updateDsFromForm, getDsById, computeDsValues, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -521,12 +522,26 @@ export default function CreerDE() {
   });
 
   useEffect(() => {
-    if (projetDV) {
+    if (projetDV && !DS_STATUTS.includes(projetDV.statut)) {
       setFormType('de');
       setFormData((prev) => ({ ...prev, ...projetDV }));
       setStep('form');
     }
   }, [projetDV]);
+
+  // Si le projet ouvert est une DS (statut DS), on le recharge au format DS.
+  const { data: dsDV } = useQuery({
+    queryKey: ['ds-dataverse', projetIdParam],
+    queryFn: () => getDsById(projetIdParam, sapOptions),
+    enabled: !!projetIdParam && !editId,
+  });
+  useEffect(() => {
+    if (dsDV && DS_STATUTS.includes(dsDV.statut)) {
+      setFormType('autre');
+      setFormData((prev) => ({ ...prev, ...dsDV }));
+      setStep('form');
+    }
+  }, [dsDV]);
 
   // Champs volontairement EXCLUS de l'auto-remplissage beCPG : la Hiérarchie
   // produit famille est figée (21/22/27, référentiel SAP) et le Secteur
@@ -567,6 +582,68 @@ export default function CreerDE() {
           err?.message || "Impossible d'ajouter certaines valeurs aux listes déroulantes.",
         variant: 'destructive',
       });
+    }
+  };
+
+  // DS : état de création/envoi SAP (partagé brouillon + créer + push ADV)
+  const [isCreatingDs, setIsCreatingDs] = useState(false);
+  const handleCreateDs = async (statut) => {
+    if (isCreatingDs) return;
+    setIsCreatingDs(true);
+    try {
+      const ctx = { sapOptions, statut };
+      let projetId = formData.projet_id;
+      if (projetId) await updateDsFromForm(projetId, formData, ctx);
+      else {
+        const created = await createDsFromForm(formData, ctx);
+        projetId = created?.cr04e_projetid || '';
+      }
+      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
+      toast({ title: 'DS enregistrée', description: statut === 'ds_brouillon' ? 'Brouillon enregistré.' : 'DS créée — en attente de création de code chapeau.' });
+      navigate(createPageUrl('DemandesEtude'));
+    } catch (err) {
+      toast({ title: 'Échec de l\'enregistrement de la DS', description: err?.message || 'Erreur inconnue.', variant: 'destructive' });
+    } finally {
+      setIsCreatingDs(false);
+    }
+  };
+
+  const triggerSapSendDs = async () => {
+    const c = computeDsValues(formData);
+    const body = {
+      CodeChapeau: formData.code_chapeau || '',
+      NomProduit: formData.autre_designation || '',
+      HierarchieProduitFamille: (c.hierarchie || '').split(/\s+/)[0] || '',
+      SecteurActivite: c.secteur || '',
+      PoidsNet: formData.autre_poids_net_uv === '' || formData.autre_poids_net_uv == null ? '' : String(formData.autre_poids_net_uv),
+      DivisionUsine: c.divisionFab || '',
+      ClasseValorisation: c.classeValo || '',
+      CentreProfit: c.centreProfit || '',
+      GroupeAutorisation: '',
+      GroupeFraisGeneraux: '',
+      GroupeArticleDivision: '',
+    };
+    const res = await fetch(SAP_SEND_FLOW_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+    }
+  };
+  const handleDsPushSap = async () => {
+    if (isCreatingDs) return;
+    setIsCreatingDs(true);
+    try {
+      await triggerSapSendDs();
+      if (formData.projet_id) await updateDsFromForm(formData.projet_id, formData, { sapOptions, statut: 'ds_validee' });
+      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
+      toast({ title: 'DS envoyée vers SAP', description: 'La DS est passée en « DS validée ».' });
+      navigate(createPageUrl('DemandesEtude'));
+    } catch (err) {
+      toast({ title: 'Échec envoi SAP', description: err?.message || 'Erreur inconnue.', variant: 'destructive' });
+    } finally {
+      setIsCreatingDs(false);
     }
   };
 
@@ -1652,27 +1729,50 @@ export default function CreerDE() {
             )}
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveBrouillon}
-                disabled={saveMutation.isPending}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Enregistrer brouillon
-              </Button>
-              <Button
-                type="submit"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                disabled={isSubmitting || saveMutation.isPending || (formType === 'de' && !codeChapeau)}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              {formType === 'autre' ? (
+                DS_STATUTS.includes(formData.statut) && formData.projet_id ? (
+                  // DS ouverte par l'ADV : action push SAP
+                  <Button type="button" onClick={handleDsPushSap} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                    Envoyer vers SAP
+                  </Button>
                 ) : (
-                  <Send className="w-4 h-4 mr-2" />
-                )}
-                {isSubmitting ? 'Envoi en cours…' : 'Envoyer vers SAP'}
-              </Button>
+                  // DS créée par le Commerce
+                  <>
+                    <Button type="button" variant="outline" onClick={() => handleCreateDs('ds_brouillon')} disabled={isCreatingDs}>
+                      <Save className="w-4 h-4 mr-2" /> Enregistrer brouillon
+                    </Button>
+                    <Button type="button" onClick={() => handleCreateDs('en_attente_creation_code_chapeau')} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                      {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      Créer la DS
+                    </Button>
+                  </>
+                )
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSaveBrouillon}
+                    disabled={saveMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Enregistrer brouillon
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                    disabled={isSubmitting || saveMutation.isPending || (formType === 'de' && !codeChapeau)}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    {isSubmitting ? 'Envoi en cours…' : 'Envoyer vers SAP'}
+                  </Button>
+                </>
+              )}
             </div>
 
             <SapSynthesisDialog
