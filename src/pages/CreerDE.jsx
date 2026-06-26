@@ -381,18 +381,6 @@ export default function CreerDE() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { powerContext } = usePowerPlatform();
-  const connectedUser =
-    powerContext?.user?.fullName ||
-    powerContext?.user?.userFullName ||
-    powerContext?.user?.displayName ||
-    '';
-  useEffect(() => {
-    if (formType === 'autre' && connectedUser && !formData.autre_demandeur) {
-      setFormData((prev) => ({ ...prev, autre_demandeur: connectedUser }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formType, connectedUser]);
   const adminLists = useAdminLists();
   const adminOptions = useAdminOptions();
   // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
@@ -479,6 +467,19 @@ export default function CreerDE() {
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const { powerContext } = usePowerPlatform();
+  const connectedUser =
+    powerContext?.user?.fullName ||
+    powerContext?.user?.userFullName ||
+    powerContext?.user?.displayName ||
+    '';
+  useEffect(() => {
+    if (formType === 'autre' && connectedUser && !formData.autre_demandeur) {
+      setFormData((prev) => ({ ...prev, autre_demandeur: connectedUser }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formType, connectedUser]);
 
   // Mode édition : charge la DE existante et pré-remplit le formulaire.
   const { data: editDE } = useQuery({
