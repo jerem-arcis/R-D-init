@@ -594,9 +594,9 @@ export default function CreerDE() {
     setIsCreatingDs(true);
     try {
       const ctx = { sapOptions, statut };
-      // Si le code chapeau a déjà été obtenu (VL ou nouveau code), on le persiste.
-      // Non obligatoire à la création (statut « en attente de création de code chapeau »).
-      const dsData = { ...formData, code_chapeau: codeChapeau || formData.code_chapeau || '' };
+      // Côté Commerce (brouillon / création), on ne conserve PAS de code chapeau :
+      // il est créé par l'ADV au moment du push vers SAP (comme la DE).
+      const dsData = { ...formData, code_chapeau: '' };
       let projetId = formData.projet_id;
       if (projetId) await updateDsFromForm(projetId, dsData, ctx);
       else {
