@@ -450,12 +450,19 @@ export default function DemandesEtude() {
                         // DL — par id local si dispo (détail enrichi), sinon par
                         // projet_id Dataverse (marche sans localStorage : nav privée,
                         // autre poste). de.id = cr04e_projetid (vient de listProjets).
+                        // Brouillon : édition de la DE locale (si présente).
+                        // « En attente de code chapeau » : on ouvre le formulaire DE
+                        // prérempli depuis Dataverse pour que l'ADV obtienne le code
+                        // chapeau (édition locale si dispo, sinon chargement projet_id).
+                        // Sinon (phase DL+) : détail DL.
                         const target =
                           de.statut === 'brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
-                            : localId
-                              ? `DL?id=${localId}`
-                              : `DL?projet_id=${de.id}`;
+                            : de.statut === 'en_attente_code_chapeau'
+                              ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
+                              : localId
+                                ? `DL?id=${localId}`
+                                : `DL?projet_id=${de.id}`;
                         return (
                       <Link to={createPageUrl(target)}>
                         <Button

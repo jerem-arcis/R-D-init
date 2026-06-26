@@ -17,42 +17,25 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE, updateProjetFromDE, PROJET_STATUT } from '@/api/projet';
+import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } from '@/api/projet';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
+import {
+  DE_DIVISION_CODES,
+  computeHierarchieDE,
+  computeClasseValoDE,
+  computeCentreProfitDE,
+  computeGroupeArticleDE,
+  computeGroupeArticleLockedDE,
+  needsSurgeleWarningDE,
+  computeSecteurFromReseau,
+  AXES_STRATEGIQUES_DE,
+} from '@/lib/deRules';
 
 // ---------- Listes (fixes, non gérées via Admin) ----------
 const TYPES_DEMANDE_DE = [
   'CA Additionnel',
   'Retravail Produit - CA existant',
-  "Changement d'usine",
-  'DE/DL',
-  'AO - CA Additionnel',
-  'AO - Retravail Produit'
-];
-
-// Listes encore présentes mais non gérées via Admin pour l'instant
-const CLIENTS = [
-  'Carrefour',
-  'Auchan',
-  'Leclerc',
-  'Intermarché',
-  'Système U',
-  'Casino',
-  'Monoprix',
-  'Lidl',
-  'Aldi',
-  'Metro',
-  'Promocash',
-  'Transgourmet',
-  'Pomona',
-  'Sysco France',
-  'Brake France',
-  'API Restauration',
-  'Sodexo',
-  'Elior',
-  'Compass Group',
-  'Newrest'
 ];
 
 // ---------- Listes Section "Autre" ----------
@@ -227,52 +210,6 @@ const ReadOnlyField = ({ label, value, hint }) => (
     />
   </Field>
 );
-
-// ---------- Combobox Client recherche ----------
-const ClientCombobox = ({ value, onChange, options }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            'flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-            !value && 'text-muted-foreground'
-          )}
-        >
-          {value || 'Rechercher un client…'}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Tapez pour filtrer…" />
-          <CommandList>
-            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
-            <CommandGroup>
-              {options.map((c) => (
-                <CommandItem
-                  key={c}
-                  value={c}
-                  onSelect={(v) => {
-                    onChange(v === value ? '' : c);
-                    setOpen(false);
-                  }}
-                >
-                  <Check className={cn('mr-2 h-4 w-4', value === c ? 'opacity-100' : 'opacity-0')} />
-                  {c}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 // ---------- Écran de sélection initial ----------
 const TypeCard = ({ icon: Icon, title, subtitle, onClick, accent }) => (
@@ -468,19 +405,17 @@ export default function CreerDE() {
   const adminOptions = useAdminOptions();
   // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
   const sapOptions = useSapOptions();
-  // Hiérarchie produit famille : valeurs figées pour l'instant (pas de
-  // récupération SAP). À rebrancher sur sapOptions.familles_produit plus tard.
-  const famillesProduitOptions = [
-    { value: '21 DE DE DE' },
-    { value: '22 DE DE DE' },
-    { value: '27 DE DE DE' },
-  ];
   // Groupe article (division) : ne conserver que les codes commençant par « PF ».
   const groupesArticleOptions = sapOptions.groupes_article.filter((o) =>
     String(o.value).toUpperCase().startsWith('PF'),
   );
+  // Agen : liste restreinte aux groupes « PF-A… » (assortiments / surgelés Agen).
+  const groupesArticleAgenOptions = groupesArticleOptions.filter((o) =>
+    String(o.value).toUpperCase().startsWith('PF-A'),
+  );
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('id'); // édition d'un brouillon existant
+  const editId = searchParams.get('id'); // édition d'un brouillon local (localStorage)
+  const projetIdParam = searchParams.get('projet_id'); // ouverture depuis Dataverse (mail / autre poste)
 
   const [step, setStep] = useState('selection'); // 'selection' | 'form'
   const [formType, setFormType] = useState(null); // 'de' | 'autre'
@@ -580,6 +515,23 @@ export default function CreerDE() {
       setStep('form');
     }
   }, [editDE]);
+
+  // Ouverture depuis Dataverse (lien du mail « en attente de code chapeau », ou
+  // reprise sur un autre poste) : on charge la ligne cr04e_projet et on préremplit
+  // le formulaire DE. Ignoré si on est déjà en édition d'un brouillon local.
+  const { data: projetDV } = useQuery({
+    queryKey: ['projet-dataverse', projetIdParam],
+    queryFn: () => getProjetById(projetIdParam),
+    enabled: !!projetIdParam && !editId,
+  });
+
+  useEffect(() => {
+    if (projetDV) {
+      setFormType('de');
+      setFormData((prev) => ({ ...prev, ...projetDV }));
+      setStep('form');
+    }
+  }, [projetDV]);
 
   // Champs volontairement EXCLUS de l'auto-remplissage beCPG : la Hiérarchie
   // produit famille est figée (21/22/27, référentiel SAP) et le Secteur
@@ -912,6 +864,53 @@ export default function CreerDE() {
   // ZUG = poids net × 1000 (champ calculé, non modifiable).
   const zug = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
 
+  // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
+  // Liste Division restreinte aux 4 sites de fabrication.
+  const deDivisionOptions = sapOptions.divisions.filter((o) =>
+    DE_DIVISION_CODES.includes(String(o.value)),
+  );
+  const deHierarchie = computeHierarchieDE(formData.division);
+  const deClasseValo = computeClasseValoDE(formData.division);
+  const deCentreProfitAuto = computeCentreProfitDE(formData.division);
+  // Groupe article verrouillé (Bonloc/Rivesaltes uniquement) vs défaut Agen.
+  const deGroupeArticleLocked = computeGroupeArticleLockedDE(formData.division);
+  const deSecteur = computeSecteurFromReseau(formData.reseau);
+  const deAgenWarning = needsSurgeleWarningDE(formData.division);
+
+  // Reporte les valeurs calculées dans formData (envoi SAP / écriture Dataverse).
+  // Champs verrouillés : toujours forcés à la valeur de la règle. Champs libres
+  // (centre de profit Agen, groupe article Agen/Aire) : on ne pose qu'un DÉFAUT
+  // quand le champ est vide, sans écraser une saisie de l'utilisateur ni une
+  // valeur restaurée d'un brouillon.
+  useEffect(() => {
+    if (formType !== 'de') return;
+    setFormData((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      const force = (k, v) => {
+        if (v && prev[k] !== v) {
+          next[k] = v;
+          changed = true;
+        }
+      };
+      const setDefault = (k, v) => {
+        if (v && !prev[k]) {
+          next[k] = v;
+          changed = true;
+        }
+      };
+      force('famille_produit', deHierarchie);
+      force('classe_valorisation', deClasseValo);
+      force('centre_profit', deCentreProfitAuto); // Aire/Bonloc/Rivesaltes
+      force('marque', deSecteur);
+      force('groupe_article', deGroupeArticleLocked); // Bonloc/Rivesaltes
+      // Agen : PF-AS par défaut (modifiable car « vérifier surgelé »).
+      if (deAgenWarning) setDefault('groupe_article', computeGroupeArticleDE(formData.division));
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formType, formData.division, formData.reseau]);
+
   const handleSaveBrouillon = async () => {
     let projetId = formData.projet_id;
     // Pour une DE, on reflète le brouillon dans cr04e_projet (Dataverse) pour
@@ -1123,8 +1122,11 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.axe_strategique}
                         onChange={(v) => handleChange('axe_strategique', v)}
-                        options={buildOptions(adminOptions.axes_strategiques, formData.axe_strategique)}
-                        placeholder="Sélectionner un axe"
+                        options={buildOptions(
+                          AXES_STRATEGIQUES_DE.map((v) => ({ value: v })),
+                          formData.axe_strategique,
+                        )}
+                        placeholder="Budget / Hors budget"
                       />
                     </Field>
                     <Field label="Réseau" required>
@@ -1168,6 +1170,14 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
+                    <Field label="Division (Usine)" required hint="Sites de fabrication uniquement">
+                      <SearchableSelect
+                        value={formData.division}
+                        onChange={(v) => handleChange('division', v)}
+                        options={buildOptions(deDivisionOptions, formData.division)}
+                        placeholder="Bonloc / Rivesaltes / Agen / Aire"
+                      />
+                    </Field>
                   </div>
                 </FormSection>
 
@@ -1184,30 +1194,25 @@ export default function CreerDE() {
                       </Field>
                     </div>
                     <div className="md:col-span-2">
-                      <Field label="Client" hint="Recherchez et sélectionnez un client">
-                        <ClientCombobox
+                      <Field label="Client" hint="Saisie libre — prérempli depuis beCPG">
+                        <Input
                           value={formData.client}
-                          onChange={(v) => handleChange('client', v)}
-                          options={withValue(CLIENTS, formData.client)}
+                          onChange={(e) => handleChange('client', e.target.value)}
+                          placeholder="Nom du client"
+                          className="h-11"
                         />
                       </Field>
                     </div>
-                    <Field label="Hiérarchie produit famille" required>
-                      <SearchableSelect
-                        value={formData.famille_produit}
-                        onChange={(v) => handleChange('famille_produit', v)}
-                        options={buildOptions(famillesProduitOptions, formData.famille_produit)}
-                        placeholder="Sélectionner une famille"
-                      />
-                    </Field>
-                    <Field label="Secteur d'activité">
-                      <SearchableSelect
-                        value={formData.marque}
-                        onChange={(v) => handleChange('marque', v)}
-                        options={buildOptions(adminOptions.secteurs_activite, formData.marque)}
-                        placeholder="Sélectionner un secteur"
-                      />
-                    </Field>
+                    <ReadOnlyField
+                      label="Hiérarchie produit famille"
+                      value={deHierarchie}
+                      hint="Selon la division (Pâtisseries → 22, Traiteur → 27)"
+                    />
+                    <ReadOnlyField
+                      label="Secteur d'activité"
+                      value={deSecteur}
+                      hint="Selon le réseau"
+                    />
                     <Field label="Poids net">
                       <Input
                         type="number"
@@ -1227,30 +1232,27 @@ export default function CreerDE() {
                         className="h-11 bg-muted text-muted-foreground cursor-not-allowed"
                       />
                     </Field>
-                    <Field label="Division (Usine)">
-                      <SearchableSelect
-                        value={formData.division}
-                        onChange={(v) => handleChange('division', v)}
-                        options={buildOptions(sapOptions.divisions, formData.division)}
-                        placeholder="Sélectionner une division"
+                    <ReadOnlyField
+                      label="Classe de valorisation"
+                      value={deClasseValo}
+                      hint="Production → 7012, Aire → 2038"
+                    />
+                    {deCentreProfitAuto ? (
+                      <ReadOnlyField
+                        label="Centre de profit"
+                        value={deCentreProfitAuto}
+                        hint="Selon la division"
                       />
-                    </Field>
-                    <Field label="Classe de valorisation">
-                      <SearchableSelect
-                        value={formData.classe_valorisation}
-                        onChange={(v) => handleChange('classe_valorisation', v)}
-                        options={buildOptions(sapOptions.classes_valorisation, formData.classe_valorisation)}
-                        placeholder="Sélectionner une classe"
-                      />
-                    </Field>
-                    <Field label="Centre de profit">
-                      <SearchableSelect
-                        value={formData.centre_profit}
-                        onChange={(v) => handleChange('centre_profit', v)}
-                        options={buildOptions(sapOptions.centres_profit, formData.centre_profit)}
-                        placeholder="Sélectionner un centre"
-                      />
-                    </Field>
+                    ) : (
+                      <Field label="Centre de profit" hint="Choix libre (Agen)">
+                        <SearchableSelect
+                          value={formData.centre_profit}
+                          onChange={(v) => handleChange('centre_profit', v)}
+                          options={buildOptions(sapOptions.centres_profit, formData.centre_profit)}
+                          placeholder="Sélectionner un centre"
+                        />
+                      </Field>
+                    )}
                     <Field label="Groupe d'autorisation">
                       <SearchableSelect
                         value={formData.groupe_autorisation}
@@ -1267,14 +1269,34 @@ export default function CreerDE() {
                         placeholder="Sélectionner un groupe"
                       />
                     </Field>
-                    <Field label="Groupe article (division)" required>
-                      <SearchableSelect
-                        value={formData.groupe_article}
-                        onChange={(v) => handleChange('groupe_article', v)}
-                        options={buildOptions(groupesArticleOptions, formData.groupe_article)}
-                        placeholder="Sélectionner un groupe"
+                    {deGroupeArticleLocked ? (
+                      <ReadOnlyField
+                        label="Groupe article (division)"
+                        value={deGroupeArticleLocked}
+                        hint="Selon la division"
                       />
-                    </Field>
+                    ) : (
+                      <Field
+                        label="Groupe article (division)"
+                        required
+                        hint={deAgenWarning ? 'Agen — PF-AS par défaut, modifiable' : 'Choix libre (Aire)'}
+                      >
+                        <SearchableSelect
+                          value={formData.groupe_article}
+                          onChange={(v) => handleChange('groupe_article', v)}
+                          options={buildOptions(
+                            deAgenWarning ? groupesArticleAgenOptions : groupesArticleOptions,
+                            formData.groupe_article,
+                          )}
+                          placeholder="Sélectionner un groupe"
+                        />
+                        {deAgenWarning && (
+                          <p className="mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                            ⚠️ Attention : vérifiez que vous avez bien un produit surgelé.
+                          </p>
+                        )}
+                      </Field>
+                    )}
                   </div>
                 </FormSection>
 

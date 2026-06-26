@@ -1,3 +1,5 @@
+import { divisionCodeFromPlant } from "./deRules";
+
 // Tronque une date ISO ("2024-12-17T23:00:00.000Z") au format YYYY-MM-DD
 // attendu par les <input type="date">. Renvoie undefined si valeur absente.
 const toDateInput = (iso) =>
@@ -29,6 +31,9 @@ export function mapBeCPGToDE(json) {
   setIf(out, "demandeur", a["bnc:dePorteurCommercial"]?.["cm:userName"]);
   setIf(out, "famille_produit", a["bnc:deFamilleProduit"]);
   setIf(out, "marque", a["bcpg:plants"]?.[0]?.["cm:name"]);
+  // Division (usine de fabrication) déduite du 1er site beCPG. Le secteur
+  // d'activité de la DE est, lui, calculé à partir du réseau (pas du plant).
+  setIf(out, "division", divisionCodeFromPlant(a["bcpg:plants"]?.[0]?.["cm:name"]) || undefined);
   setIf(out, "client", a["bnc:deClient"]);
   setIf(out, "qte_previsionnelle_annuelle", a["bnc:deVolumeUV"]);
 

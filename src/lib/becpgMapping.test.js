@@ -58,6 +58,7 @@ describe("mapBeCPGToDE", () => {
       demandeur: "laure.bertrand",
       famille_produit: "TARTES",
       marque: "BONLOC",
+      division: "2886",
       client: "BONCOLAC",
       qte_previsionnelle_annuelle: 30000,
     });
