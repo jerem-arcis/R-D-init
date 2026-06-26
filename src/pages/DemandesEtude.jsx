@@ -460,7 +460,7 @@ export default function DemandesEtude() {
                         const target =
                           de.statut === 'brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
-                            : de.statut === 'ds_brouillon' || de.statut === 'en_attente_creation_code_chapeau'
+                            : de.statut === 'ds_brouillon' || de.statut === 'en_attente_creation_code_chapeau' || de.statut === 'ds_validee'
                               ? `CreerDE?projet_id=${de.id}`
                               : de.statut === 'en_attente_code_chapeau'
                                 ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`

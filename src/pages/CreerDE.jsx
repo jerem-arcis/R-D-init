@@ -18,7 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
 import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } from '@/api/projet';
-import { createDsFromForm, updateDsFromForm, getDsById, computeDsValues, DS_STATUTS } from '@/api/ds';
+import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -530,10 +530,12 @@ export default function CreerDE() {
   }, [projetDV]);
 
   // Si le projet ouvert est une DS (statut DS), on le recharge au format DS.
+  // On attend que sapOptions.divisions soit chargé pour que getDsById puisse
+  // résoudre les reverse-lookups (division, classe, hiérarchie, centre profit).
   const { data: dsDV } = useQuery({
     queryKey: ['ds-dataverse', projetIdParam],
     queryFn: () => getDsById(projetIdParam, sapOptions),
-    enabled: !!projetIdParam && !editId,
+    enabled: !!projetIdParam && !editId && !!(sapOptions.divisions && sapOptions.divisions.length),
   });
   useEffect(() => {
     if (dsDV && DS_STATUTS.includes(dsDV.statut)) {
@@ -609,16 +611,15 @@ export default function CreerDE() {
   };
 
   const triggerSapSendDs = async () => {
-    const c = computeDsValues(formData);
     const body = {
       CodeChapeau: formData.code_chapeau || '',
       NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: (c.hierarchie || '').split(/\s+/)[0] || '',
-      SecteurActivite: c.secteur || '',
+      HierarchieProduitFamille: (dsHierarchie || '').split(/\s+/)[0] || '',
+      SecteurActivite: dsSecteur || '',
       PoidsNet: formData.autre_poids_net_uv === '' || formData.autre_poids_net_uv == null ? '' : String(formData.autre_poids_net_uv),
-      DivisionUsine: c.divisionFab || '',
-      ClasseValorisation: c.classeValo || '',
-      CentreProfit: c.centreProfit || '',
+      DivisionUsine: dsDivisionFab || '',
+      ClasseValorisation: dsClasseValo || '',
+      CentreProfit: dsCentreProfit || '',
       GroupeAutorisation: '',
       GroupeFraisGeneraux: '',
       GroupeArticleDivision: '',
@@ -890,12 +891,12 @@ export default function CreerDE() {
     agen_type: formData.autre_agen_type,
     agen_choix: formData.autre_agen_choix,
   };
-  const dsDivisionOrigine = codeDivisionOrigine(formData.autre_usine_origine);
-  const dsDivisionFab = codeDivisionFabrication(dsCtx);
-  const dsHierarchie = computeHierarchieDS(formData.autre_activite);
-  const dsClasseValo = computeClasseValoDS(dsCtx);
-  const dsCentreProfit = computeCentreProfitDS(dsCtx);
-  const dsSecteur = computeSecteurDS(formData.autre_type_marque);
+  const dsDivisionOrigine = codeDivisionOrigine(formData.autre_usine_origine) || formData._ds_division_origine || '';
+  const dsDivisionFab = codeDivisionFabrication(dsCtx) || formData._ds_division_fab || '';
+  const dsHierarchie = computeHierarchieDS(formData.autre_activite) || formData._ds_hierarchie || '';
+  const dsClasseValo = computeClasseValoDS(dsCtx) || formData._ds_classe_valo || '';
+  const dsCentreProfit = computeCentreProfitDS(dsCtx) || formData._ds_centre_profit || '';
+  const dsSecteur = computeSecteurDS(formData.autre_type_marque) || formData._ds_secteur || '';
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
   );

@@ -91,6 +91,8 @@ export async function getDsById(id, sapOptions = {}) {
   if (!p) return null;
   const divisionFab = codeFromLookupValue('divisions', p._cr04e_divisionusine_value, sapOptions.divisions);
   const centreProfit = codeFromLookupValue('centres_profit', p._cr04e_centredeprofit_value, sapOptions.centres_profit);
+  const classeValo = codeFromLookupValue('classes_valorisation', p._cr04e_classedevalorisation_value, sapOptions.classes_valorisation);
+  const hierarchie = codeFromLookupValue('familles_produit', p._cr04e_hierarchieproduitfamille_value, sapOptions.familles_produit);
   return {
     projet_id: p.cr04e_projetid,
     type_de: 'autre',
@@ -103,11 +105,13 @@ export async function getDsById(id, sapOptions = {}) {
     autre_designation: p.cr04e_nomduproduitdesignation ?? '',
     autre_poids_net_uv: p.cr04e_poidsnet ?? '',
     code_chapeau: p.cr04e_codechapeau ?? '',
-    statut: p.cr04e_statut_en_cours || 'en_attente_creation_code_chapeau',
+    statut: p.cr04e_statut_en_cours ?? '',
     // Valeurs SAP persistées (pour l'aperçu / push ADV) :
     _ds_centre_profit: centreProfit,
     _ds_division_fab: divisionFab,
     _ds_division_origine: p.cr04e_codedivisionorigine ?? '',
     _ds_secteur: p.cr04e_secteurdactivite ?? '',
+    _ds_classe_valo: classeValo,
+    _ds_hierarchie: hierarchie,
   };
 }
