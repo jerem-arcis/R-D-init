@@ -1730,7 +1730,7 @@ export default function CreerDE() {
 
             <div className="flex justify-end gap-3 pt-2">
               {formType === 'autre' ? (
-                DS_STATUTS.includes(formData.statut) && formData.projet_id ? (
+                (formData.statut === 'en_attente_creation_code_chapeau' || formData.statut === 'ds_validee') && formData.projet_id ? (
                   // DS ouverte par l'ADV : action push SAP
                   <Button type="button" onClick={handleDsPushSap} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
