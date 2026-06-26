@@ -7,6 +7,12 @@ import {
   computeClasseValoDS,
   computeCentreProfitDS,
   computeSecteurDS,
+  usineOrigineFromDivision,
+  usineFabFromDivision,
+  activiteFromHierarchie,
+  typeMarqueFromSecteur,
+  agenTypeFromDivision,
+  agenChoixFromCentre,
 } from '@/lib/dsRules';
 
 export const DS_STATUTS = ['ds_brouillon', 'en_attente_creation_code_chapeau', 'ds_validee'];
@@ -93,6 +99,11 @@ export async function getDsById(id, sapOptions = {}) {
   const centreProfit = codeFromLookupValue('centres_profit', p._cr04e_centredeprofit_value, sapOptions.centres_profit);
   const classeValo = codeFromLookupValue('classes_valorisation', p._cr04e_classedevalorisation_value, sapOptions.classes_valorisation);
   const hierarchie = codeFromLookupValue('familles_produit', p._cr04e_hierarchieproduitfamille_value, sapOptions.familles_produit);
+  const divisionOrigine = p.cr04e_codedivisionorigine ?? '';
+  const secteur = p.cr04e_secteurdactivite ?? '';
+  // Re-déduction des saisies (selects) à partir des valeurs SAP persistées : sans
+  // ça, les listes déroulantes reviennent vides à la réouverture d'un brouillon.
+  const usineFab = usineFabFromDivision(divisionFab);
   return {
     projet_id: p.cr04e_projetid,
     type_de: 'autre',
@@ -104,13 +115,19 @@ export async function getDsById(id, sapOptions = {}) {
     autre_code_origine: p.cr04e_codeprojet ?? '',
     autre_designation: p.cr04e_nomduproduitdesignation ?? '',
     autre_poids_net_uv: p.cr04e_poidsnet ?? '',
+    autre_usine_origine: usineOrigineFromDivision(divisionOrigine),
+    autre_usine_fab: usineFab,
+    autre_activite: activiteFromHierarchie(hierarchie),
+    autre_type_marque: typeMarqueFromSecteur(secteur),
+    autre_agen_type: usineFab === 'Agen' ? agenTypeFromDivision(divisionFab) : '',
+    autre_agen_choix: usineFab === 'Agen' ? agenChoixFromCentre(centreProfit) : '',
     code_chapeau: p.cr04e_codechapeau ?? '',
     statut: p.cr04e_statut_en_cours ?? '',
-    // Valeurs SAP persistées (pour l'aperçu / push ADV) :
+    // Valeurs SAP persistées (filet de sécurité pour l'aperçu / push ADV) :
     _ds_centre_profit: centreProfit,
     _ds_division_fab: divisionFab,
-    _ds_division_origine: p.cr04e_codedivisionorigine ?? '',
-    _ds_secteur: p.cr04e_secteurdactivite ?? '',
+    _ds_division_origine: divisionOrigine,
+    _ds_secteur: secteur,
     _ds_classe_valo: classeValo,
     _ds_hierarchie: hierarchie,
   };

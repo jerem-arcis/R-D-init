@@ -36,6 +36,58 @@ export const codeDivisionFabrication = ({ type_demande, usine, agen_type } = {})
   return DIVISION_ORIGINE[usine] || '';
 };
 
+// ---- Re-déduction inverse (réouverture d'une DS depuis Dataverse) ----
+// On ne persiste que les valeurs SAP calculées : on retrouve les saisies à partir
+// d'elles. Sert à repeupler les listes déroulantes à la réouverture d'un brouillon.
+
+// code division origine -> nom de l'usine d'origine.
+const DIVISION_TO_USINE_ORIGINE = Object.fromEntries(
+  Object.entries(DIVISION_ORIGINE).map(([usine, code]) => [code, usine]),
+);
+export const usineOrigineFromDivision = (code) =>
+  DIVISION_TO_USINE_ORIGINE[String(code ?? '').trim()] || '';
+
+// code division fabrication -> usine de fabrication (liste USINES_FABRICATION).
+// 2823 (FF STEF) -> Agen ; 2820 (négoce) -> '' (l'usine fab est implicite/type 4-5).
+export const usineFabFromDivision = (code) => {
+  const c = String(code ?? '').trim();
+  if (c === '2886') return 'Bonloc';
+  if (c === '2866') return 'Rivesaltes';
+  if (c === '2859') return 'Aire';
+  if (c === '2847' || c === '2823') return 'Agen';
+  return '';
+};
+
+// hiérarchie SAP ("22 DE DE DE") -> activité.
+export const activiteFromHierarchie = (h) => {
+  const head = String(h ?? '').trim().split(/\s+/)[0];
+  if (head === '22') return 'PATISSERIES';
+  if (head === '27') return 'TRAITEUR';
+  if (head === '21') return 'MOCHIS';
+  return '';
+};
+
+// secteur (10/12/15) -> type de marque.
+export const typeMarqueFromSecteur = (s) => {
+  const c = String(s ?? '').trim();
+  if (c === '10') return 'Marque Nationale RHF / Export';
+  if (c === '12') return 'Marque Nationale GMS';
+  if (c === '15') return 'Marque distributeur';
+  return '';
+};
+
+// Agen : type (Surgelé/FF STEF) déduit de la division ; choix déduit du centre profit.
+// 2847 est ambigu (Surgelé ou FF Autre) -> on retombe sur « Surgelé » (équivalent en aval).
+export const agenTypeFromDivision = (divisionFab) =>
+  String(divisionFab ?? '').trim() === '2823' ? 'Faux Frais STEF' : 'Surgelé';
+export const agenChoixFromCentre = (centre) => {
+  const c = String(centre ?? '').trim();
+  if (c === '27PS') return 'Pains surprises';
+  if (c === '27CA') return 'Assortiments ou plateaux';
+  if (c === '27PL') return 'Plaques';
+  return '';
+};
+
 export const computeHierarchieDS = (activite) => {
   if (activite === 'PATISSERIES') return '22 DE DE DE';
   if (activite === 'TRAITEUR') return '27 DE DE DE';

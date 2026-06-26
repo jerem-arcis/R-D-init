@@ -7,7 +7,47 @@ import {
   computeCentreProfitDS,
   computeSecteurDS,
   isTypeNegoce,
+  usineOrigineFromDivision,
+  usineFabFromDivision,
+  activiteFromHierarchie,
+  typeMarqueFromSecteur,
+  agenTypeFromDivision,
+  agenChoixFromCentre,
 } from './dsRules';
+
+describe('re-déduction inverse (réouverture)', () => {
+  it('usineOrigineFromDivision', () => {
+    expect(usineOrigineFromDivision('2886')).toBe('Bonloc');
+    expect(usineOrigineFromDivision('2823')).toBe('Faux frais STEF Agen');
+    expect(usineOrigineFromDivision('2820')).toBe('Produit négoce');
+    expect(usineOrigineFromDivision('9999')).toBe('');
+  });
+  it('usineFabFromDivision', () => {
+    expect(usineFabFromDivision('2886')).toBe('Bonloc');
+    expect(usineFabFromDivision('2847')).toBe('Agen');
+    expect(usineFabFromDivision('2823')).toBe('Agen');
+    expect(usineFabFromDivision('2820')).toBe('');
+  });
+  it('activiteFromHierarchie', () => {
+    expect(activiteFromHierarchie('22 DE DE DE')).toBe('PATISSERIES');
+    expect(activiteFromHierarchie('27 DE DE DE')).toBe('TRAITEUR');
+    expect(activiteFromHierarchie('21 DE DE DE')).toBe('MOCHIS');
+    expect(activiteFromHierarchie('')).toBe('');
+  });
+  it('typeMarqueFromSecteur', () => {
+    expect(typeMarqueFromSecteur('10')).toBe('Marque Nationale RHF / Export');
+    expect(typeMarqueFromSecteur('12')).toBe('Marque Nationale GMS');
+    expect(typeMarqueFromSecteur('15')).toBe('Marque distributeur');
+    expect(typeMarqueFromSecteur('')).toBe('');
+  });
+  it('agen reverse', () => {
+    expect(agenTypeFromDivision('2823')).toBe('Faux Frais STEF');
+    expect(agenTypeFromDivision('2847')).toBe('Surgelé');
+    expect(agenChoixFromCentre('27PS')).toBe('Pains surprises');
+    expect(agenChoixFromCentre('27CA')).toBe('Assortiments ou plateaux');
+    expect(agenChoixFromCentre('27PL')).toBe('Plaques');
+  });
+});
 
 describe('codeDivisionOrigine', () => {
   it('mappe chaque usine d\'origine vers son code', () => {
