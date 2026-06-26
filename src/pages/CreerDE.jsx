@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -32,6 +32,23 @@ import {
   AXES_STRATEGIQUES_DE,
 } from '@/lib/deRules';
 
+import { usePowerPlatform } from '@/PowerProvider';
+import {
+  USINES_ORIGINE,
+  USINES_FABRICATION,
+  ACTIVITES as DS_ACTIVITES,
+  TYPES_MARQUE as DS_TYPES_MARQUE,
+  AGEN_TYPES,
+  AGEN_CHOIX,
+  isTypeNegoce,
+  codeDivisionOrigine,
+  codeDivisionFabrication,
+  computeHierarchieDS,
+  computeClasseValoDS,
+  computeCentreProfitDS,
+  computeSecteurDS,
+} from '@/lib/dsRules';
+
 // ---------- Listes (fixes, non gérées via Admin) ----------
 const TYPES_DEMANDE_DE = [
   'CA Additionnel',
@@ -49,54 +66,17 @@ const TYPES_DEMANDE_AUTRE = [
   { value: '7', label: '7 - Modification palettisation mineure avec impact financier de moins de 2%' }
 ];
 
-const USINES_FAB = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
+// Exemples affichés à côté du sélecteur Type de demande (scope Commerce/Marketing).
+const CAS_USAGE_EXEMPLES = [
+  { value: '1', titre: 'Transfert industriel restant dans nos savoir-faire', exemple: 'Transfert de la TCM de Rivesaltes vers Bonloc / Mi cuit Domino\'s de Bonloc vers Rivesaltes' },
+  { value: '2', titre: 'Produit semi-fini fabriqué pour une autre usine (savoir-faire déjà validé)', exemple: 'Semi-fini fabriqué par Agen pour Aire' },
+  { value: '3', titre: 'Massification', exemple: '' },
+  { value: '4', titre: 'Produits extérieurs négoce', exemple: 'Achat fournisseur externe (canelés, …)' },
+  { value: '5', titre: 'Produits fabriqués par une filiale du groupe (hors Boncolac Histo)', exemple: 'Macarons de MagM, produits de Cakesmith, Proper Cornish, etc.' },
+  { value: '6', titre: 'Changement produit mineur (< 2% impact financier)', exemple: 'Changement charte étui / Modification étiquette / Changement mineur de MP' },
+  { value: '7', titre: 'Modification palettisation mineure (< 2% impact financier)', exemple: 'Ajout/suppression d\'une couche / Palette Europe ↔ grand export' },
+];
 
-const CODE_DIV_BY_USINE = {
-  Bonloc: '2886',
-  'Produit négoce': '2820',
-  Rivesaltes: '2866',
-  Aire: '2859',
-  Agen: '2847'
-};
-
-const ACTIVITES = ['PATISSERIES', 'TRAITEUR', 'MOCHIS'];
-const TYPES_MARQUE = ['Marque Nationale RHF / Export', 'Marque Nationale GMS', 'Marque distributeur'];
-
-// Pour la logique "Centre de profit" usine = Agen
-const PRODUITS_AGEN = ['Pains surprises', 'Assortiments ou plateaux', 'Plaques', '(vide)'];
-
-// ---------- Helpers de calcul automatique ----------
-const computeClasseValorisation = ({ usine, type_demande, activite }) => {
-  if (['Rivesaltes', 'Bonloc', 'Agen'].includes(usine)) return '7012';
-  if (usine === 'Aire') return '2038';
-  if (['4', '5'].includes(type_demande) && activite === 'TRAITEUR') return '2038';
-  if (['4', '5'].includes(type_demande) && activite === 'PATISSERIES') return '2030';
-  return '';
-};
-
-const computeCentreProfit = ({ usine, activite, type_demande, produit_agen }) => {
-  if (activite === 'MOCHIS') return '21PF';
-  if (usine === 'Aire') return '27TDL';
-  if (usine === 'Rivesaltes' || usine === 'Bonloc') return '22PF';
-  if (['4', '5'].includes(type_demande) && activite === 'PATISSERIES') return '22HA';
-  if (['4', '5'].includes(type_demande) && activite === 'TRAITEUR') return '27HA';
-  if (usine === 'Agen') {
-    if (produit_agen === 'Pains surprises') return '27PS';
-    if (produit_agen === 'Assortiments ou plateaux') return '27CA';
-    if (produit_agen === 'Plaques') return '27PL';
-    if (produit_agen === '(vide)' || !produit_agen) return '27CA';
-  }
-  return '';
-};
-
-const computeSecteurActivite = (type_marque) => {
-  if (type_marque === 'Marque Nationale RHF / Export') return '10';
-  if (type_marque === 'Marque Nationale GMS') return '12';
-  if (type_marque === 'Marque distributeur') return '15';
-  return '';
-};
-
-const isUsineRequiredType = (t) => ['1', '2', '3', '6', '7'].includes(t);
 
 // TODO(sécurité) : ces URLs de flux Power Automate contiennent une signature SAS
 // (sig=) exposée côté client (bundle JS + historique Git). À terme : proxifier via
@@ -401,6 +381,18 @@ export default function CreerDE() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { powerContext } = usePowerPlatform();
+  const connectedUser =
+    powerContext?.user?.fullName ||
+    powerContext?.user?.userFullName ||
+    powerContext?.user?.displayName ||
+    '';
+  useEffect(() => {
+    if (formType === 'autre' && connectedUser && !formData.autre_demandeur) {
+      setFormData((prev) => ({ ...prev, autre_demandeur: connectedUser }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formType, connectedUser]);
   const adminLists = useAdminLists();
   const adminOptions = useAdminOptions();
   // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
@@ -464,21 +456,23 @@ export default function CreerDE() {
     // GUID de la ligne cr04e_projet liée (Dataverse) — pour maj au lieu de recréer.
     projet_id: '',
 
-    // Autre
+    // Autre (DS)
     autre_demandeur: '',
     autre_date: new Date().toISOString().slice(0, 10),
     autre_service: '',
     autre_type_demande: '',
     autre_code_origine: '',
     autre_usine_fab: '',
+    autre_usine_origine: '',
+    autre_agen_type: '',
+    autre_agen_choix: '',
+    autre_description: '',
     autre_besoin_vl: false,
     autre_besoin_nouveau_code: false,
     autre_designation: '',
-    autre_usine_fabrication_libre: '',
     autre_activite: '',
     autre_poids_net_uv: '',
     autre_type_marque: '',
-    autre_produit_agen: '',
     autre_hierarchie: ''
   });
 
@@ -810,43 +804,22 @@ export default function CreerDE() {
   };
 
 
-  // Champs auto-calculés (Section Autre)
-  const autreCodeDivision = useMemo(() => {
-    if (isUsineRequiredType(formData.autre_type_demande)) {
-      return CODE_DIV_BY_USINE[formData.autre_usine_fab] || '';
-    }
-    return '2820';
-  }, [formData.autre_type_demande, formData.autre_usine_fab]);
-
-  const autreClasseVal = useMemo(
-    () =>
-      computeClasseValorisation({
-        usine: formData.autre_usine_fab,
-        type_demande: formData.autre_type_demande,
-        activite: formData.autre_activite
-      }),
-    [formData.autre_usine_fab, formData.autre_type_demande, formData.autre_activite]
-  );
-
-  const autreCentreProfit = useMemo(
-    () =>
-      computeCentreProfit({
-        usine: formData.autre_usine_fab,
-        activite: formData.autre_activite,
-        type_demande: formData.autre_type_demande,
-        produit_agen: formData.autre_produit_agen
-      }),
-    [
-      formData.autre_usine_fab,
-      formData.autre_activite,
-      formData.autre_type_demande,
-      formData.autre_produit_agen
-    ]
-  );
-
-  const autreSecteur = useMemo(
-    () => computeSecteurActivite(formData.autre_type_marque),
-    [formData.autre_type_marque]
+  // Valeurs calculées DS (dérivées en direct, sans useMemo)
+  const dsCtx = {
+    usine: formData.autre_usine_fab,
+    type_demande: formData.autre_type_demande,
+    activite: formData.autre_activite,
+    agen_type: formData.autre_agen_type,
+    agen_choix: formData.autre_agen_choix,
+  };
+  const dsDivisionOrigine = codeDivisionOrigine(formData.autre_usine_origine);
+  const dsDivisionFab = codeDivisionFabrication(dsCtx);
+  const dsHierarchie = computeHierarchieDS(formData.autre_activite);
+  const dsClasseValo = computeClasseValoDS(dsCtx);
+  const dsCentreProfit = computeCentreProfitDS(dsCtx);
+  const dsSecteur = computeSecteurDS(formData.autre_type_marque);
+  const dsUsinesOrigine = USINES_ORIGINE.filter(
+    (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
   );
 
   const saveMutation = useMutation({
@@ -1012,10 +985,10 @@ export default function CreerDE() {
       projet_id: projetId,
       zug,
       type_de: formType,
-      code_division_calc: autreCodeDivision,
-      classe_valorisation_calc: autreClasseVal,
-      centre_profit_calc: autreCentreProfit,
-      secteur_activite_calc: autreSecteur,
+      code_division_calc: dsDivisionFab,
+      classe_valorisation_calc: dsClasseValo,
+      centre_profit_calc: dsCentreProfit,
+      secteur_activite_calc: dsSecteur,
       code_chapeau: effectiveCode,
       date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
       statut: 'en_attente_dl',
@@ -1038,7 +1011,7 @@ export default function CreerDE() {
     formType === 'de'
       ? 'Demande d\'Étude (DE)'
       : formType === 'autre'
-          ? 'Autre demande'
+          ? 'Demande Spécifique (DS)'
           : 'Nouvelle Demande';
 
   return (
@@ -1083,8 +1056,8 @@ export default function CreerDE() {
             />
             <TypeCard
               icon={Settings2}
-              title="Autre"
-              subtitle="Transfert industriel, négoce, massification, modifications mineures..."
+              title="DS"
+              subtitle="Demande Spécifique : transfert industriel, négoce, massification, modifications mineures…"
               accent="bg-gradient-to-br from-amber-500 to-orange-600"
               onClick={() => {
                 setFormType('autre');
@@ -1416,9 +1389,9 @@ export default function CreerDE() {
 
             {formType === 'autre' && (
               <>
-                <FormSection title="Identification" icon={FileText}>
+                <FormSection title="Informations générales" icon={FileText}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Demandeur" required>
+                    <Field label="Demandeur" required hint="Prérempli depuis l'utilisateur connecté">
                       <Input
                         value={formData.autre_demandeur}
                         onChange={(e) => handleChange('autre_demandeur', e.target.value)}
@@ -1434,12 +1407,12 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
-                    <Field label="Service du demandeur" required hint="Auto-détecté pour l'utilisateur connecté">
-                      <SearchableSelect
+                    <Field label="Service" required hint="Saisie libre">
+                      <Input
                         value={formData.autre_service}
-                        onChange={(v) => handleChange('autre_service', v)}
-                        options={buildOptions(adminOptions.services_demandeur, formData.autre_service)}
-                        placeholder="Sélectionner un service"
+                        onChange={(e) => handleChange('autre_service', e.target.value)}
+                        placeholder="Service du demandeur"
+                        className="h-11"
                       />
                     </Field>
                     <Field label="Type de demande" required>
@@ -1458,15 +1431,44 @@ export default function CreerDE() {
                       </Select>
                     </Field>
                   </div>
+
+                  {/* Panneau d'exemples des cas d'usage */}
+                  <div className="rounded-xl border border-border bg-secondary/40 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
+                      Cas d'usage — exemples
+                    </p>
+                    <div className="space-y-1.5">
+                      {CAS_USAGE_EXEMPLES.map((c) => (
+                        <div
+                          key={c.value}
+                          className={cn(
+                            'rounded-lg px-3 py-2 text-xs border',
+                            formData.autre_type_demande === c.value
+                              ? 'bg-primary/10 border-primary/40 text-foreground'
+                              : 'bg-card border-border text-muted-foreground',
+                          )}
+                        >
+                          <span className="font-semibold">{c.value} — {c.titre}</span>
+                          {c.exemple && <span className="block mt-0.5 italic">{c.exemple}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Field label="Description du besoin" hint="Saisie libre">
+                    <textarea
+                      value={formData.autre_description}
+                      onChange={(e) => handleChange('autre_description', e.target.value)}
+                      placeholder="Décrire le besoin…"
+                      rows={3}
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </Field>
                 </FormSection>
 
-                <FormSection title="Article d'origine" icon={Layers}>
+                <FormSection title="Code d'origine" icon={Layers}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field
-                      label="Code d'article d'origine"
-                      required
-                      hint="Code à 6 ou 8 chiffres requis (avec VL)"
-                    >
+                    <Field label="Code article d'origine" hint="Code à 6 ou 8 chiffres">
                       <Input
                         value={formData.autre_code_origine}
                         onChange={(e) => handleChange('autre_code_origine', e.target.value)}
@@ -1475,34 +1477,27 @@ export default function CreerDE() {
                         className="h-11 font-mono"
                       />
                     </Field>
-
-                    {isUsineRequiredType(formData.autre_type_demande) && (
-                      <Field label="Usine de fabrication (code origine)">
-                        <Select
-                          value={formData.autre_usine_fab}
-                          onValueChange={(v) => handleChange('autre_usine_fab', v)}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Sélectionner une usine" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {USINES_FAB.map((u) => (
-                              <SelectItem key={u} value={u}>{u}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    )}
-
-                    {isUsineRequiredType(formData.autre_type_demande) && (
-                      <ReadOnlyField
-                        label="Code division d'origine"
-                        value={CODE_DIV_BY_USINE[formData.autre_usine_fab] || ''}
-                        hint="Auto-rempli selon l'usine"
-                      />
-                    )}
+                    <Field label="Usine de fabrication d'origine" required>
+                      <Select
+                        value={formData.autre_usine_origine}
+                        onValueChange={(v) => handleChange('autre_usine_origine', v)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Sélectionner une usine" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dsUsinesOrigine.map((u) => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <ReadOnlyField
+                      label="Code division d'origine"
+                      value={dsDivisionOrigine}
+                      hint="Auto selon l'usine d'origine"
+                    />
                   </div>
-
                   <div className="flex flex-wrap gap-6 pt-2">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
@@ -1521,7 +1516,7 @@ export default function CreerDE() {
                   </div>
                 </FormSection>
 
-                <FormSection title="Nouvel article" icon={Settings2}>
+                <FormSection title="Produit" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="md:col-span-2">
                       <Field label="Désignation article" required>
@@ -1534,26 +1529,70 @@ export default function CreerDE() {
                       </Field>
                     </div>
 
-                    {isUsineRequiredType(formData.autre_type_demande) && (
+                    {isTypeNegoce(formData.autre_type_demande) ? (
+                      <ReadOnlyField
+                        label="Usine de fabrication"
+                        value="Produit négoce (2820)"
+                        hint="Forcé pour les types 4 et 5"
+                      />
+                    ) : (
                       <Field label="Usine de fabrication" required>
-                        <Input
-                          value={formData.autre_usine_fabrication_libre}
-                          onChange={(e) => handleChange('autre_usine_fabrication_libre', e.target.value)}
-                          placeholder="Usine de fabrication finale"
-                          className="h-11"
-                        />
+                        <Select
+                          value={formData.autre_usine_fab}
+                          onValueChange={(v) => handleChange('autre_usine_fab', v)}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Sélectionner une usine" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {USINES_FABRICATION.map((u) => (
+                              <SelectItem key={u} value={u}>{u}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </Field>
                     )}
 
                     <ReadOnlyField
                       label="Code division"
-                      value={autreCodeDivision}
-                      hint={
-                        isUsineRequiredType(formData.autre_type_demande)
-                          ? "Selon l'usine de fabrication"
-                          : 'Valeur par défaut : 2820'
-                      }
+                      value={dsDivisionFab}
+                      hint="Auto selon l'usine de fabrication"
                     />
+
+                    {formData.autre_usine_fab === 'Agen' && !isTypeNegoce(formData.autre_type_demande) && (
+                      <>
+                        <Field label="Agen — type" required>
+                          <Select
+                            value={formData.autre_agen_type}
+                            onValueChange={(v) => handleChange('autre_agen_type', v)}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Surgelé / FF STEF / FF Autre" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AGEN_TYPES.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field label="Agen — choix" required>
+                          <Select
+                            value={formData.autre_agen_choix}
+                            onValueChange={(v) => handleChange('autre_agen_choix', v)}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Assortiments / Pains / Plaques" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AGEN_CHOIX.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </>
+                    )}
 
                     <Field label="Activité" required>
                       <Select
@@ -1564,12 +1603,13 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {ACTIVITES.map((a) => (
+                          {DS_ACTIVITES.map((a) => (
                             <SelectItem key={a} value={a}>{a}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </Field>
+                    <ReadOnlyField label="Hiérarchie de produits" value={dsHierarchie} hint="Auto selon l'activité" />
 
                     <Field label="Poids net pour 1 UV (en kg)" required>
                       <Input
@@ -1591,61 +1631,20 @@ export default function CreerDE() {
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {TYPES_MARQUE.map((t) => (
+                          {DS_TYPES_MARQUE.map((t) => (
                             <SelectItem key={t} value={t}>{t}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </Field>
-
-                    {formData.autre_usine_fab === 'Agen' && (
-                      <Field label="Produit (Agen)" hint="Détermine le centre de profit">
-                        <Select
-                          value={formData.autre_produit_agen}
-                          onValueChange={(v) => handleChange('autre_produit_agen', v)}
-                        >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Sélectionner un produit" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PRODUITS_AGEN.map((p) => (
-                              <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    )}
+                    <ReadOnlyField label="Secteur d'activité" value={dsSecteur} hint="Auto selon le type de marque" />
                   </div>
                 </FormSection>
 
                 <FormSection title="Champs calculés (SAP)" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <ReadOnlyField
-                      label="Classe de valorisation"
-                      value={autreClasseVal}
-                      hint="Selon usine, type de demande et activité"
-                    />
-                    <ReadOnlyField
-                      label="Centre de profit"
-                      value={autreCentreProfit}
-                      hint="Selon usine, activité et type de demande"
-                    />
-                    <ReadOnlyField
-                      label="Secteur d'activité"
-                      value={autreSecteur}
-                      hint="Selon le type de marque"
-                    />
-                    <Field
-                      label="Hiérarchie de produits"
-                      hint="Normalement rempli automatiquement"
-                    >
-                      <Input
-                        value={formData.autre_hierarchie}
-                        onChange={(e) => handleChange('autre_hierarchie', e.target.value)}
-                        placeholder="Hiérarchie produit"
-                        className="h-11"
-                      />
-                    </Field>
+                    <ReadOnlyField label="Classe de valorisation" value={dsClasseValo} hint="Selon usine / type / activité" />
+                    <ReadOnlyField label="Centre de profit" value={dsCentreProfit} hint="Selon usine / activité" />
                   </div>
                 </FormSection>
               </>
