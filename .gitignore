@@ -33,3 +33,6 @@ __queuestorage__
 *.njsproj
 *.sln
 *.sw?
+
+# SDD scratch (ledger, diffs, reports)
+.superpowers/

@@ -18,6 +18,22 @@
           "x-ms-schema-name": "cr04e_Axestrategique",
           "maxLength": 100
         },
+        "cr04e_centredeprofit": {
+          "type": "string",
+          "title": "Centre de profit",
+          "x-ms-dataverse-attribute": "cr04e_centredeprofit",
+          "x-ms-dataverse-type": "LookupType",
+          "x-ms-schema-name": "cr04e_Centredeprofit"
+        },
+        "cr04e_centredeprofitname": {
+          "type": "string",
+          "title": "cr04e_centredeprofitname",
+          "x-ms-dataverse-attribute": "cr04e_centredeprofitname",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_CentredeprofitName",
+          "x-ms-read-only": true,
+          "maxLength": 850
+        },
         "cr04e_classedevalorisation": {
           "type": "string",
           "title": "Classe de valorisation",
@@ -50,6 +66,14 @@
           "x-ms-schema-name": "cr04e_Codechapeau",
           "maxLength": 100
         },
+        "cr04e_codedivisionorigine": {
+          "type": "string",
+          "title": "Code division origine",
+          "x-ms-dataverse-attribute": "cr04e_codedivisionorigine",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Codedivisionorigine",
+          "maxLength": 100
+        },
         "cr04e_codeprojet": {
           "type": "string",
           "title": "Code projet",
@@ -73,6 +97,14 @@
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_Demandeur",
           "maxLength": 100
+        },
+        "cr04e_descriptiondubesoin": {
+          "type": "string",
+          "title": "Description du besoin",
+          "x-ms-dataverse-attribute": "cr04e_descriptiondubesoin",
+          "x-ms-dataverse-type": "MemoType",
+          "x-ms-schema-name": "cr04e_Descriptiondubesoin",
+          "maxLength": 2000
         },
         "cr04e_divisionusine": {
           "type": "string",
@@ -193,6 +225,14 @@
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_Secteurdactivite",
           "maxLength": 100
+        },
+        "cr04e_service": {
+          "type": "string",
+          "title": "Service",
+          "x-ms-dataverse-attribute": "cr04e_service",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Service",
+          "maxLength": 1000
         },
         "cr04e_statut_en_cours": {
           "type": "string",

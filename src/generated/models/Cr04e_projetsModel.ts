@@ -15,12 +15,15 @@ export type Cr04e_projetsstatuscode = keyof typeof Cr04e_projetsstatuscode;
 
 export interface Cr04e_projetsBase {
   cr04e_axestrategique?: string;
+  "cr04e_Centredeprofit@odata.bind"?: string;
   "cr04e_Classedevalorisation@odata.bind"?: string;
   cr04e_client?: string;
   cr04e_codechapeau?: string;
+  cr04e_codedivisionorigine?: string;
   cr04e_codeprojet?: string;
   cr04e_datedelademande?: string;
   cr04e_demandeur?: string;
+  cr04e_descriptiondubesoin?: string;
   "cr04e_DivisionUsine@odata.bind"?: string;
   "cr04e_Groupearticledivision@odata.bind"?: string;
   cr04e_groupedautorisation?: string;
@@ -32,6 +35,7 @@ export interface Cr04e_projetsBase {
   cr04e_qteprevisionnelleannuelle?: number;
   cr04e_reseau?: string;
   cr04e_secteurdactivite?: string;
+  cr04e_service?: string;
   cr04e_statut_en_cours?: string;
   cr04e_typedelademande?: string;
   cr04e_zug?: number;
@@ -46,6 +50,7 @@ export interface Cr04e_projetsBase {
 }
 
 export interface Cr04e_projets extends Cr04e_projetsBase {
+  cr04e_centredeprofitname?: string;
   cr04e_classedevalorisationname?: string;
   cr04e_divisionusinename?: string;
   cr04e_groupearticledivisionname?: string;
@@ -67,6 +72,8 @@ export interface Cr04e_projets extends Cr04e_projetsBase {
   statecodename?: string;
   statuscodename?: string;
   versionnumber?: number;
+  cr04e_centredeprofit?: object;
+  _cr04e_centredeprofit_value?: string;
   cr04e_classedevalorisation?: object;
   _cr04e_classedevalorisation_value?: string;
   cr04e_divisionusine?: object;
