@@ -911,6 +911,8 @@ export default function CreerDE() {
   const dsClasseValo = computeClasseValoDS(dsCtx) || formData._ds_classe_valo || '';
   const dsCentreProfit = computeCentreProfitDS(dsCtx) || formData._ds_centre_profit || '';
   const dsSecteur = computeSecteurDS(formData.autre_type_marque) || formData._ds_secteur || '';
+  // DS validée : fiche en lecture seule (consultation, aucune modification possible).
+  const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
   );
@@ -1481,7 +1483,12 @@ export default function CreerDE() {
             )}
 
             {formType === 'autre' && (
-              <>
+              <fieldset disabled={dsReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
+                {dsReadOnly && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
+                    DS validée — fiche en lecture seule.
+                  </div>
+                )}
                 <FormSection title="Informations générales" icon={FileText}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Demandeur" required hint="Prérempli depuis l'utilisateur connecté">
@@ -1791,12 +1798,15 @@ export default function CreerDE() {
                     <ReadOnlyField label="Centre de profit" value={dsCentreProfit} hint="Selon usine / activité" />
                   </div>
                 </FormSection>
-              </>
+              </fieldset>
             )}
 
             <div className="flex justify-end gap-3 pt-2">
               {formType === 'autre' ? (
-                (formData.statut === 'en_attente_creation_code_chapeau' || formData.statut === 'ds_validee') && formData.projet_id ? (
+                formData.statut === 'ds_validee' ? (
+                  // DS validée : lecture seule, aucune action.
+                  null
+                ) : formData.statut === 'en_attente_creation_code_chapeau' && formData.projet_id ? (
                   // DS ouverte par l'ADV : obtention du code chapeau puis push SAP
                   <div className="flex items-center gap-3">
                     {!(codeChapeau || formData.code_chapeau) && (
