@@ -16,7 +16,7 @@ describe('codeDivisionOrigine', () => {
     expect(codeDivisionOrigine('Aire')).toBe('2859');
     expect(codeDivisionOrigine('Agen')).toBe('2847');
     expect(codeDivisionOrigine('Faux frais STEF Agen')).toBe('2823');
-    expect(codeDivisionOrigine('Produit negoce')).toBe('2820');
+    expect(codeDivisionOrigine('Produit négoce')).toBe('2820');
   });
   it('vide si inconnu', () => {
     expect(codeDivisionOrigine('')).toBe('');
@@ -39,7 +39,7 @@ describe('codeDivisionFabrication', () => {
   });
   it('Agen + Faux Frais STEF -> 2823, sinon Agen -> 2847', () => {
     expect(codeDivisionFabrication({ type_demande: '1', usine: 'Agen', agen_type: 'Faux Frais STEF' })).toBe('2823');
-    expect(codeDivisionFabrication({ type_demande: '1', usine: 'Agen', agen_type: 'Surgele' })).toBe('2847');
+    expect(codeDivisionFabrication({ type_demande: '1', usine: 'Agen', agen_type: 'Surgelé' })).toBe('2847');
     expect(codeDivisionFabrication({ type_demande: '1', usine: 'Agen', agen_type: 'Faux Frais Autre' })).toBe('2847');
   });
   it('autres usines -> leur code', () => {

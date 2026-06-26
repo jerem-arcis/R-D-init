@@ -5,7 +5,7 @@
 
 export const ACTIVITES = ['PATISSERIES', 'TRAITEUR', 'MOCHIS'];
 export const TYPES_MARQUE = ['Marque Nationale RHF / Export', 'Marque Nationale GMS', 'Marque distributeur'];
-export const AGEN_TYPES = ['Surgele', 'Faux Frais STEF', 'Faux Frais Autre'];
+export const AGEN_TYPES = ['Surgelé', 'Faux Frais STEF', 'Faux Frais Autre'];
 export const AGEN_CHOIX = ['Assortiments ou plateaux', 'Pains surprises', 'Plaques'];
 
 // Usines d'origine (avec leur code division). "Produit negoce" n'est propose
@@ -16,12 +16,14 @@ const DIVISION_ORIGINE = {
   Aire: '2859',
   Agen: '2847',
   'Faux frais STEF Agen': '2823',
-  'Produit negoce': '2820',
+  'Produit négoce': '2820',
 };
 export const USINES_ORIGINE = Object.keys(DIVISION_ORIGINE);
 // Usines de fabrication : memes sites, hors "Faux frais STEF Agen" (gere via les
 // 2 listes Agen) et hors negoce (force pour les types 4/5).
 export const USINES_FABRICATION = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen'];
+
+export const TYPES_DEMANDE_NEGOCE = ['4', '5'];
 
 export const isTypeNegoce = (t) => ['4', '5'].includes(String(t ?? '').trim());
 
