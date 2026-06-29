@@ -4,7 +4,7 @@ import { STATUTS, STATUT_ORDER, getStatutMeta, codeChapeauAlert } from "./deStat
 describe('statuts DS', () => {
   it('expose les 3 statuts DS', () => {
     expect(STATUTS.ds_brouillon?.label).toBe('Brouillon DS');
-    expect(STATUTS.en_attente_creation_code_chapeau?.label).toBe('En attente de création de code chapeau');
+    expect(STATUTS.en_attente_creation_code_chapeau?.label).toBe('En attente de code chapeau');
     expect(STATUTS.ds_validee?.label).toBe('DS validée');
   });
   it('getStatutMeta retombe sur brouillon si inconnu', () => {

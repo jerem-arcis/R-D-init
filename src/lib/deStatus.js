@@ -12,7 +12,10 @@ export const STATUTS = {
   },
   en_attente_creation_code_chapeau: {
     key: "en_attente_creation_code_chapeau",
-    label: "En attente de création de code chapeau",
+    // Libellé volontairement identique à `en_attente_cc` : DE et DS affichent
+    // « En attente de code chapeau ». La clé technique reste distincte pour
+    // différencier DE/DS côté Dataverse.
+    label: "En attente de code chapeau",
     tone: "blue",
     order: 1,
   },
