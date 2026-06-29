@@ -1097,13 +1097,25 @@ export default function CreerDE() {
     }
   };
 
+  // Ouverture d'un enregistrement existant depuis la liste (édition brouillon
+  // local ou consultation/préremplissage Dataverse). Sert à NE PAS afficher
+  // l'écran de choix de type au chargement, et à router le bouton retour.
+  const isOpeningExisting = !!(editId || projetIdParam);
+
   const handleBack = () => {
-    if (step === 'form' && !editId) {
+    // Consultation/édition d'un enregistrement ouvert depuis la liste :
+    // retour à la page précédente (et non à l'écran de choix de création).
+    if (isOpeningExisting) {
+      navigate(-1);
+      return;
+    }
+    // Flux de création : revenir au choix du type de demande.
+    if (step === 'form') {
       setStep('selection');
       setFormType(null);
-    } else {
-      navigate(createPageUrl('DemandesEtude'));
+      return;
     }
+    navigate(createPageUrl('DemandesEtude'));
   };
 
   const formTitle =
@@ -1128,10 +1140,10 @@ export default function CreerDE() {
             </Button>
             <div>
               <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                {step === 'selection' ? "Nouvelle Demande d'Étude" : formTitle}
+                {step === 'selection' && !isOpeningExisting ? "Nouvelle Demande d'Étude" : formTitle}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {step === 'selection'
+                {step === 'selection' && !isOpeningExisting
                   ? 'Choisir le type de demande à créer'
                   : 'Remplir les informations de la demande'}
               </p>
@@ -1141,7 +1153,13 @@ export default function CreerDE() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {step === 'selection' ? (
+        {isOpeningExisting && step !== 'form' ? (
+          // Chargement d'un enregistrement existant : spinner, jamais l'écran
+          // de choix de type (évite le flash de la page de sélection).
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : step === 'selection' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <TypeCard
               icon={FileText}

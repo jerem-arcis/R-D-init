@@ -387,7 +387,6 @@ export default function DemandesEtude() {
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code projet</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Demandeur</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Type de demande</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
@@ -415,9 +414,6 @@ export default function DemandesEtude() {
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
                       {getDemandeur(de) || <span className="text-muted-foreground/50">—</span>}
-                    </TableCell>
-                    <TableCell className="text-foreground/80 text-sm">
-                      {getTypeDemande(de) || <span className="text-muted-foreground/50">—</span>}
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
                       {getUsine(de) || <span className="text-muted-foreground/50">—</span>}
