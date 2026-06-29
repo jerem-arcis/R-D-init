@@ -3,7 +3,7 @@
 
 export const STATUTS = {
   brouillon: { key: "brouillon", label: "Brouillon", tone: "amber", order: 0 },
-  ds_brouillon: { key: "ds_brouillon", label: "Brouillon DS", tone: "amber", order: 0 },
+  ds_brouillon: { key: "ds_brouillon", label: "Brouillon", tone: "amber", order: 0 },
   en_attente_cc: {
     key: "en_attente_cc",
     label: "En attente de code chapeau",
