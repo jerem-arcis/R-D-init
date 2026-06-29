@@ -46,7 +46,7 @@ const isDEValidated = (statut) =>
   ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(statut);
 
 // Onglets de la liste DE (les statuts DL ne sont pas exposés ici, ils ont leur onglet).
-const DE_TABS = ['brouillon', 'en_attente_code_chapeau', 'validee', 'refusee'];
+const DE_TABS = ['brouillon', 'en_attente_cc', 'validee', 'refusee'];
 
 // Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
 const getType = (de) => de.type_de || 'de';
@@ -258,7 +258,7 @@ export default function DemandesEtude() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'en_attente_code_chapeau').length}
+                  {demandes.filter(d => d.statut === 'en_attente_cc').length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente code chapeau</p>
               </div>
@@ -462,7 +462,7 @@ export default function DemandesEtude() {
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
                             : de.statut === 'ds_brouillon' || de.statut === 'en_attente_creation_code_chapeau' || de.statut === 'ds_validee'
                               ? `CreerDE?projet_id=${de.id}`
-                              : de.statut === 'en_attente_code_chapeau'
+                              : de.statut === 'en_attente_cc'
                                 ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
                                 : localId
                                   ? `DL?id=${localId}`

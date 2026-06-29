@@ -114,6 +114,14 @@
           "x-ms-schema-name": "cr04e_Descriptiondubesoin",
           "maxLength": 2000
         },
+        "cr04e_divisionimport": {
+          "type": "string",
+          "title": "DivisionImport",
+          "x-ms-dataverse-attribute": "cr04e_divisionimport",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_DivisionImport",
+          "maxLength": 100
+        },
         "cr04e_divisionusine": {
           "type": "string",
           "title": "Division (Usine)",
@@ -169,6 +177,14 @@
           "x-ms-schema-name": "cr04e_GroupedefraisgenerauxName",
           "x-ms-read-only": true,
           "maxLength": 850
+        },
+        "cr04e_hierarchiefamilleimport": {
+          "type": "string",
+          "title": "HierarchieFamilleImport",
+          "x-ms-dataverse-attribute": "cr04e_hierarchiefamilleimport",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_HierarchieFamilleImport",
+          "maxLength": 100
         },
         "cr04e_hierarchieproduitfamille": {
           "type": "string",

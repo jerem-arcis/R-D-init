@@ -10,6 +10,7 @@ import {
   computeGroupeArticleLockedDE,
   needsSurgeleWarningDE,
   computeSecteurFromReseau,
+  normalizeAxeStrategique,
 } from './deRules';
 
 describe('DE_DIVISION_CODES', () => {
@@ -120,5 +121,22 @@ describe('computeSecteurFromReseau', () => {
   it('vide si réseau inconnu', () => {
     expect(computeSecteurFromReseau('AUTRE')).toBe('');
     expect(computeSecteurFromReseau('')).toBe('');
+  });
+});
+
+describe('normalizeAxeStrategique', () => {
+  it('ramène la casse à la forme canonique', () => {
+    expect(normalizeAxeStrategique('BUDGET')).toBe('Budget');
+    expect(normalizeAxeStrategique('budget')).toBe('Budget');
+    expect(normalizeAxeStrategique('  Hors Budget ')).toBe('Hors budget');
+    expect(normalizeAxeStrategique('HORS BUDGET')).toBe('Hors budget');
+  });
+  it('conserve une valeur hors liste inchangée', () => {
+    expect(normalizeAxeStrategique('Elargissement offre GMS')).toBe('Elargissement offre GMS');
+  });
+  it('renvoie la valeur vide/absente telle quelle', () => {
+    expect(normalizeAxeStrategique('')).toBe('');
+    expect(normalizeAxeStrategique(undefined)).toBe(undefined);
+    expect(normalizeAxeStrategique(null)).toBe(null);
   });
 });

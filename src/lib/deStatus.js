@@ -4,8 +4,8 @@
 export const STATUTS = {
   brouillon: { key: "brouillon", label: "Brouillon", tone: "amber", order: 0 },
   ds_brouillon: { key: "ds_brouillon", label: "Brouillon DS", tone: "amber", order: 0 },
-  en_attente_code_chapeau: {
-    key: "en_attente_code_chapeau",
+  en_attente_cc: {
+    key: "en_attente_cc",
     label: "En attente de code chapeau",
     tone: "blue",
     order: 1,
@@ -48,7 +48,7 @@ const startOfDay = (x) =>
 export const codeChapeauAlert = (de, today = new Date()) => {
   if (
     !de ||
-    de.statut !== "en_attente_code_chapeau" ||
+    de.statut !== "en_attente_cc" ||
     !de.date_demande_code_chapeau
   ) {
     return { level: "none", joursEcoules: null };

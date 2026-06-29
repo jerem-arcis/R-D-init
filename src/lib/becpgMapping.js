@@ -1,4 +1,4 @@
-import { divisionCodeFromPlant } from "./deRules";
+import { divisionCodeFromPlant, normalizeAxeStrategique } from "./deRules";
 
 // Tronque une date ISO ("2024-12-17T23:00:00.000Z") au format YYYY-MM-DD
 // attendu par les <input type="date">. Renvoie undefined si valeur absente.
@@ -25,7 +25,7 @@ export function mapBeCPGToDE(json) {
   setIf(out, "code_projet", entity["bcpg:code"]);
   setIf(out, "designation_article", a["cm:name"]);
   setIf(out, "date_demande", toDateInput(a["bnc:deDateDemande"]));
-  setIf(out, "axe_strategique", a["bnc:deAxeStrategique"]);
+  setIf(out, "axe_strategique", normalizeAxeStrategique(a["bnc:deAxeStrategique"]));
   setIf(out, "reseau", a["pjt:projectHierarchy1"]?.["bcpg:lkvValue"]);
   setIf(out, "type_demande_de", a["pjt:projectOrigin"]);
   setIf(out, "demandeur", a["bnc:dePorteurCommercial"]?.["cm:userName"]);

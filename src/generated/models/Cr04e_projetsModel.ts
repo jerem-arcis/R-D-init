@@ -25,10 +25,12 @@ export interface Cr04e_projetsBase {
   cr04e_datedelademande?: string;
   cr04e_demandeur?: string;
   cr04e_descriptiondubesoin?: string;
+  cr04e_divisionimport?: string;
   "cr04e_DivisionUsine@odata.bind"?: string;
   "cr04e_Groupearticledivision@odata.bind"?: string;
   cr04e_groupedautorisation?: string;
   "cr04e_Groupedefraisgeneraux@odata.bind"?: string;
+  cr04e_hierarchiefamilleimport?: string;
   "cr04e_Hierarchieproduitfamille@odata.bind"?: string;
   cr04e_nomduproduitdesignation?: string;
   cr04e_poidsnet?: number;

@@ -1,6 +1,7 @@
 import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
+import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
 
 const toNumber = (v) => {
   if (v === '' || v == null) return undefined;
@@ -25,7 +26,7 @@ const PROJET_LOOKUPS = [
 // Statuts portés par cr04e_statut_en_cours.
 export const PROJET_STATUT = {
   brouillon: 'brouillon',
-  en_attente_code_chapeau: 'en_attente_code_chapeau',
+  en_attente_cc: 'en_attente_cc',
   en_attente_dl: 'en_attente_dl',
   ds_brouillon: 'ds_brouillon',
   en_attente_creation_code_chapeau: 'en_attente_creation_code_chapeau',
@@ -76,13 +77,13 @@ export async function createProjetFromDE(formData, ctx) {
 // mail « en attente de code chapeau », ou reprise sur un autre poste). On ne
 // remappe que les champs scalaires (issus de beCPG) ; les champs SAP pilotés par
 // règle (hiérarchie, classe valo, centre, groupe article) sont recalculés à
-// l'ouverture à partir de la division/réseau. La division (lookup) n'est pas
-// reconstituée ici : elle est (re)choisie dans l'app si absente.
+// l'ouverture à partir de la division/réseau. La division est reconstituée à
+// partir de la colonne d'import `cr04e_divisionimport` (code division).
 const toFormData = (p) => ({
   projet_id: p.cr04e_projetid,
   type_de: 'de',
   code_projet: p.cr04e_codeprojet ?? '',
-  axe_strategique: p.cr04e_axestrategique ?? '',
+  axe_strategique: normalizeAxeStrategique(p.cr04e_axestrategique) ?? '',
   date_demande: (p.cr04e_datedelademande ?? '').slice(0, 10),
   reseau: p.cr04e_reseau ?? '',
   type_demande_de: p.cr04e_typedelademande ?? '',
@@ -94,7 +95,14 @@ const toFormData = (p) => ({
   poids_net: p.cr04e_poidsnet ?? '',
   qte_previsionnelle_annuelle: p.cr04e_qteprevisionnelleannuelle ?? '',
   code_chapeau: p.cr04e_codechapeau ?? '',
-  statut: p.cr04e_statut_en_cours || PROJET_STATUT.en_attente_code_chapeau,
+  // Division reconstituée depuis la colonne d'import : pose la division à
+  // l'ouverture pour que les règles deRules cascadent (hiérarchie, classe valo,
+  // centre de profit, groupe article). `cr04e_divisionimport` peut contenir le
+  // NOM du site (ex. « RIVESALTES ») -> converti en code (2866) via
+  // divisionCodeFromPlant, comme le fait l'import beCPG. Si c'est déjà un code,
+  // on le garde tel quel.
+  division: divisionCodeFromPlant(p.cr04e_divisionimport) || (p.cr04e_divisionimport ?? ''),
+  statut: p.cr04e_statut_en_cours || PROJET_STATUT.en_attente_cc,
 });
 
 // Lit une ligne cr04e_projet par son GUID et la renvoie au format formData DE.

@@ -1162,7 +1162,12 @@ export default function CreerDE() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {formType === 'de' && (
+            {/* Encart « Récupération depuis beCPG » : visible en création d'une DE
+                depuis zéro (et reprise de brouillon). Masqué à l'ouverture d'un
+                projet en_attente_cc (projet_id) : le mapping des champs est alors
+                automatique (toFormData + cascade deRules), même comportement que
+                l'import beCPG manuel. */}
+            {formType === 'de' && !projetIdParam && (
               <RecupererBeCPG onApply={handleApplyBeCPG} />
             )}
 

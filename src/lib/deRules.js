@@ -95,3 +95,13 @@ export const computeSecteurFromReseau = (reseau) =>
 
 // Axe stratégique : limité à ces 2 choix pour la DE.
 export const AXES_STRATEGIQUES_DE = ['Budget', 'Hors budget'];
+
+// Ramène un axe stratégique à sa forme canonique (Budget / Hors budget) en
+// ignorant la casse et les espaces (beCPG/import renvoient parfois « BUDGET »).
+// Valeur vide → renvoyée telle quelle ; valeur hors liste → conservée inchangée.
+export const normalizeAxeStrategique = (value) => {
+  const s = String(value ?? '').trim();
+  if (!s) return value;
+  const match = AXES_STRATEGIQUES_DE.find((a) => a.toLowerCase() === s.toLowerCase());
+  return match || value;
+};
