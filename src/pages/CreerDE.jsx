@@ -913,6 +913,10 @@ export default function CreerDE() {
   const dsSecteur = computeSecteurDS(formData.autre_type_marque) || formData._ds_secteur || '';
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
   const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
+  // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
+  // Brouillon et en_attente_cc restent éditables (création / obtention du code chapeau).
+  const DE_READONLY_STATUTS = ['validee', 'en_attente_dl', 'en_attente_validation_dl', 'refusee'];
+  const deReadOnly = formType === 'de' && DE_READONLY_STATUTS.includes(formData.statut);
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
   );
@@ -1172,7 +1176,12 @@ export default function CreerDE() {
             )}
 
             {formType === 'de' && (
-              <>
+              <fieldset disabled={deReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
+                {deReadOnly && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
+                    Demande d'Étude — fiche en lecture seule.
+                  </div>
+                )}
                 <FormSection title="Informations générales" icon={FileText}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Code projet" required>
@@ -1484,7 +1493,7 @@ export default function CreerDE() {
                     </div>
                   )}
                 </FormSection>
-              </>
+              </fieldset>
             )}
 
             {formType === 'autre' && (
@@ -1841,6 +1850,9 @@ export default function CreerDE() {
                     </Button>
                   </>
                 )
+              ) : deReadOnly ? (
+                // DE en lecture seule : aucune action.
+                null
               ) : (
                 <>
                   <Button

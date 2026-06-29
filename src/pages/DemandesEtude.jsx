@@ -464,9 +464,11 @@ export default function DemandesEtude() {
                               ? `CreerDE?projet_id=${de.id}`
                               : de.statut === 'en_attente_cc'
                                 ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
-                                : localId
-                                  ? `DL?id=${localId}`
-                                  : `DL?projet_id=${de.id}`;
+                                // Validée / phase DL / refusée : on ouvre la DE en
+                                // LECTURE SEULE (la DL a son propre onglet). On charge
+                                // depuis Dataverse par projet_id (évite le détournement
+                                // vers un brouillon local obsolète).
+                                : `CreerDE?projet_id=${de.id}`;
                         return (
                       <Link to={createPageUrl(target)}>
                         <Button
