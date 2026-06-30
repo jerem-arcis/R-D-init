@@ -410,6 +410,10 @@ export default function CreerDE() {
   const groupesArticleAgenOptions = groupesArticleOptions.filter((o) =>
     String(o.value).toUpperCase().startsWith('PF-A'),
   );
+  // Hiérarchie produit famille : on ne propose que les familles 21 / 22 / 27.
+  const hierarchieOptions = sapOptions.familles_produit.filter((o) =>
+    ['21', '22', '27'].some((p) => String(o.value).startsWith(p)),
+  );
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon local (localStorage)
   const projetIdParam = searchParams.get('projet_id'); // ouverture depuis Dataverse (mail / autre poste)
@@ -1329,7 +1333,7 @@ export default function CreerDE() {
                       label="Hiérarchie produit famille"
                       value={formData.famille_produit || deHierarchie}
                       onChange={(v) => handleChange('famille_produit', v)}
-                      options={sapOptions.familles_produit}
+                      options={hierarchieOptions}
                       hint="Selon la division (Pâtisseries → 22, Traiteur → 27)"
                     />
                     <ReadOnlyField
@@ -1827,7 +1831,7 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <ReadOnlyField label="Hiérarchie de produits" value={dsHierarchie} onChange={(v) => handleChange('_ds_hierarchie_ovr', v)} options={sapOptions.familles_produit} hint="Auto selon l'activité" />
+                    <ReadOnlyField label="Hiérarchie de produits" value={dsHierarchie} onChange={(v) => handleChange('_ds_hierarchie_ovr', v)} options={hierarchieOptions} hint="Auto selon l'activité" />
 
                     <Field label="Poids net pour 1 UV (en kg)" required>
                       <Input
