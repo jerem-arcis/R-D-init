@@ -1336,6 +1336,7 @@ export default function CreerDE() {
                       label="Secteur d'activité"
                       value={formData.marque || deSecteur}
                       onChange={(v) => handleChange('marque', v)}
+                      options={adminOptions.secteurs_activite}
                       hint="Selon le réseau"
                     />
                     <Field label="Poids net">
@@ -1854,7 +1855,7 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <ReadOnlyField label="Secteur d'activité" value={dsSecteur} onChange={(v) => handleChange('_ds_secteur_ovr', v)} hint="Auto selon le type de marque" />
+                    <ReadOnlyField label="Secteur d'activité" value={dsSecteur} onChange={(v) => handleChange('_ds_secteur_ovr', v)} options={adminOptions.secteurs_activite} hint="Auto selon le type de marque" />
                   </div>
                 </FormSection>
 
