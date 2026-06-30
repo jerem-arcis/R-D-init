@@ -88,10 +88,6 @@ const CAS_USAGE_EXEMPLES = [
 const BECPG_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a622144c10f44a6becafb2df0f78775/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5BL_-hxk0OMUfcJT9GRVKoh1BX7hkNsag7Qy3KxzpkQ';
 
-// URL du flux Power Automate qui envoie la désignation produit vers SAP.
-const SAP_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3bb2973cf1f04b5d96faf9c178abab3f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=RiXc-MYGR9LYdZ8b1sizYPHOUijB3SKwtI1eK-73c4w';
-
 // TODO(sécurité) : voir le bloc ci-dessus — cette URL contiendra elle aussi une
 // signature SAS exposée côté client ; à proxifier via un backend authentifié.
 // URL du flux Power Automate qui génère le prochain code chapeau (OData SAP).
@@ -681,48 +677,10 @@ export default function CreerDE() {
     }
   };
 
-  // Envoi de la désignation produit vers SAP via le flux Power Automate.
-  const [isSendingSAP, setIsSendingSAP] = useState(false);
   // Soumission « Envoyer vers SAP » en cours (résolution VL + écriture projet +
   // flux). Désactive le bouton pour éviter un double-envoi (double création projet).
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sapSent, setSapSent] = useState(false); // notif discrète de succès
   const [sapPreviewOpen, setSapPreviewOpen] = useState(false); // aperçu "vue SAP"
-  const handleSendToSAP = async () => {
-    const description = formData.designation_article?.trim();
-    if (!description) {
-      toast({
-        title: 'Désignation manquante',
-        description: 'Renseignez « Nom du produit / Désignation » avant l\'envoi vers SAP.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setIsSendingSAP(true);
-    setSapSent(false);
-    try {
-      const res = await fetch(SAP_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ProductDescription: description }),
-      });
-      const text = await res.text().catch(() => '');
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-      }
-      // Succès (HTTP 2xx) : petite notif inline discrète, masquée après 4 s.
-      setSapSent(true);
-      setTimeout(() => setSapSent(false), 4000);
-    } catch (err) {
-      toast({
-        title: 'Échec de l\'envoi vers SAP',
-        description: err?.message || 'Une erreur est survenue lors de l\'envoi.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSendingSAP(false);
-    }
-  };
 
   // Bloc « Article d'origine » (DE) : VL et nouveau code sont mutuellement exclusifs.
   // origine_mode pilote l'affichage / l'activation ('vl' | 'nouveau_code' | null).

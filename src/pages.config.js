@@ -7,7 +7,6 @@ import CreerDE from './pages/CreerDE';
 import TraiterDE from './pages/TraiterDE';
 import DL from './pages/DL';
 import CreerFL from './pages/CreerFL';
-import DeclencherFlux from './pages/DeclencherFlux';
 import Admin from './pages/Admin';
 import __Layout from './Layout.jsx';
 
@@ -22,7 +21,6 @@ export const PAGES = {
     "TraiterDE": TraiterDE,
     "DL": DL,
     "CreerFL": CreerFL,
-    "DeclencherFlux": DeclencherFlux,
     "Admin": Admin,
 }
 
