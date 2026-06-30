@@ -60,4 +60,14 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_demandeur).toBeUndefined();
     expect(p.cr04e_statut_en_cours).toBe('ds_brouillon');
   });
+
+  it('un override manuel (_ds_*_ovr) gagne sur la valeur calculée', () => {
+    // Phase de dev : champ auto-calculé débloqué puis saisi à la main.
+    const p = buildDsPayload(
+      { ...base, _ds_secteur_ovr: '99', _ds_classe_valo_ovr: '2038' },
+      { sapOptions, statut: 'en_attente_creation_code_chapeau' },
+    );
+    expect(p.cr04e_secteurdactivite).toBe('99'); // override, pas le '12' calculé
+    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // 2038 forcé
+  });
 });

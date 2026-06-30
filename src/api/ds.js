@@ -29,6 +29,11 @@ const trimOrUndef = (v) => {
 
 // Valeurs calculées d'une DS à partir de formData (réutilisé par le payload et la
 // vue/synthèse). Tout est dérivé des inputs via dsRules.
+// Phase de dev : les champs auto-calculés sont éditables. Une saisie manuelle est
+// stockée dans une clé d'override dédiée `_ds_<champ>_ovr` qui, si présente, gagne
+// sur la valeur calculée (et part donc telle quelle vers SAP/Dataverse). On utilise
+// une clé dédiée — et non `_ds_<champ>` (le snapshot persisté d'une DS rouverte) —
+// pour ne pas geler le recalcul quand on modifie un input d'une DS existante.
 export function computeDsValues(formData) {
   const ctx = {
     usine: formData.autre_usine_fab,
@@ -37,13 +42,18 @@ export function computeDsValues(formData) {
     agen_type: formData.autre_agen_type,
     agen_choix: formData.autre_agen_choix,
   };
+  // Override manuel prioritaire sur le calcul ('' / null = pas d'override).
+  const ovr = (key, computed) => {
+    const v = formData[key];
+    return v === '' || v == null ? computed : v;
+  };
   return {
-    divisionFab: codeDivisionFabrication(ctx),
-    divisionOrigine: codeDivisionOrigine(formData.autre_usine_origine),
-    hierarchie: computeHierarchieDS(formData.autre_activite),
-    classeValo: computeClasseValoDS(ctx),
-    centreProfit: computeCentreProfitDS(ctx),
-    secteur: computeSecteurDS(formData.autre_type_marque),
+    divisionFab: ovr('_ds_division_fab_ovr', codeDivisionFabrication(ctx)),
+    divisionOrigine: ovr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine)),
+    hierarchie: ovr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite)),
+    classeValo: ovr('_ds_classe_valo_ovr', computeClasseValoDS(ctx)),
+    centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
+    secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
   };
 }
 

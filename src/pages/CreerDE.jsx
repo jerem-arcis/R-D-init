@@ -181,13 +181,18 @@ const Field = ({ label, required, children, hint }) => (
   </div>
 );
 
-const ReadOnlyField = ({ label, value, hint }) => (
+// Champ auto-calculé. Sans `onChange` -> lecture seule (valeur forcée).
+// Avec `onChange` (phase de dev) -> pré-rempli par la règle mais éditable : la
+// saisie manuelle surcharge la valeur calculée et part vers SAP/Dataverse.
+const ReadOnlyField = ({ label, value, hint, onChange, type = 'text' }) => (
   <Field label={label} hint={hint}>
     <Input
-      value={value || ''}
-      readOnly
-      placeholder="— Calculé automatiquement —"
-      className="h-11 bg-muted/40 text-foreground/90 cursor-not-allowed"
+      type={type}
+      value={value ?? ''}
+      onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+      readOnly={!onChange}
+      placeholder={onChange ? '— Auto (modifiable) —' : '— Calculé automatiquement —'}
+      className={onChange ? 'h-11' : 'h-11 bg-muted/40 text-foreground/90 cursor-not-allowed'}
     />
   </Field>
 );
@@ -905,12 +910,16 @@ export default function CreerDE() {
     agen_type: formData.autre_agen_type,
     agen_choix: formData.autre_agen_choix,
   };
-  const dsDivisionOrigine = codeDivisionOrigine(formData.autre_usine_origine) || formData._ds_division_origine || '';
-  const dsDivisionFab = codeDivisionFabrication(dsCtx) || formData._ds_division_fab || '';
-  const dsHierarchie = computeHierarchieDS(formData.autre_activite) || formData._ds_hierarchie || '';
-  const dsClasseValo = computeClasseValoDS(dsCtx) || formData._ds_classe_valo || '';
-  const dsCentreProfit = computeCentreProfitDS(dsCtx) || formData._ds_centre_profit || '';
-  const dsSecteur = computeSecteurDS(formData.autre_type_marque) || formData._ds_secteur || '';
+  // Phase de dev : un override manuel (`_ds_*_ovr`) gagne sur le calcul, puis repli
+  // sur le calcul, puis sur le snapshot persisté (`_ds_*`) d'une DS rouverte.
+  const dsOvr = (ovrKey, computed, snapKey) =>
+    (formData[ovrKey] || '') || computed || formData[snapKey] || '';
+  const dsDivisionOrigine = dsOvr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine), '_ds_division_origine');
+  const dsDivisionFab = dsOvr('_ds_division_fab_ovr', codeDivisionFabrication(dsCtx), '_ds_division_fab');
+  const dsHierarchie = dsOvr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite), '_ds_hierarchie');
+  const dsClasseValo = dsOvr('_ds_classe_valo_ovr', computeClasseValoDS(dsCtx), '_ds_classe_valo');
+  const dsCentreProfit = dsOvr('_ds_centre_profit_ovr', computeCentreProfitDS(dsCtx), '_ds_centre_profit');
+  const dsSecteur = dsOvr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque), '_ds_secteur');
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
   const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
   // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
@@ -933,8 +942,10 @@ export default function CreerDE() {
     }
   });
 
-  // ZUG = poids net × 1000 (champ calculé, non modifiable).
-  const zug = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
+  // ZUG = poids net × 1000 (auto). Phase de dev : éditable -> une saisie manuelle
+  // (formData.zug) surcharge le calcul et alimente l'envoi SAP.
+  const zugAuto = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
+  const zug = formData.zug === '' || formData.zug == null ? zugAuto : Number(formData.zug);
 
   // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
   // Liste Division restreinte aux 4 sites de fabrication.
@@ -1305,12 +1316,14 @@ export default function CreerDE() {
                     </div>
                     <ReadOnlyField
                       label="Hiérarchie produit famille"
-                      value={deHierarchie}
+                      value={formData.famille_produit || deHierarchie}
+                      onChange={(v) => handleChange('famille_produit', v)}
                       hint="Selon la division (Pâtisseries → 22, Traiteur → 27)"
                     />
                     <ReadOnlyField
                       label="Secteur d'activité"
-                      value={deSecteur}
+                      value={formData.marque || deSecteur}
+                      onChange={(v) => handleChange('marque', v)}
                       hint="Selon le réseau"
                     />
                     <Field label="Poids net">
@@ -1322,25 +1335,26 @@ export default function CreerDE() {
                         className="h-11"
                       />
                     </Field>
-                    <Field label="ZUG" hint="Calculé : poids net × 1000">
+                    <Field label="ZUG" hint="Auto : poids net × 1000 (modifiable)">
                       <Input
                         type="number"
                         value={zug}
-                        readOnly
-                        tabIndex={-1}
+                        onChange={(e) => handleChange('zug', e.target.value)}
                         placeholder="0"
-                        className="h-11 bg-muted text-muted-foreground cursor-not-allowed"
+                        className="h-11"
                       />
                     </Field>
                     <ReadOnlyField
                       label="Classe de valorisation"
-                      value={deClasseValo}
+                      value={formData.classe_valorisation || deClasseValo}
+                      onChange={(v) => handleChange('classe_valorisation', v)}
                       hint="Production → 7012, Aire → 2038"
                     />
                     {deCentreProfitAuto ? (
                       <ReadOnlyField
                         label="Centre de profit"
-                        value={deCentreProfitAuto}
+                        value={formData.centre_profit || deCentreProfitAuto}
+                        onChange={(v) => handleChange('centre_profit', v)}
                         hint="Selon la division"
                       />
                     ) : (
@@ -1372,7 +1386,8 @@ export default function CreerDE() {
                     {deGroupeArticleLocked ? (
                       <ReadOnlyField
                         label="Groupe article (division)"
-                        value={deGroupeArticleLocked}
+                        value={formData.groupe_article || deGroupeArticleLocked}
+                        onChange={(v) => handleChange('groupe_article', v)}
                         hint="Selon la division"
                       />
                     ) : (
@@ -1618,6 +1633,7 @@ export default function CreerDE() {
                     <ReadOnlyField
                       label="Code division d'origine"
                       value={dsDivisionOrigine}
+                      onChange={(v) => handleChange('_ds_division_origine_ovr', v)}
                       hint="Auto selon l'usine d'origine"
                     />
                   </div>
@@ -1739,6 +1755,7 @@ export default function CreerDE() {
                     <ReadOnlyField
                       label="Code division"
                       value={dsDivisionFab}
+                      onChange={(v) => handleChange('_ds_division_fab_ovr', v)}
                       hint="Auto selon l'usine de fabrication"
                     />
 
@@ -1792,7 +1809,7 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <ReadOnlyField label="Hiérarchie de produits" value={dsHierarchie} hint="Auto selon l'activité" />
+                    <ReadOnlyField label="Hiérarchie de produits" value={dsHierarchie} onChange={(v) => handleChange('_ds_hierarchie_ovr', v)} hint="Auto selon l'activité" />
 
                     <Field label="Poids net pour 1 UV (en kg)" required>
                       <Input
@@ -1820,14 +1837,14 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <ReadOnlyField label="Secteur d'activité" value={dsSecteur} hint="Auto selon le type de marque" />
+                    <ReadOnlyField label="Secteur d'activité" value={dsSecteur} onChange={(v) => handleChange('_ds_secteur_ovr', v)} hint="Auto selon le type de marque" />
                   </div>
                 </FormSection>
 
                 <FormSection title="Champs calculés (SAP)" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <ReadOnlyField label="Classe de valorisation" value={dsClasseValo} hint="Selon usine / type / activité" />
-                    <ReadOnlyField label="Centre de profit" value={dsCentreProfit} hint="Selon usine / activité" />
+                    <ReadOnlyField label="Classe de valorisation" value={dsClasseValo} onChange={(v) => handleChange('_ds_classe_valo_ovr', v)} hint="Selon usine / type / activité" />
+                    <ReadOnlyField label="Centre de profit" value={dsCentreProfit} onChange={(v) => handleChange('_ds_centre_profit_ovr', v)} hint="Selon usine / activité" />
                   </div>
                 </FormSection>
               </fieldset>
