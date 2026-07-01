@@ -46,6 +46,14 @@ const TONE_BADGE = {
 const isDEValidated = (statut) =>
   ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(statut);
 
+// « En attente de code chapeau » couvre la DE (en_attente_cc) ET la DS
+// (en_attente_creation_code_chapeau) : même libellé, clés techniques distinctes.
+const isEnAttenteCC = (statut) =>
+  statut === 'en_attente_cc' || statut === 'en_attente_creation_code_chapeau';
+
+// « Validée » côté compteur : DE validée/phase DL + DS validée (ds_validee).
+const isValideeCount = (statut) => isDEValidated(statut) || statut === 'ds_validee';
+
 // Onglets de la liste DE (les statuts DL ne sont pas exposés ici, ils ont leur onglet).
 const DE_TABS = ['brouillon', 'en_attente_cc', 'validee', 'refusee'];
 
@@ -132,7 +140,13 @@ export default function DemandesEtude() {
     if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
     if (filter !== 'toutes') {
       if (filter === 'validee') {
-        if (!isDEValidated(de.statut)) return false;
+        if (!isValideeCount(de.statut)) return false;
+      } else if (filter === 'en_attente_cc') {
+        // Onglet « En attente de code chapeau » : DE + DS (même sens métier).
+        if (!isEnAttenteCC(de.statut)) return false;
+      } else if (filter === 'brouillon') {
+        // Onglet « Brouillon » : DE (brouillon) + DS (ds_brouillon).
+        if (de.statut !== 'brouillon' && de.statut !== 'ds_brouillon') return false;
       } else if (de.statut !== filter) {
         return false;
       }
@@ -277,7 +291,7 @@ export default function DemandesEtude() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'en_attente_cc').length}
+                  {demandes.filter(d => isEnAttenteCC(d.statut)).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente code chapeau</p>
               </div>
@@ -290,7 +304,7 @@ export default function DemandesEtude() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => isDEValidated(d.statut)).length}
+                  {demandes.filter(d => isValideeCount(d.statut)).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Validées</p>
               </div>
