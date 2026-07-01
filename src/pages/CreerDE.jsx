@@ -117,6 +117,22 @@ const VL_CODE_FLOW_URL =
 const DOCUMENT_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/55ac4404412141bd8e3748446d1d7b7f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rPNAeoQdjqP3dHyHcpYZzYpb2Qom-R6Z7VzZG3NVC4I';
 
+// POST JSON vers un flux Power Automate. Lève une Error lisible si la réponse
+// n'est pas OK, sinon renvoie la Response (à lire selon le besoin par l'appelant :
+// .text() / .arrayBuffer()). `body` omis => POST sans corps.
+async function postFlow(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+  }
+  return res;
+}
+
 // Génère un EAN-13 « bidon » mais valide (clé de contrôle correcte). `prefix`
 // distingue les niveaux (UV / carton / palette) pour des codes lisiblement
 // différents. Purement décoratif tant que la vraie source EAN n'est pas branchée.
@@ -221,15 +237,8 @@ const RecupererBeCPG = ({ onApply }) => {
     setStatus('loading');
     setMessage('');
     try {
-      const res = await fetch(BECPG_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ CodePJ: code }),
-      });
+      const res = await postFlow(BECPG_FLOW_URL, { CodePJ: code });
       const text = await res.text().catch(() => '');
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-      }
       let json = null;
       try {
         json = text ? JSON.parse(text) : null;
@@ -536,15 +545,7 @@ const DocumentViewer = ({ codePJ }) => {
     setSheets([]);
     setActive(0);
     try {
-      const res = await fetch(DOCUMENT_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ CodePJ: code }),
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${res.statusText}${t ? ` — ${t.slice(0, 200)}` : ''}`);
-      }
+      const res = await postFlow(DOCUMENT_FLOW_URL, { CodePJ: code });
       const buf = await res.arrayBuffer();
       if (!buf || buf.byteLength === 0) {
         throw new Error(`Réponse vide : aucun document trouvé pour « ${code} ».`);
@@ -1001,13 +1002,7 @@ export default function CreerDE() {
       GroupeFraisGeneraux: '',
       GroupeArticleDivision: '',
     };
-    const res = await fetch(SAP_SEND_FLOW_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-    }
+    await postFlow(SAP_SEND_FLOW_URL, body);
   };
   const handleDsPushSap = async () => {
     if (isCreatingDs) return;
@@ -1120,11 +1115,8 @@ export default function CreerDE() {
     setNouveauCode('');
     try {
       // Déclenchement sans corps ; on attend la réponse du flux (le code chapeau).
-      const res = await fetch(NOUVEAU_CODE_FLOW_URL, { method: 'POST' });
+      const res = await postFlow(NOUVEAU_CODE_FLOW_URL);
       const text = await res.text().catch(() => '');
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-      }
       // Le code vient normalement du corps. Repli best-effort sur des en-têtes
       // (noms ASCII valides uniquement ; get() lève sur un nom invalide).
       const readHeader = (h) => {
@@ -1155,15 +1147,8 @@ export default function CreerDE() {
   // chapeau (texte simple, ex. « 741603 »). BLOQUANT côté appelant : sans ce code
   // on ne peut pas enchaîner le process classique.
   const requestVlCodeChapeau = async (numero) => {
-    const res = await fetch(VL_CODE_FLOW_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 'Numéro': numero }),
-    });
+    const res = await postFlow(VL_CODE_FLOW_URL, { 'Numéro': numero });
     const text = await res.text().catch(() => '');
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-    }
     const code = extractCodeChapeau(text);
     if (!code) {
       throw new Error("Réponse du flux VL vide : le code chapeau doit être renvoyé dans le corps (Body) de l'action Réponse.");
@@ -1176,15 +1161,7 @@ export default function CreerDE() {
   // validation de la DE, il affiche seulement un avertissement.
   const triggerValidationFlow = async (numero) => {
     try {
-      const res = await fetch(VALIDATION_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 'Numéro': numero }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-      }
+      await postFlow(VALIDATION_FLOW_URL, { 'Numéro': numero });
     } catch (err) {
       toast({
         title: 'Flux non déclenché',
@@ -1214,15 +1191,7 @@ export default function CreerDE() {
       GroupeArticleDivision: formData.groupe_article || '',
     };
     try {
-      const res = await fetch(SAP_SEND_FLOW_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-      }
+      await postFlow(SAP_SEND_FLOW_URL, body);
     } catch (err) {
       toast({
         title: 'Envoi SAP non déclenché',
