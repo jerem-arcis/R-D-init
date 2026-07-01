@@ -337,80 +337,142 @@ const RecupererBeCPG = ({ onApply }) => {
   );
 };
 
-// Convertit une feuille SheetJS en grille « type Excel » : lettres de colonnes,
-// numéros de lignes, largeurs d'origine, cellules fusionnées (rowSpan/colSpan).
-// On borne la plage rendue pour éviter de figer le navigateur sur une feuille
-// gigantesque. Retourne un objet sérialisable (aucune dépendance à XLSX au rendu).
+// Plage rendue bornée pour ne pas figer le navigateur sur une feuille géante.
 const GRID_MAX_ROWS = 400;
 const GRID_MAX_COLS = 60;
-function worksheetToGrid(XLSX, ws) {
-  const ref = ws && ws['!ref'];
-  if (!ref) return { cols: [], rows: [], truncated: false };
-  const range = XLSX.utils.decode_range(ref);
-  const endR = Math.min(range.e.r, range.s.r + GRID_MAX_ROWS - 1);
-  const endC = Math.min(range.e.c, range.s.c + GRID_MAX_COLS - 1);
-  const truncated = endR < range.e.r || endC < range.e.c;
 
-  // Cellules couvertes par une fusion (à sauter) + ancres (span à appliquer).
+// Palette de thème Office par défaut (bg1, text1, bg2, text2, accent1..6, liens) :
+// sert à résoudre les couleurs « theme » d'Excel qui n'ont pas d'ARGB explicite.
+const THEME_PALETTE = ['FFFFFF', '000000', 'E7E6E6', '44546A', '4472C4', 'ED7D31', 'A5A5A5', 'FFC000', '5B9BD5', '70AD47', '0563C1', '954F72'];
+
+// Éclaircit (tint>0) ou assombrit (tint<0) une couleur hex, façon Excel.
+function applyTint(hex, tint) {
+  if (!tint) return hex;
+  const adj = (c) => (tint < 0 ? Math.round(c * (1 + tint)) : Math.round(c * (1 - tint) + 255 * tint));
+  const to2 = (n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+  return to2(adj(parseInt(hex.slice(0, 2), 16))) + to2(adj(parseInt(hex.slice(2, 4), 16))) + to2(adj(parseInt(hex.slice(4, 6), 16)));
+}
+
+// Couleur ExcelJS ({argb} | {theme,tint} | {indexed}) -> couleur CSS (ou null).
+function excelColorToCss(color) {
+  if (!color) return null;
+  if (color.argb) {
+    const a = color.argb;
+    return '#' + (a.length === 8 ? a.slice(2) : a);
+  }
+  if (typeof color.theme === 'number' && THEME_PALETTE[color.theme]) {
+    return '#' + applyTint(THEME_PALETTE[color.theme], color.tint || 0);
+  }
+  return null; // indexed/auto -> laissé au défaut (quadrillage clair)
+}
+
+const BORDER_WIDTH = { hair: '1px', thin: '1px', dotted: '1px', dashed: '1px', medium: '2px', mediumDashed: '2px', thick: '3px', double: '3px' };
+const BORDER_STYLE = { double: 'double', dotted: 'dotted', dashed: 'dashed', mediumDashed: 'dashed' };
+function borderCss(side) {
+  if (!side || !side.style) return undefined;
+  const w = BORDER_WIDTH[side.style] || '1px';
+  const s = BORDER_STYLE[side.style] || 'solid';
+  return `${w} ${s} ${excelColorToCss(side.color) || '#000'}`;
+}
+
+// 'B71' -> { r:71, c:2 } (indices 1-based).
+function a1ToRC(a1) {
+  const m = /^([A-Z]+)(\d+)$/.exec(a1);
+  let c = 0;
+  for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
+  return { r: parseInt(m[2], 10), c };
+}
+// 2 -> 'B'
+function colLetter(c) {
+  let s = '';
+  while (c > 0) { s = String.fromCharCode(65 + ((c - 1) % 26)) + s; c = Math.floor((c - 1) / 26); }
+  return s;
+}
+
+// Convertit une feuille ExcelJS en grille stylée (sérialisable, rendue sans ExcelJS) :
+// texte formaté, couleurs de fond, polices, bordures, alignements, fusions, largeurs
+// de colonnes et hauteurs de lignes — pour coller au rendu du fichier d'origine.
+function worksheetToStyledGrid(ws) {
+  const rowCount = Math.min(ws.rowCount || 0, GRID_MAX_ROWS);
+  const colCount = Math.min(ws.columnCount || 0, GRID_MAX_COLS);
+  if (!rowCount || !colCount) return { cols: [], rows: [], truncated: false };
+  const truncated = (ws.rowCount || 0) > rowCount || (ws.columnCount || 0) > colCount;
+
+  // Fusions -> ancres (span à appliquer) + cellules couvertes (à sauter).
   const covered = new Set();
   const anchors = new Map();
-  for (const m of ws['!merges'] || []) {
-    anchors.set(`${m.s.r},${m.s.c}`, {
-      rowspan: m.e.r - m.s.r + 1,
-      colspan: m.e.c - m.s.c + 1,
-    });
-    for (let r = m.s.r; r <= m.e.r; r++) {
-      for (let c = m.s.c; c <= m.e.c; c++) {
-        if (r !== m.s.r || c !== m.s.c) covered.add(`${r},${c}`);
-      }
-    }
+  for (const rangeStr of ws.model.merges || []) {
+    const [a, b] = rangeStr.split(':');
+    const s = a1ToRC(a);
+    const e = a1ToRC(b || a);
+    anchors.set(`${s.r},${s.c}`, { rowspan: e.r - s.r + 1, colspan: e.c - s.c + 1 });
+    for (let r = s.r; r <= e.r; r++)
+      for (let c = s.c; c <= e.c; c++)
+        if (r !== s.r || c !== s.c) covered.add(`${r},${c}`);
   }
 
-  const colsMeta = ws['!cols'] || [];
   const cols = [];
-  for (let c = range.s.c; c <= endC; c++) {
-    const meta = colsMeta[c];
-    let width = 80;
-    if (meta) {
-      if (meta.hidden) width = 0;
-      else if (meta.wpx) width = Math.round(meta.wpx);
-      else if (meta.wch) width = Math.round(meta.wch * 7 + 5);
-    }
-    cols.push({ letter: XLSX.utils.encode_col(c), width });
+  for (let c = 1; c <= colCount; c++) {
+    const w = ws.getColumn(c).width;
+    cols.push({ letter: colLetter(c), width: w ? Math.round(w * 7 + 5) : 64 });
   }
 
   const rows = [];
-  for (let r = range.s.r; r <= endR; r++) {
+  for (let r = 1; r <= rowCount; r++) {
+    const row = ws.getRow(r);
     const cells = [];
-    for (let c = range.s.c; c <= endC; c++) {
+    for (let c = 1; c <= colCount; c++) {
       const key = `${r},${c}`;
       if (covered.has(key)) continue; // absorbée par l'ancre de fusion
-      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      const cell = row.getCell(c);
       const span = anchors.get(key);
-      cells.push({
-        text: cell ? (cell.w != null ? cell.w : cell.v != null ? String(cell.v) : '') : '',
-        rowspan: span ? Math.min(span.rowspan, endR - r + 1) : 1,
-        colspan: span ? Math.min(span.colspan, endC - c + 1) : 1,
-        num: cell ? cell.t === 'n' : false,
-      });
+
+      let text = cell.text;
+      if (typeof text !== 'string') text = text == null ? '' : String(text);
+      if (text === '[object Object]') text = '';
+
+      const font = cell.font || {};
+      const align = cell.alignment || {};
+      const bd = cell.border || {};
+      const fill = cell.fill;
+      const bg = fill && fill.type === 'pattern' && fill.pattern === 'solid'
+        ? excelColorToCss(fill.fgColor)
+        : null;
+      const style = {
+        fontWeight: font.bold ? 700 : undefined,
+        fontStyle: font.italic ? 'italic' : undefined,
+        textDecoration: font.underline ? 'underline' : undefined,
+        fontSize: font.size ? font.size + 'pt' : undefined,
+        fontFamily: font.name || undefined,
+        color: excelColorToCss(font.color) || undefined,
+        background: bg || undefined,
+        textAlign: align.horizontal || (typeof cell.value === 'number' ? 'right' : undefined),
+        verticalAlign: align.vertical === 'middle' ? 'middle' : align.vertical === 'bottom' ? 'bottom' : 'top',
+        whiteSpace: align.wrapText ? 'normal' : 'nowrap',
+        borderTop: borderCss(bd.top),
+        borderRight: borderCss(bd.right),
+        borderBottom: borderCss(bd.bottom),
+        borderLeft: borderCss(bd.left),
+      };
+      cells.push({ text, rowspan: span ? span.rowspan : 1, colspan: span ? span.colspan : 1, style });
     }
-    rows.push({ num: r + 1, cells });
+    rows.push({ num: r, height: row.height ? Math.round(row.height * 1.34) : undefined, cells });
   }
   return { cols, rows, truncated };
 }
 
-// Rendu grille « Excel Online » d'une feuille : en-têtes de colonnes/lignes figés,
-// quadrillage, largeurs d'origine, texte tronqué par cellule (tooltip au survol).
+// Rendu grille « type Excel Online » : en-têtes de colonnes/lignes figés, largeurs
+// et hauteurs d'origine, styles de cellules appliqués (couleurs, bordures, police).
 const SheetGrid = ({ grid }) => {
   if (!grid || !grid.rows.length) {
     return <div className="p-10 text-center text-sm text-slate-400">Feuille vide.</div>;
   }
   return (
-    <table className="excel-grid">
+    <table className="excel-styled">
       <colgroup>
         <col style={{ width: 46 }} />
         {grid.cols.map((c, i) => (
-          <col key={i} style={{ width: (c.width || 80) + 'px' }} />
+          <col key={i} style={{ width: (c.width || 64) + 'px' }} />
         ))}
       </colgroup>
       <thead>
@@ -423,15 +485,16 @@ const SheetGrid = ({ grid }) => {
       </thead>
       <tbody>
         {grid.rows.map((row) => (
-          <tr key={row.num}>
+          <tr key={row.num} style={row.height ? { height: row.height + 'px' } : undefined}>
             <th className="excel-rowhead">{row.num}</th>
             {row.cells.map((cell, i) => (
               <td
                 key={i}
+                className="excel-cell"
                 rowSpan={cell.rowspan}
                 colSpan={cell.colspan}
                 title={cell.text || undefined}
-                style={cell.num ? { textAlign: 'right' } : undefined}
+                style={cell.style}
               >
                 {cell.text}
               </td>
@@ -488,13 +551,14 @@ const DocumentViewer = ({ codePJ }) => {
         if (prev) URL.revokeObjectURL(prev);
         return url;
       });
-      // Parsing SheetJS (chargé à la demande pour ne pas alourdir le bundle initial)
-      // -> une grille « type Excel » par feuille (cellules fusionnées incluses).
-      const XLSX = await import('xlsx');
-      const wb = XLSX.read(buf, { type: 'array' });
-      const parsed = wb.SheetNames.map((name) => ({
-        name,
-        ...worksheetToGrid(XLSX, wb.Sheets[name]),
+      // Parsing ExcelJS (chargé à la demande pour ne pas alourdir le bundle initial)
+      // -> une grille stylée par feuille (couleurs, bordures, police, fusions…).
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const parsed = wb.worksheets.map((ws) => ({
+        name: ws.name,
+        ...worksheetToStyledGrid(ws),
       }));
       setSheets(parsed);
       setStatus('success');
@@ -551,21 +615,20 @@ const DocumentViewer = ({ codePJ }) => {
           {status === 'success' && sheets.length > 0 && (
             <div className="flex flex-col min-h-0">
               <style>{`
-                .excel-grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 12px; color: #1e293b; }
-                .excel-grid th, .excel-grid td {
-                  border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de;
-                  padding: 2px 6px; overflow: hidden; text-overflow: ellipsis;
-                  white-space: nowrap; vertical-align: top; height: 22px;
+                .excel-styled { border-collapse: collapse; table-layout: fixed; font-size: 11px; color: #000; background: #fff; font-family: Calibri, 'Segoe UI', sans-serif; }
+                .excel-styled th, .excel-styled td {
+                  padding: 1px 5px; overflow: hidden; text-overflow: ellipsis;
+                  vertical-align: top; height: 20px; line-height: 1.3;
                 }
-                .excel-grid td { background: #fff; }
-                .excel-colhead { position: sticky; top: 0; z-index: 2; background: #f1f5f9;
-                  text-align: center; font-weight: 600; color: #64748b; }
-                .excel-rowhead { position: sticky; left: 0; z-index: 1; background: #f1f5f9;
-                  text-align: center; font-weight: 500; color: #64748b; }
+                .excel-styled .excel-cell { border: 1px solid #e6e8eb; background: #fff; }
+                .excel-colhead { position: sticky; top: 0; z-index: 2; background: #f3f4f6;
+                  text-align: center; font-weight: 600; color: #64748b;
+                  box-shadow: inset -1px -1px 0 #cbd5e1; }
+                .excel-rowhead { position: sticky; left: 0; z-index: 1; background: #f3f4f6;
+                  text-align: center; font-weight: 500; color: #64748b;
+                  box-shadow: inset -1px -1px 0 #cbd5e1; }
                 .excel-corner { position: sticky; left: 0; top: 0; z-index: 3; background: #e2e8f0;
-                  border-left: 1px solid #d0d7de; }
-                .excel-grid thead th:first-child { border-left: 1px solid #d0d7de; }
-                .excel-grid tbody th { border-left: 1px solid #d0d7de; }
+                  box-shadow: inset -1px -1px 0 #cbd5e1; }
               `}</style>
               {sheets.length > 1 && (
                 <div className="flex gap-1 overflow-x-auto px-4 pt-3 border-b border-slate-200 bg-slate-50">
