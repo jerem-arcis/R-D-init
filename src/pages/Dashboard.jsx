@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
   Loader2, Radar, FileEdit, Hourglass, ClipboardCheck,
-  CheckCircle2, XCircle, ChevronRight, Inbox,
+  CheckCircle2, XCircle, Inbox,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {

@@ -1,7 +1,5 @@
 import React from 'react';
-import { Lock, ShieldCheck, XCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Lock } from 'lucide-react';
 import RefusSection from '../RefusSection';
 import { ValidationBadge, RefusBadge, RefusAlert } from '../StatusBadges';
 

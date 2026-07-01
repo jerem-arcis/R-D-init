@@ -23,28 +23,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  FileText,
   Clock,
   Loader2,
   ChevronRight,
   CheckCircle2,
-  Circle,
   AlertCircle,
   Search,
   X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-const STEP_NAMES = {
-  1: 'ControleDeGestion',
-  2: 'SupplyChain',
-  3: 'Gestion du besoin',
-  4: 'Industriel',
-  5: 'Commerce',
-  6: 'FL',
-  7: 'Exportable'
-};
 
 const TYPES_DEMANDE_OPTIONS = [
   'CA Additionnel',
