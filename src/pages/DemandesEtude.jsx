@@ -214,10 +214,7 @@ export default function DemandesEtude() {
                 </Button>
               </Link>
               <Link to={createPageUrl('CreerDE?type=ds')}>
-                <Button
-                  variant="outline"
-                  className="border-teal-300 text-teal-700 hover:bg-teal-50 uppercase text-xs font-bold tracking-wide shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
-                >
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                   <Plus className="w-4 h-4 mr-2" />
                   Créer une DS (demande simplifiée)
                 </Button>
