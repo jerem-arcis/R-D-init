@@ -337,16 +337,122 @@ const RecupererBeCPG = ({ onApply }) => {
   );
 };
 
+// Convertit une feuille SheetJS en grille « type Excel » : lettres de colonnes,
+// numéros de lignes, largeurs d'origine, cellules fusionnées (rowSpan/colSpan).
+// On borne la plage rendue pour éviter de figer le navigateur sur une feuille
+// gigantesque. Retourne un objet sérialisable (aucune dépendance à XLSX au rendu).
+const GRID_MAX_ROWS = 400;
+const GRID_MAX_COLS = 60;
+function worksheetToGrid(XLSX, ws) {
+  const ref = ws && ws['!ref'];
+  if (!ref) return { cols: [], rows: [], truncated: false };
+  const range = XLSX.utils.decode_range(ref);
+  const endR = Math.min(range.e.r, range.s.r + GRID_MAX_ROWS - 1);
+  const endC = Math.min(range.e.c, range.s.c + GRID_MAX_COLS - 1);
+  const truncated = endR < range.e.r || endC < range.e.c;
+
+  // Cellules couvertes par une fusion (à sauter) + ancres (span à appliquer).
+  const covered = new Set();
+  const anchors = new Map();
+  for (const m of ws['!merges'] || []) {
+    anchors.set(`${m.s.r},${m.s.c}`, {
+      rowspan: m.e.r - m.s.r + 1,
+      colspan: m.e.c - m.s.c + 1,
+    });
+    for (let r = m.s.r; r <= m.e.r; r++) {
+      for (let c = m.s.c; c <= m.e.c; c++) {
+        if (r !== m.s.r || c !== m.s.c) covered.add(`${r},${c}`);
+      }
+    }
+  }
+
+  const colsMeta = ws['!cols'] || [];
+  const cols = [];
+  for (let c = range.s.c; c <= endC; c++) {
+    const meta = colsMeta[c];
+    let width = 80;
+    if (meta) {
+      if (meta.hidden) width = 0;
+      else if (meta.wpx) width = Math.round(meta.wpx);
+      else if (meta.wch) width = Math.round(meta.wch * 7 + 5);
+    }
+    cols.push({ letter: XLSX.utils.encode_col(c), width });
+  }
+
+  const rows = [];
+  for (let r = range.s.r; r <= endR; r++) {
+    const cells = [];
+    for (let c = range.s.c; c <= endC; c++) {
+      const key = `${r},${c}`;
+      if (covered.has(key)) continue; // absorbée par l'ancre de fusion
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      const span = anchors.get(key);
+      cells.push({
+        text: cell ? (cell.w != null ? cell.w : cell.v != null ? String(cell.v) : '') : '',
+        rowspan: span ? Math.min(span.rowspan, endR - r + 1) : 1,
+        colspan: span ? Math.min(span.colspan, endC - c + 1) : 1,
+        num: cell ? cell.t === 'n' : false,
+      });
+    }
+    rows.push({ num: r + 1, cells });
+  }
+  return { cols, rows, truncated };
+}
+
+// Rendu grille « Excel Online » d'une feuille : en-têtes de colonnes/lignes figés,
+// quadrillage, largeurs d'origine, texte tronqué par cellule (tooltip au survol).
+const SheetGrid = ({ grid }) => {
+  if (!grid || !grid.rows.length) {
+    return <div className="p-10 text-center text-sm text-slate-400">Feuille vide.</div>;
+  }
+  return (
+    <table className="excel-grid">
+      <colgroup>
+        <col style={{ width: 46 }} />
+        {grid.cols.map((c, i) => (
+          <col key={i} style={{ width: (c.width || 80) + 'px' }} />
+        ))}
+      </colgroup>
+      <thead>
+        <tr>
+          <th className="excel-corner" />
+          {grid.cols.map((c, i) => (
+            <th key={i} className="excel-colhead">{c.letter}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {grid.rows.map((row) => (
+          <tr key={row.num}>
+            <th className="excel-rowhead">{row.num}</th>
+            {row.cells.map((cell, i) => (
+              <td
+                key={i}
+                rowSpan={cell.rowspan}
+                colSpan={cell.colspan}
+                title={cell.text || undefined}
+                style={cell.num ? { textAlign: 'right' } : undefined}
+              >
+                {cell.text}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 // ---------- Visualiseur de document projet (.xlsm renvoyé par le flux) ----------
 // Bouton « Voir le document » : appelle DOCUMENT_FLOW_URL avec { CodePJ: <code
 // projet> }, récupère le binaire brut du classeur Excel, le parse côté navigateur
-// (SheetJS) et affiche chaque feuille en table dans une modale (onglets). Un
-// bouton « Télécharger » sert de secours (fichier brut tel que renvoyé).
+// (SheetJS) et affiche chaque feuille en grille « type Excel Online » dans une
+// modale (onglets). Un bouton « Télécharger » sert de secours (fichier brut).
 const DocumentViewer = ({ codePJ }) => {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [message, setMessage] = useState('');
-  const [sheets, setSheets] = useState([]); // [{ name, html }]
+  const [sheets, setSheets] = useState([]); // [{ name, cols, rows, truncated }]
   const [active, setActive] = useState(0);
   const [blobUrl, setBlobUrl] = useState(null);
 
@@ -383,12 +489,12 @@ const DocumentViewer = ({ codePJ }) => {
         return url;
       });
       // Parsing SheetJS (chargé à la demande pour ne pas alourdir le bundle initial)
-      // -> une table HTML par feuille (cellules fusionnées incluses).
+      // -> une grille « type Excel » par feuille (cellules fusionnées incluses).
       const XLSX = await import('xlsx');
       const wb = XLSX.read(buf, { type: 'array' });
       const parsed = wb.SheetNames.map((name) => ({
         name,
-        html: XLSX.utils.sheet_to_html(wb.Sheets[name], { editable: false }),
+        ...worksheetToGrid(XLSX, wb.Sheets[name]),
       }));
       setSheets(parsed);
       setStatus('success');
@@ -445,11 +551,21 @@ const DocumentViewer = ({ codePJ }) => {
           {status === 'success' && sheets.length > 0 && (
             <div className="flex flex-col min-h-0">
               <style>{`
-                .xlsx-preview table { border-collapse: collapse; font-size: 12px; }
-                .xlsx-preview td, .xlsx-preview th {
-                  border: 1px solid #e2e8f0; padding: 3px 8px; white-space: nowrap;
+                .excel-grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 12px; color: #1e293b; }
+                .excel-grid th, .excel-grid td {
+                  border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de;
+                  padding: 2px 6px; overflow: hidden; text-overflow: ellipsis;
+                  white-space: nowrap; vertical-align: top; height: 22px;
                 }
-                .xlsx-preview tr:first-child td { background: #f8fafc; font-weight: 600; }
+                .excel-grid td { background: #fff; }
+                .excel-colhead { position: sticky; top: 0; z-index: 2; background: #f1f5f9;
+                  text-align: center; font-weight: 600; color: #64748b; }
+                .excel-rowhead { position: sticky; left: 0; z-index: 1; background: #f1f5f9;
+                  text-align: center; font-weight: 500; color: #64748b; }
+                .excel-corner { position: sticky; left: 0; top: 0; z-index: 3; background: #e2e8f0;
+                  border-left: 1px solid #d0d7de; }
+                .excel-grid thead th:first-child { border-left: 1px solid #d0d7de; }
+                .excel-grid tbody th { border-left: 1px solid #d0d7de; }
               `}</style>
               {sheets.length > 1 && (
                 <div className="flex gap-1 overflow-x-auto px-4 pt-3 border-b border-slate-200 bg-slate-50">
@@ -470,10 +586,14 @@ const DocumentViewer = ({ codePJ }) => {
                   ))}
                 </div>
               )}
-              <div
-                className="xlsx-preview overflow-auto max-h-[70vh] p-4"
-                dangerouslySetInnerHTML={{ __html: sheets[active]?.html || '' }}
-              />
+              {sheets[active]?.truncated && (
+                <div className="px-4 py-1.5 text-[11px] text-amber-700 bg-amber-50 border-b border-amber-200">
+                  Aperçu limité aux {GRID_MAX_ROWS} premières lignes / {GRID_MAX_COLS} colonnes — utilisez « Télécharger » pour la feuille complète.
+                </div>
+              )}
+              <div className="overflow-auto max-h-[70vh] bg-slate-100 p-3">
+                <SheetGrid grid={sheets[active]} />
+              </div>
               {blobUrl && (
                 <div className="flex justify-end px-5 py-3 border-t border-slate-200 bg-slate-50">
                   <a href={blobUrl} download={`${code}.xlsm`}>
