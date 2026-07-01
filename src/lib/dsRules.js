@@ -1,4 +1,4 @@
-// Regles metier de la DS (Demande Specifique), pures et testees. Reutilisees par
+// Regles metier de la DS (Demande Simplifiee), pures et testees. Reutilisees par
 // le formulaire (CreerDE.jsx) et la persistance (api/ds.js). Reprend la logique
 // auparavant inline dans CreerDE (classe valo / centre profit / secteur) + ajoute
 // les regles du scope Commerce/Marketing (usines origine/fabrication, Agen).

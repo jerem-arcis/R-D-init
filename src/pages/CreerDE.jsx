@@ -1428,7 +1428,7 @@ export default function CreerDE() {
     formType === 'de'
       ? 'Demande d\'Étude (DE)'
       : formType === 'autre'
-          ? 'Demande Spécifique (DS)'
+          ? 'Demande Simplifiée (DS)'
           : 'Nouvelle Demande';
 
   return (
