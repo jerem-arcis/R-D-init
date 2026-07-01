@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Search, XCircle, Database, Monitor, ShoppingCart } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Save, Send, FileText, Layers, Settings2, ChevronRight, Loader2, CheckCircle2, X, Check, ChevronsUpDown, Search, XCircle, Database, Monitor, ShoppingCart, FileSpreadsheet, Download, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
@@ -111,6 +111,13 @@ const SAP_SEND_FLOW_URL =
 // ex. « 741603 ») qui alimente ensuite le process classique. Même host -> CSP OK.
 const VL_CODE_FLOW_URL =
   'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f20ba3d982c47388445509a6e992efd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=pa5adaOQtjiBlP_I8ePM-C3svlLl7t1Ah-XiNnff5dY';
+
+// Flux « document projet » : reçoit { "CodePJ": <code projet> } et renvoie le
+// binaire brut d'un classeur Excel (.xlsm, application/vnd.ms-excel.sheet.macroenabled.12).
+// PAS de base64 : le corps EST le fichier. Aucun Content-Disposition -> on nomme
+// le fichier <CodePJ>.xlsm nous-mêmes. Même host que les autres flux -> CSP OK.
+const DOCUMENT_FLOW_URL =
+  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/55ac4404412141bd8e3748446d1d7b7f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rPNAeoQdjqP3dHyHcpYZzYpb2Qom-R6Z7VzZG3NVC4I';
 
 // Génère un EAN-13 « bidon » mais valide (clé de contrôle correcte). `prefix`
 // distingue les niveaux (UV / carton / palette) pour des codes lisiblement
@@ -327,6 +334,160 @@ const RecupererBeCPG = ({ onApply }) => {
         </div>
       )}
     </div>
+  );
+};
+
+// ---------- Visualiseur de document projet (.xlsm renvoyé par le flux) ----------
+// Bouton « Voir le document » : appelle DOCUMENT_FLOW_URL avec { CodePJ: <code
+// projet> }, récupère le binaire brut du classeur Excel, le parse côté navigateur
+// (SheetJS) et affiche chaque feuille en table dans une modale (onglets). Un
+// bouton « Télécharger » sert de secours (fichier brut tel que renvoyé).
+const DocumentViewer = ({ codePJ }) => {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [message, setMessage] = useState('');
+  const [sheets, setSheets] = useState([]); // [{ name, html }]
+  const [active, setActive] = useState(0);
+  const [blobUrl, setBlobUrl] = useState(null);
+
+  const code = (codePJ || '').trim();
+
+  const load = async () => {
+    if (!code) return;
+    setOpen(true);
+    setStatus('loading');
+    setMessage('');
+    setSheets([]);
+    setActive(0);
+    try {
+      const res = await fetch(DOCUMENT_FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CodePJ: code }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${res.statusText}${t ? ` — ${t.slice(0, 200)}` : ''}`);
+      }
+      const buf = await res.arrayBuffer();
+      if (!buf || buf.byteLength === 0) {
+        throw new Error(`Réponse vide : aucun document trouvé pour « ${code} ».`);
+      }
+      // URL de téléchargement de secours : on garde le fichier brut tel quel.
+      const blob = new Blob([buf], {
+        type: 'application/vnd.ms-excel.sheet.macroenabled.12',
+      });
+      const url = URL.createObjectURL(blob);
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+      // Parsing SheetJS (chargé à la demande pour ne pas alourdir le bundle initial)
+      // -> une table HTML par feuille (cellules fusionnées incluses).
+      const XLSX = await import('xlsx');
+      const wb = XLSX.read(buf, { type: 'array' });
+      const parsed = wb.SheetNames.map((name) => ({
+        name,
+        html: XLSX.utils.sheet_to_html(wb.Sheets[name], { editable: false }),
+      }));
+      setSheets(parsed);
+      setStatus('success');
+    } catch (err) {
+      setStatus('error');
+      setMessage(err?.message || 'Erreur lors de la récupération du document.');
+    }
+  };
+
+  // Libère l'URL blob au démontage (évite les fuites mémoire).
+  useEffect(() => () => {
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }, [blobUrl]);
+
+  return (
+    <>
+      <Button
+        type="button"
+        onClick={load}
+        disabled={!code || status === 'loading'}
+        variant="outline"
+        className="h-11 border-sky-300 text-sky-700 hover:bg-sky-50"
+      >
+        {status === 'loading' ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Eye className="w-4 h-4 mr-2" />
+        )}
+        Voir le document
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-6xl w-[95vw] gap-0 p-0 overflow-hidden">
+          <DialogHeader className="px-5 py-4 border-b border-slate-200">
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-sky-600" />
+              Document — {code}
+            </DialogTitle>
+          </DialogHeader>
+
+          {status === 'loading' && (
+            <div className="flex items-center justify-center py-24 text-slate-500">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" /> Chargement du document…
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="m-5 flex items-start gap-2 rounded-lg bg-rose-500/10 border border-rose-500/30 px-4 py-3 text-sm text-rose-700">
+              <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span className="break-words">{message}</span>
+            </div>
+          )}
+
+          {status === 'success' && sheets.length > 0 && (
+            <div className="flex flex-col min-h-0">
+              <style>{`
+                .xlsx-preview table { border-collapse: collapse; font-size: 12px; }
+                .xlsx-preview td, .xlsx-preview th {
+                  border: 1px solid #e2e8f0; padding: 3px 8px; white-space: nowrap;
+                }
+                .xlsx-preview tr:first-child td { background: #f8fafc; font-weight: 600; }
+              `}</style>
+              {sheets.length > 1 && (
+                <div className="flex gap-1 overflow-x-auto px-4 pt-3 border-b border-slate-200 bg-slate-50">
+                  {sheets.map((s, i) => (
+                    <button
+                      key={s.name}
+                      type="button"
+                      onClick={() => setActive(i)}
+                      className={cn(
+                        'shrink-0 rounded-t-md px-3 py-1.5 text-xs font-medium border-b-2 transition-colors',
+                        i === active
+                          ? 'border-sky-600 text-sky-700 bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-700',
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div
+                className="xlsx-preview overflow-auto max-h-[70vh] p-4"
+                dangerouslySetInnerHTML={{ __html: sheets[active]?.html || '' }}
+              />
+              {blobUrl && (
+                <div className="flex justify-end px-5 py-3 border-t border-slate-200 bg-slate-50">
+                  <a href={blobUrl} download={`${code}.xlsm`}>
+                    <Button type="button" variant="outline" className="h-9">
+                      <Download className="w-4 h-4 mr-2" /> Télécharger (.xlsm)
+                    </Button>
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
@@ -1175,6 +1336,19 @@ export default function CreerDE() {
                 l'import beCPG manuel. */}
             {formType === 'de' && !projetIdParam && (
               <RecupererBeCPG onApply={handleApplyBeCPG} />
+            )}
+
+            {/* Document projet : accessible dès que le code projet est renseigné,
+                en création comme en visualisation. Placé HORS du <fieldset disabled>
+                pour rester cliquable en lecture seule. */}
+            {formType === 'de' && formData.code_projet?.trim() && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50/60 px-5 py-3">
+                <div className="flex items-center gap-2 text-sm text-sky-800">
+                  <FileSpreadsheet className="w-4 h-4 shrink-0" />
+                  <span>Document lié au projet <span className="font-semibold">{formData.code_projet.trim()}</span></span>
+                </div>
+                <DocumentViewer codePJ={formData.code_projet} />
+              </div>
             )}
 
             {formType === 'de' && (
