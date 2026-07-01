@@ -411,11 +411,14 @@ function worksheetToStyledGrid(ws) {
         if (r !== s.r || c !== s.c) covered.add(`${r},${c}`);
   }
 
-  const cols = [];
+  // Largeur Excel de base (px) par colonne.
+  const excelPx = [];
   for (let c = 1; c <= colCount; c++) {
     const w = ws.getColumn(c).width;
-    cols.push({ letter: colLetter(c), width: w ? Math.round(w * 7 + 5) : 64 });
+    excelPx[c] = w ? Math.round(w * 7 + 5) : 64;
   }
+  // Longueur max du contenu par colonne (cellules simples) -> auto-ajustement.
+  const colMaxChars = new Array(colCount + 1).fill(0);
 
   const rows = [];
   for (let r = 1; r <= rowCount; r++) {
@@ -427,9 +430,23 @@ function worksheetToStyledGrid(ws) {
       const cell = row.getCell(c);
       const span = anchors.get(key);
 
-      let text = cell.text;
-      if (typeof text !== 'string') text = text == null ? '' : String(text);
+      // cell.text peut lever (MergeValue.toString sur une valeur null) : on protège.
+      let text = '';
+      try {
+        const t = cell.text;
+        text = typeof t === 'string' ? t : t == null ? '' : String(t);
+      } catch {
+        text = '';
+      }
       if (text === '[object Object]') text = '';
+
+      // Auto-ajustement : on ne compte que les cellules simples (non fusionnées)
+      // et sans retour à la ligne, pour ne pas gonfler une colonne à cause d'un
+      // titre étalé ou d'un paragraphe destiné à wrapper.
+      const wrap = cell.alignment && cell.alignment.wrapText;
+      if ((!span || span.colspan === 1) && !wrap && text.length > colMaxChars[c]) {
+        colMaxChars[c] = text.length;
+      }
 
       const font = cell.font || {};
       const align = cell.alignment || {};
@@ -458,6 +475,16 @@ function worksheetToStyledGrid(ws) {
     }
     rows.push({ num: r, height: row.height ? Math.round(row.height * 1.34) : undefined, cells });
   }
+
+  // Largeur finale = max(largeur Excel, largeur du contenu), bornée [44, 460] px :
+  // les valeurs ne sont plus tronquées, le tout scrollable horizontalement.
+  const cols = [];
+  for (let c = 1; c <= colCount; c++) {
+    const contentPx = colMaxChars[c] * 6.6 + 12;
+    const width = Math.round(Math.max(44, Math.min(460, Math.max(excelPx[c], contentPx))));
+    cols.push({ letter: colLetter(c), width });
+  }
+
   return { cols, rows, truncated };
 }
 
@@ -591,8 +618,8 @@ const DocumentViewer = ({ codePJ }) => {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-6xl w-[95vw] gap-0 p-0 overflow-hidden">
-          <DialogHeader className="px-5 py-4 border-b border-slate-200">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-5 py-4 border-b border-slate-200">
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-sky-600" />
               Document — {code}
@@ -613,7 +640,7 @@ const DocumentViewer = ({ codePJ }) => {
           )}
 
           {status === 'success' && sheets.length > 0 && (
-            <div className="flex flex-col min-h-0">
+            <div className="flex flex-1 min-h-0 flex-col">
               <style>{`
                 .excel-styled { border-collapse: collapse; table-layout: fixed; font-size: 11px; color: #000; background: #fff; font-family: Calibri, 'Segoe UI', sans-serif; }
                 .excel-styled th, .excel-styled td {
@@ -631,7 +658,7 @@ const DocumentViewer = ({ codePJ }) => {
                   box-shadow: inset -1px -1px 0 #cbd5e1; }
               `}</style>
               {sheets.length > 1 && (
-                <div className="flex gap-1 overflow-x-auto px-4 pt-3 border-b border-slate-200 bg-slate-50">
+                <div className="shrink-0 flex gap-1 overflow-x-auto px-4 pt-3 border-b border-slate-200 bg-slate-50">
                   {sheets.map((s, i) => (
                     <button
                       key={s.name}
@@ -650,15 +677,15 @@ const DocumentViewer = ({ codePJ }) => {
                 </div>
               )}
               {sheets[active]?.truncated && (
-                <div className="px-4 py-1.5 text-[11px] text-amber-700 bg-amber-50 border-b border-amber-200">
+                <div className="shrink-0 px-4 py-1.5 text-[11px] text-amber-700 bg-amber-50 border-b border-amber-200">
                   Aperçu limité aux {GRID_MAX_ROWS} premières lignes / {GRID_MAX_COLS} colonnes — utilisez « Télécharger » pour la feuille complète.
                 </div>
               )}
-              <div className="overflow-auto max-h-[70vh] bg-slate-100 p-3">
+              <div className="flex-1 min-h-0 overflow-auto bg-slate-100 p-3">
                 <SheetGrid grid={sheets[active]} />
               </div>
               {blobUrl && (
-                <div className="flex justify-end px-5 py-3 border-t border-slate-200 bg-slate-50">
+                <div className="shrink-0 flex justify-end px-5 py-3 border-t border-slate-200 bg-slate-50">
                   <a href={blobUrl} download={`${code}.xlsm`}>
                     <Button type="button" variant="outline" className="h-9">
                       <Download className="w-4 h-4 mr-2" /> Télécharger (.xlsm)
