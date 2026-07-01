@@ -211,24 +211,6 @@ const ReadOnlyField = ({ label, value, hint, onChange, options, type = 'text' })
   </Field>
 );
 
-// ---------- Écran de sélection initial ----------
-const TypeCard = ({ icon: Icon, title, subtitle, onClick, accent }) => (
-  <button
-    onClick={onClick}
-    className="group relative bg-card rounded-2xl border-2 border-border hover:border-primary p-7 text-left transition-all hover:shadow-xl hover:-translate-y-1 overflow-hidden"
-  >
-    <div className={`absolute -right-8 -top-8 w-32 h-32 rounded-full ${accent} opacity-10 group-hover:opacity-20 transition-opacity`} />
-    <div className={`w-14 h-14 rounded-xl ${accent} flex items-center justify-center shadow-md mb-4 group-hover:scale-110 transition-transform`}>
-      <Icon className="w-7 h-7 text-white" />
-    </div>
-    <h3 className="text-xl font-bold text-foreground mb-1.5">{title}</h3>
-    <p className="text-sm text-muted-foreground leading-relaxed">{subtitle}</p>
-    <div className="mt-5 flex items-center gap-1 text-primary text-xs font-bold uppercase tracking-wide">
-      Continuer <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-    </div>
-  </button>
-);
-
 // ---------- Encart de récupération beCPG par CodePJ ----------
 const RecupererBeCPG = ({ onApply }) => {
   const [codePJ, setCodePJ] = useState('');
@@ -784,9 +766,16 @@ export default function CreerDE() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id'); // édition d'un brouillon local (localStorage)
   const projetIdParam = searchParams.get('projet_id'); // ouverture depuis Dataverse (mail / autre poste)
+  const typeParam = searchParams.get('type'); // 'de' | 'ds' : création directe (plus d'écran de choix)
+  const openingExistingInit = !!(editId || projetIdParam);
 
-  const [step, setStep] = useState('selection'); // 'selection' | 'form'
-  const [formType, setFormType] = useState(null); // 'de' | 'autre'
+  // Plus d'écran de sélection : en création, on entre directement dans le bon
+  // formulaire selon ?type (défaut DE). En ouverture d'un existant, les effets
+  // de chargement (editDE / projetDV / dsDV) fixent le type et passent en 'form'.
+  const [step, setStep] = useState(openingExistingInit ? 'selection' : 'form');
+  const [formType, setFormType] = useState(
+    openingExistingInit ? null : typeParam === 'ds' ? 'autre' : 'de'
+  ); // 'de' | 'autre'
 
   const [formData, setFormData] = useState({
     // DE / DE/DL
@@ -1464,12 +1453,7 @@ export default function CreerDE() {
       navigate(-1);
       return;
     }
-    // Flux de création : revenir au choix du type de demande.
-    if (step === 'form') {
-      setStep('selection');
-      setFormType(null);
-      return;
-    }
+    // Flux de création : retour à la liste (il n'y a plus d'écran de choix).
     navigate(createPageUrl('DemandesEtude'));
   };
 
@@ -1495,12 +1479,10 @@ export default function CreerDE() {
             </Button>
             <div>
               <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
-                {step === 'selection' && !isOpeningExisting ? "Nouvelle Demande d'Étude" : formTitle}
+                {formTitle}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {step === 'selection' && !isOpeningExisting
-                  ? 'Choisir le type de demande à créer'
-                  : 'Remplir les informations de la demande'}
+                Remplir les informations de la demande
               </p>
             </div>
           </div>
@@ -1513,29 +1495,6 @@ export default function CreerDE() {
           // de choix de type (évite le flash de la page de sélection).
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : step === 'selection' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <TypeCard
-              icon={FileText}
-              title="DE"
-              subtitle="Demande d'Étude classique pour un nouveau produit ou un retravail."
-              accent="bg-gradient-to-br from-primary to-primary/70"
-              onClick={() => {
-                setFormType('de');
-                setStep('form');
-              }}
-            />
-            <TypeCard
-              icon={Settings2}
-              title="DS"
-              subtitle="Demande Spécifique : transfert industriel, négoce, massification, modifications mineures…"
-              accent="bg-gradient-to-br from-amber-500 to-orange-600"
-              onClick={() => {
-                setFormType('autre');
-                setStep('form');
-              }}
-            />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -68,13 +68,23 @@ const TYPE_BADGE = {
   ds: { label: 'DS', cls: 'bg-teal-100 text-teal-700 border-teal-300' },
 };
 
+// Filtre « type de demande » : aligné sur la partie création DE (CA / Retravail)
+// + une entrée DS qui déverrouille le filtre par cas d'usage (1 à 7).
 const TYPES_DEMANDE_OPTIONS = [
   'CA Additionnel',
   'Retravail Produit - CA existant',
-  "Changement d'usine",
-  'DE/DL',
-  'AO - CA Additionnel',
-  'AO - Retravail Produit',
+  'DS',
+];
+
+// Les 7 cas d'usage DS (valeur stockée dans type_demande_de = cr04e_typedelademande).
+const DS_CAS_OPTIONS = [
+  { value: '1', label: '1 — Transfert industriel (savoir-faire)' },
+  { value: '2', label: '2 — Semi-fini pour une autre usine' },
+  { value: '3', label: '3 — Massification' },
+  { value: '4', label: '4 — Produits extérieurs négoce' },
+  { value: '5', label: '5 — Produits d\'une filiale du groupe' },
+  { value: '6', label: '6 — Changement produit mineur (< 2%)' },
+  { value: '7', label: '7 — Modification palettisation mineure (< 2%)' },
 ];
 
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
@@ -91,6 +101,7 @@ export default function DemandesEtude() {
   const [typeFilter, setTypeFilter] = useState('tous');
   const [search, setSearch] = useState('');
   const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
+  const [dsCasFilter, setDsCasFilter] = useState('tous'); // sous-type DS (1 à 7)
   const [usineFilter, setUsineFilter] = useState('toutes');
 
   // Liste branchée sur Dataverse (cr04e_projet).
@@ -133,7 +144,11 @@ export default function DemandesEtude() {
       }
     }
 
-    if (typeDemandeFilter !== 'tous') {
+    if (typeDemandeFilter === 'DS') {
+      // Filtre DS : on ne garde que les DS, et éventuellement un cas d'usage précis.
+      if (getType(de) !== 'ds') return false;
+      if (dsCasFilter !== 'tous' && String(de.type_demande_de || '') !== dsCasFilter) return false;
+    } else if (typeDemandeFilter !== 'tous') {
       const td = getTypeDemande(de);
       if (!td || !td.toLowerCase().includes(typeDemandeFilter.toLowerCase())) return false;
     }
@@ -156,10 +171,11 @@ export default function DemandesEtude() {
   });
 
   const filtersActive =
-    !!searchTerm || typeDemandeFilter !== 'tous' || usineFilter !== 'toutes';
+    !!searchTerm || typeDemandeFilter !== 'tous' || dsCasFilter !== 'tous' || usineFilter !== 'toutes';
   const clearFilters = () => {
     setSearch('');
     setTypeDemandeFilter('tous');
+    setDsCasFilter('tous');
     setUsineFilter('toutes');
   };
 
@@ -193,12 +209,26 @@ export default function DemandesEtude() {
                 <p className="text-sm text-muted-foreground mt-0.5">Gestion des demandes d'étude</p>
               </div>
             </div>
-            <Link to={createPageUrl('CreerDE')}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
-                <Plus className="w-4 h-4 mr-2" />
-                Créer une DE
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to={createPageUrl('CreerDE?type=de')}>
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground uppercase text-xs font-bold tracking-wide shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer une DE
+                  <span className="ml-2 rounded-full bg-amber-400/90 text-amber-950 text-[9px] font-bold px-2 py-0.5 normal-case tracking-normal">
+                    Phase de test
+                  </span>
+                </Button>
+              </Link>
+              <Link to={createPageUrl('CreerDE?type=ds')}>
+                <Button
+                  variant="outline"
+                  className="border-teal-300 text-teal-700 hover:bg-teal-50 uppercase text-xs font-bold tracking-wide shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer une DS (demande simplifiée)
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -230,8 +260,6 @@ export default function DemandesEtude() {
             {[
               { id: 'tous', label: 'Tous' },
               { id: 'de', label: 'DE' },
-              { id: 'de_dl', label: 'DE / DL' },
-              { id: 'autre', label: 'Autre' },
               { id: 'ds', label: 'DS' },
             ].map((t) => (
               <button
@@ -327,7 +355,10 @@ export default function DemandesEtude() {
           <div className="w-[220px]">
             <SearchableSelect
               value={typeDemandeFilter === 'tous' ? '' : typeDemandeFilter}
-              onChange={(v) => setTypeDemandeFilter(v || 'tous')}
+              onChange={(v) => {
+                setTypeDemandeFilter(v || 'tous');
+                if (v !== 'DS') setDsCasFilter('tous'); // reset du cas d'usage
+              }}
               options={TYPES_DEMANDE_OPTIONS}
               placeholder="Tous les types"
               searchPlaceholder="Rechercher un type…"
@@ -335,6 +366,20 @@ export default function DemandesEtude() {
               className="h-9"
             />
           </div>
+
+          {typeDemandeFilter === 'DS' && (
+            <div className="w-[260px]">
+              <SearchableSelect
+                value={dsCasFilter === 'tous' ? '' : dsCasFilter}
+                onChange={(v) => setDsCasFilter(v || 'tous')}
+                options={DS_CAS_OPTIONS}
+                placeholder="Tous les cas d'usage"
+                searchPlaceholder="Rechercher un cas…"
+                emptyText="Aucun cas."
+                className="h-9"
+              />
+            </div>
+          )}
 
           <div className="w-[180px]">
             <SearchableSelect
