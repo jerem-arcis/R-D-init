@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { normalizeText as normalize } from '@/lib/utils';
 import { 
   Table, 
   TableBody, 
@@ -44,13 +45,6 @@ const TYPES_DEMANDE_OPTIONS = [
 ];
 
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
-
-const normalize = (v) =>
-  (v ?? '')
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 
 const getDeType = (de) => de?.type_de || 'de';
 const getDeTypeDemande = (de) => {

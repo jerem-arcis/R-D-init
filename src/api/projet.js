@@ -2,17 +2,7 @@ import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
 import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
-
-const toNumber = (v) => {
-  if (v === '' || v == null) return undefined;
-  const n = Number(v);
-  return Number.isNaN(n) ? undefined : n;
-};
-
-const trimOrUndef = (v) => {
-  const s = (v ?? '').toString().trim();
-  return s === '' ? undefined : s;
-};
+import { toNumber, trimOrUndef } from '@/api/_odata';
 
 // Lookups cr04e_projet : [clé liste SAP, champ formulaire, propriété @odata.bind].
 const PROJET_LOOKUPS = [

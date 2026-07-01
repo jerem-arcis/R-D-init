@@ -4,6 +4,7 @@ import { listProjets, updateProjetStatut } from '@/api/projet';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { normalizeText as normalize } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -423,13 +424,6 @@ const DL_ORDRE = { en_attente_dl: 0, en_attente_validation_dl: 1, validee: 2, re
 const DL_TABS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
 // Statuts portés par un projet en phase DL (ceux affichés dans cette liste).
 const DL_PHASE_STATUTS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
-
-const normalize = (v) =>
-  (v ?? '')
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
 
 function DLList({ initialCode = '' }) {
   const navigate = useNavigate();

@@ -4,6 +4,7 @@ import { listProjets } from '@/api/projet';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { normalizeText as normalize } from '@/lib/utils';
 import { 
   Table, 
   TableBody, 
@@ -88,13 +89,6 @@ const DS_CAS_OPTIONS = [
 ];
 
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
-
-const normalize = (v) =>
-  (v ?? '')
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
 
 export default function DemandesEtude() {
   const [filter, setFilter] = useState('toutes');

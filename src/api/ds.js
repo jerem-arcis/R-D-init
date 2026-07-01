@@ -15,17 +15,9 @@ import {
   agenChoixFromCentre,
 } from '@/lib/dsRules';
 
-export const DS_STATUTS = ['ds_brouillon', 'en_attente_creation_code_chapeau', 'ds_validee'];
+import { toNumber, trimOrUndef } from '@/api/_odata';
 
-const toNumber = (v) => {
-  if (v === '' || v == null) return undefined;
-  const n = Number(v);
-  return Number.isNaN(n) ? undefined : n;
-};
-const trimOrUndef = (v) => {
-  const s = (v ?? '').toString().trim();
-  return s === '' ? undefined : s;
-};
+export const DS_STATUTS = ['ds_brouillon', 'en_attente_creation_code_chapeau', 'ds_validee'];
 
 // Valeurs calculées d'une DS à partir de formData (réutilisé par le payload et la
 // vue/synthèse). Tout est dérivé des inputs via dsRules.
