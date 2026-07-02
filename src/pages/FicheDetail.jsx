@@ -6,13 +6,14 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 
-import StepProgress from '@/components/fiche/StepProgress';
-import ControleGestionSection from '@/components/fiche/ControleGestionSection';
+import IdentificationBanner from '@/components/fiche/IdentificationBanner';
+import VisaToolbar from '@/components/fiche/VisaToolbar';
 import SupplyChainSection from '@/components/fiche/SupplyChainSection';
 import GestionBesoinSection from '@/components/fiche/GestionBesoinSection';
 import IndustrielSection from '@/components/fiche/IndustrielSection';
 import CommerceSection from '@/components/fiche/CommerceSection';
 import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
+import ViewSwitch from '@/components/fiche/ViewSwitch';
 import { isSectionLocked, isSectionEditable } from '@/lib/ficheSchema';
 
 // Pose un visa et nettoie le refus correspondant
@@ -88,20 +89,22 @@ export default function FicheDetail() {
     onRefus: (motif) => handleUpdate(refusPatch(visaField, refusField, motif)),
   });
 
-  // Étape courante = première section non visée
-  const currentStep = !localFiche.visa_controle_gestion
-    ? 1
-    : !localFiche.visa_supply_chain
-    ? 2
-    : !localFiche.visa_gestion_besoin
-    ? 3
-    : !localFiche.visa_industriel
-    ? 4
-    : !localFiche.visa_commerce
-    ? 5
-    : localFiche.statut_sap === 'Création SAP effectuée'
-    ? 7
-    : 6;
+  const isLocked = localFiche.statut_sap === 'Création SAP effectuée';
+
+  // Barre de visas (cases à cocher) commune aux 2 vues — 4 sections, écriture
+  // simultanée, pas de cheminement.
+  const visaHandlers = {
+    supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
+    gestion_besoin: () => handleUpdate(visaPatch('visa_gestion_besoin', 'refus_gestion_besoin')),
+    industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
+    commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
+  };
+  const refusHandlers = {
+    supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
+    gestion_besoin: (m) => handleUpdate(refusPatch('visa_gestion_besoin', 'refus_gestion_besoin', m)),
+    industriel: (m) => handleUpdate(refusPatch('visa_industriel', 'refus_industriel', m)),
+    commerce: (m) => handleUpdate(refusPatch('visa_commerce', 'refus_commerce', m)),
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -132,23 +135,22 @@ export default function FicheDetail() {
                   Enregistrement...
                 </div>
               )}
-              <Link to={createPageUrl(`FicheDetailV2?id=${ficheId}`)}>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
-                  Vue V2 (fiche unique) →
-                </Button>
-              </Link>
+              <ViewSwitch active="service" ficheId={ficheId} />
             </div>
           </div>
+
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
+            <VisaToolbar
+              fiche={localFiche}
+              onVisaHandlers={visaHandlers}
+              onRefusHandlers={refusHandlers}
+            />
+          </div>
         </div>
-        <StepProgress currentStep={currentStep} fiche={localFiche} />
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <ControleGestionSection
-          fiche={localFiche}
-          de={de}
-          {...sectionHandlers('controle_gestion', 'visa_controle_gestion', 'refus_controle_gestion')}
-        />
+        <IdentificationBanner fiche={localFiche} de={de} onUpdate={handleUpdate} disabled={isLocked} />
         <SupplyChainSection
           fiche={localFiche}
           de={de}

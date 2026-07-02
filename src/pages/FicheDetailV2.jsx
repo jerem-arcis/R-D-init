@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Save, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, Loader2, Save } from 'lucide-react';
 
 import VisaToolbar from '@/components/fiche/VisaToolbar';
+import ViewSwitch from '@/components/fiche/ViewSwitch';
+import IdentificationBanner from '@/components/fiche/IdentificationBanner';
+import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import TextField from '@/components/fiche/fields/TextField';
 import SelectField from '@/components/fiche/fields/SelectField';
 import MultiSelectField from '@/components/fiche/fields/MultiSelectField';
@@ -20,28 +22,19 @@ import {
   TYPES_APPROVISIONNEMENT, ECLATEMENTS_GROUPE_MARCHANDISE, TYPES_USINE, TYPES_PALETTE,
   MASQUES_ETIQUETTE_COLIS, UNITES_DUREE_VIE, STATUTS_LANCEMENT, FABRICATION_NEGOCE,
   ORIGINES_FABRICATION, CANAUX_DISTRIBUTION, SECTEURS_ACTIVITE, MARQUES,
-  NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, getValueFromDE,
-  FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState, getCurrentOwner,
+  NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT,
+  FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
 } from '@/lib/ficheSchema';
 
 const GROUPS = [
-  { id: 'identification', title: 'Identification du produit', owners: ['cg', 'sc'] },
-  { id: 'statut', title: 'Statut & dates clés', owners: ['cg', 'com'] },
-  { id: 'classification', title: 'Classification commerciale', owners: ['cg', 'com'] },
-  { id: 'libelles', title: 'Libellés & étiquettes', owners: ['ind', 'com'] },
-  { id: 'emballages', title: 'Emballages & dimensions', owners: ['ind'] },
-  { id: 'codes_barres', title: 'Codes-barres (EAN / GTIN)', owners: ['sc', 'com'] },
-  { id: 'groupements_sap', title: 'Groupements SAP & douanes', owners: ['sc', 'ind', 'com'] },
-  { id: 'appro_stock', title: 'Approvisionnement & stock', owners: ['sc', 'gb', 'ind'] },
+  { id: 'statut', title: 'Statut & dates clés' },
+  { id: 'classification', title: 'Classification commerciale' },
+  { id: 'libelles', title: 'Libellés & étiquettes' },
+  { id: 'emballages', title: 'Emballages & dimensions' },
+  { id: 'codes_barres', title: 'Codes-barres (EAN / GTIN)' },
+  { id: 'groupements_sap', title: 'Groupements SAP & douanes' },
+  { id: 'appro_stock', title: 'Approvisionnement & stock' },
 ];
-
-const CURRENT_BANNER_STYLES = {
-  cg: 'bg-violet-50 border-violet-200 text-violet-900',
-  sc: 'bg-sky-50 border-sky-200 text-sky-900',
-  gb: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-  ind: 'bg-amber-50 border-amber-200 text-amber-900',
-  com: 'bg-rose-50 border-rose-200 text-rose-900',
-};
 
 // Composants définis au niveau module — sinon React démonte/remonte les inputs à chaque frappe
 const Group = ({ visible, id, title, children }) =>
@@ -73,7 +66,6 @@ const refusPatch = (visaField, refusField, motif) => ({
 export default function FicheDetailV2() {
   const [searchParams] = useSearchParams();
   const ficheId = searchParams.get('id');
-  const [onlyCurrent, setOnlyCurrent] = useState(false);
   const [localFiche, setLocalFiche] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
@@ -110,28 +102,6 @@ export default function FicheDetailV2() {
     setIsSaving(false);
   };
 
-  const createSAPMutation = useMutation({
-    mutationFn: async () => {
-      const user = await base44.auth.me();
-      return base44.entities.FicheLancement.update(ficheId, {
-        statut_sap: 'Création SAP effectuée',
-        cree_sap_par: user.email,
-        date_creation_sap: new Date().toISOString(),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] });
-    },
-  });
-
-  const visibleGroups = useMemo(() => {
-    const currentOwnerLocal = localFiche ? getCurrentOwner(localFiche) : null;
-    if (onlyCurrent && currentOwnerLocal) {
-      return GROUPS.filter((g) => g.owners?.includes(currentOwnerLocal));
-    }
-    return GROUPS;
-  }, [onlyCurrent, localFiche]);
-
   if (isLoading || !localFiche) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -157,50 +127,41 @@ export default function FicheDetailV2() {
   };
 
   const visaHandlers = {
-    controle_gestion: () => handleUpdate(visaPatch('visa_controle_gestion', 'refus_controle_gestion')),
     supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
     gestion_besoin: () => handleUpdate(visaPatch('visa_gestion_besoin', 'refus_gestion_besoin')),
     industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
     commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
   };
   const refusHandlers = {
-    controle_gestion: (m) => handleUpdate(refusPatch('visa_controle_gestion', 'refus_controle_gestion', m)),
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
     gestion_besoin: (m) => handleUpdate(refusPatch('visa_gestion_besoin', 'refus_gestion_besoin', m)),
     industriel: (m) => handleUpdate(refusPatch('visa_industriel', 'refus_industriel', m)),
     commerce: (m) => handleUpdate(refusPatch('visa_commerce', 'refus_commerce', m)),
   };
 
-  const allVisaDone =
-    localFiche.visa_controle_gestion && localFiche.visa_supply_chain &&
-    localFiche.visa_gestion_besoin && localFiche.visa_industriel && localFiche.visa_commerce;
   const isLocked = localFiche.statut_sap === 'Création SAP effectuée';
-  const currentOwner = getCurrentOwner(localFiche);
-  const currentMeta = currentOwner ? OWNER_META[currentOwner] : null;
 
-  const showGroup = (id) => visibleGroups.some((g) => g.id === id);
-
-  // Champ visible : pas filtré, ou owner match avec la section en cours
-  const showField = (name) =>
-    !onlyCurrent || !currentOwner || FIELD_OWNERS[name] === currentOwner;
+  // Écriture simultanée : toutes les sections/champs sont visibles en permanence.
+  const showGroup = () => true;
+  const showField = () => true;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-6 py-3">
+    <div className="min-h-screen bg-background pb-20">
+      <header className="bg-card border-b border-border shadow-sm sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Link to={createPageUrl('Accueil')}>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-base font-bold text-slate-900 uppercase tracking-tight leading-tight">
+                <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                   {localFiche.code_article || 'Nouvelle fiche'}
                   {localFiche.libelle_article && ` — ${localFiche.libelle_article}`}
                 </h1>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   ID: {ficheId?.slice(0, 8)}…
                   {de && <span className="ml-3">DE: {de.code_projet}</span>}
                 </p>
@@ -208,97 +169,33 @@ export default function FicheDetailV2() {
             </div>
             <div className="flex items-center gap-3">
               {isSaving && (
-                <div className="flex items-center gap-1.5 text-xs text-primary">
-                  <Save className="w-3.5 h-3.5 animate-pulse" />
+                <div className="flex items-center gap-2 text-sm text-primary">
+                  <Save className="w-4 h-4 animate-pulse" />
                   Enregistrement…
                 </div>
               )}
-              <Link to={createPageUrl(`FicheDetail?id=${ficheId}`)}>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
-                  ← Vue V1 (sections)
-                </Button>
-              </Link>
-              {!isLocked && (
-                <Button
-                  size="sm"
-                  disabled={!allVisaDone || createSAPMutation.isPending}
-                  onClick={() => window.confirm("Créer l'article dans SAP ?") && createSAPMutation.mutate()}
-                  className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                  Créer dans SAP
-                </Button>
-              )}
-              {isLocked && (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                  SAP créé
-                </Badge>
-              )}
+              <ViewSwitch active="complete" ficheId={ficheId} />
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
             <VisaToolbar
               fiche={localFiche}
               onVisaHandlers={visaHandlers}
               onRefusHandlers={refusHandlers}
             />
-            {currentOwner && !isLocked && (
-              <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-600 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={onlyCurrent}
-                  onChange={(e) => setOnlyCurrent(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-violet-600 cursor-pointer"
-                />
-                Section en cours uniquement
-                <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border ${
-                  onlyCurrent ? 'bg-violet-600 text-white border-violet-700' : 'bg-slate-50 text-slate-500 border-slate-200'
-                }`}>
-                  {currentMeta?.short}
-                </span>
-              </label>
-            )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-5 space-y-4">
-        {/* Banner étape courante */}
-        {currentMeta && !isLocked && (
-          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${CURRENT_BANNER_STYLES[currentOwner]}`}>
-            <Clock className="w-4 h-4 flex-shrink-0" />
-            <div className="text-sm">
-              <strong>En attente de {currentMeta.label}</strong>
-              {' — '}
-              les champs <span className="font-mono text-xs bg-white/60 px-1.5 py-0.5 rounded">{currentMeta.short}</span> sont éditables, les autres restent visibles mais verrouillés.
-            </div>
-          </div>
-        )}
-        {isLocked && (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 text-sm">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            <strong>Article créé dans SAP</strong> — fiche en lecture seule.
-          </div>
-        )}
+      <main className="max-w-6xl mx-auto px-6 py-6 space-y-4">
+        {/* ----- Identification (bandeau, hors visa) ----- */}
+        <IdentificationBanner fiche={localFiche} de={de} onUpdate={handleUpdate} disabled={isLocked} />
 
-        {/* ----- 1. Identification ----- */}
-        <Group visible={showGroup('identification')} id="identification" title="Identification du produit">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Fld visible={showField('code_article')}><TextField label="Code article" required {...fld('code_article')} /></Fld>
-            <Fld visible={showField('code_chapeau')}><TextField label="Code chapeau" {...fld('code_chapeau')} /></Fld>
-            <Fld visible={showField('code_etude_rd')}><TextField label="Code étude R&D" {...fld('code_etude_rd', { value: localFiche.code_etude_rd || getValueFromDE(de, 'code_etude_rd') })} fromDE /></Fld>
-            <Fld visible={showField('ancien_numero_article')}><TextField label="Ancien n° article (BIV)" {...fld('ancien_numero_article')} /></Fld>
-            <Fld visible={showField('libelle_article')}><TextField label="Libellé article" required colSpan={4} {...fld('libelle_article', { value: localFiche.libelle_article || getValueFromDE(de, 'libelle_article') })} fromDE /></Fld>
-          </div>
-        </Group>
-
-        {/* ----- 2. Statut & dates ----- */}
+        {/* ----- 1. Statut ----- */}
         <Group visible={showGroup('statut')} id="statut" title="Statut & dates clés">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('statut_lancement')}><SelectField label="Statut de lancement" {...fld('statut_lancement')} options={STATUTS_LANCEMENT} /></Fld>
-            <Fld visible={showField('date_envoi_ficher')}><TextField label="Date envoi de la fiche" type="date" {...fld('date_envoi_ficher')} /></Fld>
-            <Fld visible={showField('date_limite_creation_mm01')}><TextField label="Date limite de création" type="date" {...fld('date_limite_creation_mm01')} /></Fld>
           </div>
         </Group>
 
@@ -371,6 +268,7 @@ export default function FicheDetailV2() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('vl')}><TextField label="VL" maxLength={2} {...fld('vl')} /></Fld>
             <Fld visible={showField('article_prix')}><TextField label="Article prix" {...fld('article_prix')} /></Fld>
+            <Fld visible={showField('ancien_numero_article')}><TextField label="Ancien n° article (BIV)" {...fld('ancien_numero_article')} /></Fld>
             <Fld visible={showField('eclatement_groupe_marchandise')}><SelectField label="Éclatement groupe marchandise" {...fld('eclatement_groupe_marchandise')} options={ECLATEMENTS_GROUPE_MARCHANDISE} fromSAP /></Fld>
             <Fld visible={showField('groupe_statistique_article')}><SelectField label="Groupe statistique article" {...fld('groupe_statistique_article')} options={GROUPES_STATISTIQUE_ARTICLE} fromSAP /></Fld>
             <Fld visible={showField('groupe_article')}><SelectField label="Groupe article" {...fld('groupe_article')} options={GROUPES_ARTICLE} fromSAP /></Fld>
@@ -396,6 +294,9 @@ export default function FicheDetailV2() {
             <Fld visible={showField('temps_reception_stockiste')}><TextField label="Temps réception (stockiste)" {...fld('temps_reception_stockiste')} fromSAP /></Fld>
           </div>
         </Group>
+
+        {/* ----- Synthèse FL + création SAP (même bloc que la Vue par service) ----- */}
+        <FLSynthesisSection fiche={localFiche} />
       </main>
     </div>
   );

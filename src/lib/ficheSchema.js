@@ -203,7 +203,6 @@ export const isSectionLocked = () => false;
 export const isSectionEditable = (sectionKey, fiche) => {
   if (isSectionLocked(sectionKey, fiche)) return false;
   const visaField = {
-    controle_gestion: 'visa_controle_gestion',
     supply_chain: 'visa_supply_chain',
     gestion_besoin: 'visa_gestion_besoin',
     industriel: 'visa_industriel',
@@ -212,29 +211,35 @@ export const isSectionEditable = (sectionKey, fiche) => {
   return !fiche[visaField];
 };
 
-// ---------- Ownership par champ (pour V2 fiche unique) ----------
-// Ordre du workflow : CG → SC → GB → IND → COM
-export const WORKFLOW_ORDER = ['cg', 'sc', 'gb', 'ind', 'com'];
+// ---------- Identification (bandeau d'en-tête, hors visa) ----------
+// Champs qui initialisent l'article : renseignés à la création (code article,
+// libellés, code chapeau, centre profit, dates). Ils ne dépendent d'aucune des 4
+// sections et restent éditables tant que l'article n'est pas créé dans SAP.
+export const IDENTIFICATION_FIELDS = [
+  'code_article',
+  'libelle_article',
+  'code_chapeau',
+  'code_etude_rd',
+  'centre_profit',
+  'date_limite_creation_mm01',
+  'date_envoi_ficher',
+];
+
+// ---------- Ownership par champ (pour les 4 sections) ----------
+// 4 sections « métier » (= les 4 onglets du fichier) : SC → GB → IND → COM.
+// Chacune pose son visa indépendamment (écriture simultanée, pas de cheminement).
+export const WORKFLOW_ORDER = ['sc', 'gb', 'ind', 'com'];
 
 export const OWNER_META = {
-  cg: { label: 'Contrôle Gestion', short: 'CG', color: 'violet', visaField: 'visa_controle_gestion' },
   sc: { label: 'Supply Chain', short: 'SC', color: 'sky', visaField: 'visa_supply_chain' },
   gb: { label: 'Gestion Besoin', short: 'GB', color: 'emerald', visaField: 'visa_gestion_besoin' },
   ind: { label: 'Industriel', short: 'IND', color: 'amber', visaField: 'visa_industriel' },
   com: { label: 'Commerce', short: 'COM', color: 'rose', visaField: 'visa_commerce' },
 };
 
-// Mapping : champ → service propriétaire
+// Mapping : champ → section propriétaire (les champs d'identification ne sont pas
+// listés ici : ils sont gérés par le bandeau IDENTIFICATION_FIELDS).
 export const FIELD_OWNERS = {
-  // CG
-  code_article: 'cg',
-  code_chapeau: 'cg',
-  libelle_article: 'cg',
-  code_etude_rd: 'cg',
-  centre_profit: 'cg',
-  date_limite_creation_mm01: 'cg',
-  date_envoi_ficher: 'cg',
-
   // SC
   vl: 'sc',
   ean_carton: 'sc',

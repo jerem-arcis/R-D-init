@@ -53,7 +53,6 @@ export default function FLSynthesisSection({ fiche }) {
 
   const sapDone = fiche.statut_sap === 'Création SAP effectuée';
   const allVisaDone =
-    fiche.visa_controle_gestion &&
     fiche.visa_supply_chain &&
     fiche.visa_gestion_besoin &&
     fiche.visa_industriel &&
@@ -107,7 +106,7 @@ export default function FLSynthesisSection({ fiche }) {
       </header>
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SubSection title="Contrôle de Gestion" icon={FileText} visa={fiche.visa_controle_gestion}>
+        <SubSection title="Identification du produit" icon={FileText}>
           <Field label="Code article" value={fiche.code_article} />
           <Field label="Code chapeau" value={fiche.code_chapeau} />
           <Field label="Libellé article" value={fiche.libelle_article} />

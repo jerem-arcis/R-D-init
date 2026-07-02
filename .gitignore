@@ -27,6 +27,9 @@ __queuestorage__
 # Ressources locales (images / captures non versionnées)
 image (13).png
 
+# Seed de test FL — local uniquement, jamais versionné
+src/dev/seedFL.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
