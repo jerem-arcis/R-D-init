@@ -19,6 +19,7 @@ import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } 
 import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, FLUX } from '@/api/flux';
+import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
   DE_DIVISION_CODES,
@@ -82,25 +83,9 @@ const CAS_USAGE_EXEMPLES = [
 // résolues dynamiquement par CLÉ depuis le registre Dataverse cr04e_fluxregistre
 // (voir src/api/flux.js). postFlow(FLUX.XXX, body) fait la résolution + le POST.
 
-// Génère un EAN-13 « bidon » mais valide (clé de contrôle correcte). `prefix`
-// distingue les niveaux (UV / carton / palette) pour des codes lisiblement
-// différents. Purement décoratif tant que la vraie source EAN n'est pas branchée.
-const genEAN13 = (prefix = '30') => {
-  let base = String(prefix).replace(/\D/g, '').slice(0, 12);
-  while (base.length < 12) base += Math.floor(Math.random() * 10);
-  const sum = base
-    .split('')
-    .reduce((acc, d, i) => acc + Number(d) * (i % 2 === 0 ? 1 : 3), 0);
-  const check = (10 - (sum % 10)) % 10;
-  return base + check;
-};
-
-// Génère le jeu EAN UV / Carton / Palette (préfixes distincts pour les distinguer).
-const genEANSet = () => ({
-  ean_uv: genEAN13('30'),
-  ean_carton: genEAN13('31'),
-  ean_palette: genEAN13('32'),
-});
+// Les codes EAN (UV / Carton / Palette) sont calculés à partir du code chapeau
+// via buildEANSet (src/lib/ean.js) : préfixe 325151 + 4 premiers chiffres du code
+// + suffixe de niveau (00/01/03) + clé de contrôle GS1. Voir l'effet dédié plus bas.
 
 // Extrait le code chapeau du corps de réponse du flux : si JSON, cherche les
 // clés usuelles ; sinon retourne le texte brut nettoyé.
@@ -1034,14 +1019,12 @@ export default function CreerDE() {
     }
   };
 
-  // Active/désactive le bloc EAN. À l'activation, génère un jeu de codes bidons
-  // (UV / carton / palette) une seule fois ; à la désactivation, on les vide.
+  // Active/désactive le bloc EAN. À l'activation, les codes sont renseignés par
+  // l'effet dédié dès qu'un code chapeau (≥ 4 chiffres) est disponible ; à la
+  // désactivation, on les vide.
   const handleToggleEAN = (checked) => {
     if (checked) {
       handleChange('besoin_ean', true);
-      if (!formData.ean_uv) {
-        setFormData((prev) => ({ ...prev, ...genEANSet() }));
-      }
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -1288,6 +1271,23 @@ export default function CreerDE() {
       : origine_mode === 'vl'
         ? (vlResolvedCode || '').trim()
         : '';
+
+  // Renseigne les codes EAN à partir du code chapeau (4 premiers chiffres) dès
+  // qu'il est disponible, tant que le bloc « Besoin des codes EAN » est actif.
+  // buildEANSet renvoie des chaînes vides si < 4 chiffres : dans ce cas on ne
+  // touche pas aux valeurs déjà présentes (évite d'effacer un EAN persisté).
+  useEffect(() => {
+    if (!formData.besoin_ean) return;
+    const eans = buildEANSet(codeChapeau);
+    if (!eans.ean_uv) return;
+    setFormData((prev) =>
+      prev.ean_uv === eans.ean_uv &&
+      prev.ean_carton === eans.ean_carton &&
+      prev.ean_palette === eans.ean_palette
+        ? prev
+        : { ...prev, ...eans },
+    );
+  }, [formData.besoin_ean, codeChapeau]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
