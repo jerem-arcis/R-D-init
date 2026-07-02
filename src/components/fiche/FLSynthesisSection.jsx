@@ -127,9 +127,9 @@ export default function FLSynthesisSection({ fiche }) {
         <SubSection title="Gestion du besoin" icon={Package} visa={fiche.visa_gestion_besoin}>
           <Field label="Clé calcul lot usine" value={fiche.cle_calcul_lot_usine} />
           <Field label="Clé calcul lot stockiste" value={fiche.cle_calcul_lot_stockiste} />
-          <Field label="Profil de couverture" value={fiche.profil_couverture} />
-          <Field label="Délai de sécurité" value={fiche.delai_securite && `${fiche.delai_securite} j`} />
-          <Field label="Type d'approvisionnement" value={fiche.type_approvisionnement} />
+          <Field label="Profil couverture usine" value={fiche.profil_couverture_usine} />
+          <Field label="Délai sécurité usine" value={fiche.delai_securite_usine && `${fiche.delai_securite_usine} j`} />
+          <Field label="Type appro usine" value={fiche.type_approvisionnement_usine} />
           <Field label="Délai prévisionnel livraison" value={fiche.delai_previsionnel_livraison} />
         </SubSection>
 

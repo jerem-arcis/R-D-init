@@ -51,37 +51,74 @@ export default function GestionBesoinSection({ fiche, de, onUpdate, onVisa, onRe
         />
       </FieldGrid>
 
-      <FieldGrid title="Approvisionnement & sécurité" cols={3}>
+      <FieldGrid title="Approvisionnement & sécurité — Usine" cols={3}>
         <SelectField
-          label="Profil de couverture"
-          value={fiche.profil_couverture}
-          onChange={set('profil_couverture')}
+          label="Profil de couverture (usine)"
+          value={fiche.profil_couverture_usine}
+          onChange={set('profil_couverture_usine')}
           disabled={disabled}
           options={PROFILS_COUVERTURE}
         />
         <TextField
-          label="Délai de sécurité (j)"
+          label="Délai de sécurité — usine (j)"
           type="number"
-          value={fiche.delai_securite}
-          onChange={set('delai_securite')}
+          value={fiche.delai_securite_usine}
+          onChange={set('delai_securite_usine')}
           disabled={disabled}
         />
         <TextField
-          label="Délai de sécurité — couverture réelle (j)"
+          label="Délai sec/couv réelle — usine (j)"
           type="number"
-          value={fiche.delai_securite_couv_reelle}
-          onChange={set('delai_securite_couv_reelle')}
+          value={fiche.delai_securite_couv_reelle_usine}
+          onChange={set('delai_securite_couv_reelle_usine')}
           disabled={disabled}
         />
         <SelectField
-          label="Type d'approvisionnement"
-          value={fiche.type_approvisionnement}
-          onChange={set('type_approvisionnement')}
+          label="Type d'approvisionnement (usine)"
+          value={fiche.type_approvisionnement_usine}
+          onChange={set('type_approvisionnement_usine')}
+          disabled={disabled}
+          options={TYPES_APPROVISIONNEMENT}
+        />
+      </FieldGrid>
+
+      <FieldGrid title="Approvisionnement & sécurité — Stockiste" cols={3}>
+        <SelectField
+          label="Profil de couverture (stockiste)"
+          value={fiche.profil_couverture_stockiste}
+          onChange={set('profil_couverture_stockiste')}
+          disabled={disabled}
+          options={PROFILS_COUVERTURE}
+        />
+        <TextField
+          label="Délai de sécurité — stockiste (j)"
+          type="number"
+          value={fiche.delai_securite_stockiste}
+          onChange={set('delai_securite_stockiste')}
+          disabled={disabled}
+        />
+        <TextField
+          label="Délai sec/couv réelle — stockiste (j)"
+          type="number"
+          value={fiche.delai_securite_couv_reelle_stockiste}
+          onChange={set('delai_securite_couv_reelle_stockiste')}
+          disabled={disabled}
+        />
+        <SelectField
+          label="Type d'approvisionnement (stockiste)"
+          value={fiche.type_approvisionnement_stockiste}
+          onChange={set('type_approvisionnement_stockiste')}
           disabled={disabled}
           options={TYPES_APPROVISIONNEMENT}
         />
         <TextField
-          label="Délai prévisionnel de livraison (stockiste)"
+          label="Approvisionnement spécial"
+          value={fiche.appro_special}
+          onChange={set('appro_special')}
+          disabled={disabled}
+        />
+        <TextField
+          label="Délai prévisionnel de livraison"
           value={fiche.delai_previsionnel_livraison}
           onChange={set('delai_previsionnel_livraison')}
           disabled={disabled}

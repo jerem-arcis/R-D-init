@@ -22,15 +22,6 @@ export const SITES_STOCKAGE = [
   '2886 - Bonloc',
 ];
 
-export const GROUPES_STATISTIQUE_ARTICLE = [
-  '01 - Pâtisseries individuelles',
-  '02 - Pâtisseries familiales',
-  '03 - Traiteur chaud',
-  '04 - Traiteur froid',
-  '05 - Pain surprise',
-  '06 - Mochis',
-];
-
 export const GROUPES_ARTICLE = [
   'AY - MB INTERMARCHE',
   'AZ - MB CARREFOUR',
@@ -165,6 +156,13 @@ export const MENTIONS_PRODUIT = [
   'Aucune',
 ];
 
+export const SPECIFICITES_PRODUIT = [
+  'Surgelé',
+  'Frais',
+  'Ambiant',
+  'Sec',
+];
+
 export const PAYS_LIBELLES = [
   { code: 'FR', label: 'Français' },
   { code: 'EN', label: 'Anglais' },
@@ -239,36 +237,42 @@ export const OWNER_META = {
 
 // Mapping : champ → section propriétaire (les champs d'identification ne sont pas
 // listés ici : ils sont gérés par le bandeau IDENTIFICATION_FIELDS).
+// Owners alignés sur la colonne « Responsable » du fichier Champs FL.xlsx.
 export const FIELD_OWNERS = {
-  // SC
+  // SC (SupplyChain)
   vl: 'sc',
   ean_carton: 'sc',
   ean_couche: 'sc',
   ean_palette: 'sc',
-  groupe_statistique_article: 'sc',
+  ean_manuel: 'sc',
+  groupement_articles: 'sc',
   groupe_article: 'sc',
   groupe_ristourne: 'sc',
   groupe_imputation: 'sc',
   article_prix: 'sc',
-  sites_stockage: 'sc',
   dluc_dluo_critique: 'sc',
-  ancien_numero_article: 'sc',
 
-  // GB
+  // GB (Gestion des besoins) — dédoublement usine / stockiste
   cle_calcul_lot_usine: 'gb',
   cle_calcul_lot_stockiste: 'gb',
-  profil_couverture: 'gb',
-  delai_securite: 'gb',
-  delai_securite_couv_reelle: 'gb',
-  type_approvisionnement: 'gb',
+  profil_couverture_usine: 'gb',
+  profil_couverture_stockiste: 'gb',
+  delai_securite_usine: 'gb',
+  delai_securite_stockiste: 'gb',
+  delai_securite_couv_reelle_usine: 'gb',
+  delai_securite_couv_reelle_stockiste: 'gb',
+  type_approvisionnement_usine: 'gb',
+  type_approvisionnement_stockiste: 'gb',
+  appro_special: 'gb',
   delai_previsionnel_livraison: 'gb',
   temps_reception_stockiste: 'gb',
 
-  // IND
+  // IND (Industriel)
   libelle_etiquette_colis: 'ind',
   masque_etiquette_colis: 'ind',
   designation_client_colis: 'ind',
   eclatement_groupe_marchandise: 'ind',
+  groupe_marchandises: 'ind',
   type_usine: 'ind',
   type_palette: 'ind',
   uvc_block: 'ind',
@@ -282,21 +286,25 @@ export const FIELD_OWNERS = {
   format_date_etiquette_colis: 'ind',
   format_dluo_etiquette_colis: 'ind',
   type_magasin: 'ind',
+  biv: 'ind',                 // déplacé depuis COM (responsable Industriel)
+  ancien_numero_article: 'ind', // déplacé depuis SC (responsable Industriel)
 
-  // COM
+  // COM (Commerce)
   statut_lancement: 'com',
   libelle_long_40: 'com',
+  libelle_caisse: 'com',
   libelle_client: 'com',
   libelle_par_pays: 'com',
+  specificite_produit: 'com',
+  hierarchie_produit: 'com',
   fabrication_negoce: 'com',
   origine_fabrication: 'com',
   canaux_distribution: 'com',
   secteur_activite: 'com',
   marque: 'com',
   mention_produit: 'com',
-  biv: 'com',
   nomenclature_douaniere: 'com',
-  gtin_uvc: 'com',
+  sites_stockage: 'com',      // déplacé depuis SC (responsable Commerce)
 };
 
 // Étape courante : premier visa non posé. Renvoie null si tous visés ou fiche null.

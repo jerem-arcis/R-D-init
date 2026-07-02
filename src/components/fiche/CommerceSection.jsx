@@ -16,6 +16,8 @@ import {
   NOMENCLATURES_DOUANIERES,
   MENTIONS_PRODUIT,
   UNITES_DUREE_VIE,
+  SPECIFICITES_PRODUIT,
+  SITES_STOCKAGE,
 } from '@/lib/ficheSchema';
 
 export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
@@ -24,7 +26,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
 
   // Construire les EANs liés depuis les blocs UVC + EANs Supply Chain
   const eanList = [
-    { emballage: 'UVC', code: fiche.gtin_uvc },
     { emballage: 'Colis', code: Array.isArray(fiche.ean_carton) ? fiche.ean_carton.join(', ') : fiche.ean_carton },
     { emballage: 'Couche', code: Array.isArray(fiche.ean_couche) ? fiche.ean_couche.join(', ') : fiche.ean_couche },
     { emballage: 'Palette', code: Array.isArray(fiche.ean_palette) ? fiche.ean_palette.join(', ') : fiche.ean_palette },
@@ -63,6 +64,12 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           disabled={disabled}
           maxLength={40}
           placeholder="Libellé français"
+        />
+        <TextField
+          label="Libellé caisse"
+          value={fiche.libelle_caisse}
+          onChange={set('libelle_caisse')}
+          disabled={disabled}
         />
         <TextField
           label="Libellé client"
@@ -123,6 +130,19 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           disabled={disabled}
           options={MENTIONS_PRODUIT}
         />
+        <SelectField
+          label="Spécificité produits"
+          value={fiche.specificite_produit}
+          onChange={set('specificite_produit')}
+          disabled={disabled}
+          options={SPECIFICITES_PRODUIT}
+        />
+        <TextField
+          label="Hiérarchie produit"
+          value={fiche.hierarchie_produit}
+          onChange={set('hierarchie_produit')}
+          disabled={disabled}
+        />
       </FieldGrid>
 
       <FieldGrid title="Durée de vie & douanes" cols={2}>
@@ -150,11 +170,17 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           options={NOMENCLATURES_DOUANIERES}
           fromSAP
         />
-        <TextField
-          label="BIV (ancien n° article déjà vu)"
-          value={fiche.biv}
-          onChange={set('biv')}
+      </FieldGrid>
+
+      <FieldGrid title="Stockage" cols={1}>
+        <MultiSelectField
+          label="Sites de stockage"
+          required
+          value={fiche.sites_stockage}
+          onChange={set('sites_stockage')}
           disabled={disabled}
+          options={SITES_STOCKAGE}
+          fromSAP
         />
       </FieldGrid>
 

@@ -4,14 +4,11 @@ import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
 import TextField from './fields/TextField';
 import SelectField from './fields/SelectField';
-import MultiSelectField from './fields/MultiSelectField';
 import EANField from './fields/EANField';
 import {
-  GROUPES_STATISTIQUE_ARTICLE,
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
-  SITES_STOCKAGE,
 } from '@/lib/ficheSchema';
 
 export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
@@ -53,10 +50,11 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           placeholder="Code article + 0..."
         />
         <TextField
-          label="Ancien numéro article"
-          value={fiche.ancien_numero_article}
-          onChange={set('ancien_numero_article')}
+          label="Groupement d'articles"
+          value={fiche.groupement_articles}
+          onChange={set('groupement_articles')}
           disabled={disabled}
+          placeholder="Toujours 1"
         />
         <TextField
           label="DLC/DLUO critique"
@@ -87,17 +85,17 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('ean_palette')}
           disabled={disabled}
         />
+        <TextField
+          label="EAN manuel"
+          value={fiche.ean_manuel}
+          onChange={set('ean_manuel')}
+          disabled={disabled}
+          maxLength={14}
+          placeholder="Saisie manuelle (14 chiffres)"
+        />
       </FieldGrid>
 
       <FieldGrid title="Groupements SAP" cols={2}>
-        <SelectField
-          label="Groupe statistique article"
-          value={fiche.groupe_statistique_article}
-          onChange={set('groupe_statistique_article')}
-          disabled={disabled}
-          options={GROUPES_STATISTIQUE_ARTICLE}
-          fromSAP
-        />
         <SelectField
           label="Groupe article"
           value={fiche.groupe_article}
@@ -120,18 +118,6 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('groupe_imputation')}
           disabled={disabled}
           options={GROUPES_IMPUTATION}
-          fromSAP
-        />
-      </FieldGrid>
-
-      <FieldGrid title="Stockage" cols={1}>
-        <MultiSelectField
-          label="Sites de stockage"
-          required
-          value={fiche.sites_stockage}
-          onChange={set('sites_stockage')}
-          disabled={disabled}
-          options={SITES_STOCKAGE}
           fromSAP
         />
       </FieldGrid>
