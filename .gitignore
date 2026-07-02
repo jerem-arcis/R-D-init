@@ -22,6 +22,10 @@ __queuestorage__
 # Fichiers Excel de DE/DL utilisés comme données de test (non versionnés)
 *.xlsm
 *.xlsx
+*.xls
+
+# Ressources locales (images / captures non versionnées)
+image (13).png
 
 # Editor directories and files
 .vscode/*
