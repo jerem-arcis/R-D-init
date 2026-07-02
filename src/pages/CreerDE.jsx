@@ -18,6 +18,7 @@ import { useSapOptions } from '@/lib/sapLists';
 import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } from '@/api/projet';
 import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
+import { postFlow, FLUX } from '@/api/flux';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
   DE_DIVISION_CODES,
@@ -77,61 +78,9 @@ const CAS_USAGE_EXEMPLES = [
 ];
 
 
-// TODO(sécurité) : ces URLs de flux Power Automate contiennent une signature SAS
-// (sig=) exposée côté client (bundle JS + historique Git). À terme : proxifier via
-// un backend authentifié (URL en variable d'env secrète), régénérer les signatures
-// des 2 flux, ajouter autorisation + cap de longueur sur les payloads. Risque atténué
-// car app interne Power Platform (accès SSO), assumé pour l'instant.
-// URL du flux Power Automate qui retourne les données beCPG d'un CodePJ.
-const BECPG_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/5a622144c10f44a6becafb2df0f78775/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5BL_-hxk0OMUfcJT9GRVKoh1BX7hkNsag7Qy3KxzpkQ';
-
-// TODO(sécurité) : voir le bloc ci-dessus — cette URL contiendra elle aussi une
-// signature SAS exposée côté client ; à proxifier via un backend authentifié.
-// URL du flux Power Automate qui génère le prochain code chapeau (OData SAP).
-const NOUVEAU_CODE_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1677a6a5aae34cdf97672ae34548452b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=a44EIOXAXlRvQYUq4N8PfB-DTXi2Pa3DQiRIKjxE0ZQ';
-
-// URL du flux Power Automate déclenché à la validation d'une DE : on lui envoie
-// le code chapeau dans { "Numéro": <code> }. (Même host que les flux ci-dessus,
-// donc déjà couvert par le CSP connect-src.) Même TODO sécurité : SAS exposée.
-const VALIDATION_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/daa73024b17f4d6e942c316d4ec09901/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=wjYyxeqhqDI_Jh65wFt7fZopDmKlLqt_ahz-shnkS48';
-
-// Flux Power Automate « Envoyer vers SAP » : reçoit l'ensemble des champs de la
-// DE (codes bruts, pas les libellés « code — désignation »). Même host -> CSP OK.
-const SAP_SEND_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/f89cbd33946f49bb883505142eb04762/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=psCae2PoNO_IPL3XmafnxQOr74NMGJdC6skIO9yFAJo';
-
-// Flux « code chapeau à partir d'une VL » : en mode « Besoin d'une VL », le code
-// saisi est un CODE DE BASE. À l'envoi, on appelle d'abord ce flux avec
-// { "Numéro": <code de base> } ; il renvoie le vrai code chapeau (texte simple,
-// ex. « 741603 ») qui alimente ensuite le process classique. Même host -> CSP OK.
-const VL_CODE_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/9f20ba3d982c47388445509a6e992efd/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=pa5adaOQtjiBlP_I8ePM-C3svlLl7t1Ah-XiNnff5dY';
-
-// Flux « document projet » : reçoit { "CodePJ": <code projet> } et renvoie le
-// binaire brut d'un classeur Excel (.xlsm, application/vnd.ms-excel.sheet.macroenabled.12).
-// PAS de base64 : le corps EST le fichier. Aucun Content-Disposition -> on nomme
-// le fichier <CodePJ>.xlsm nous-mêmes. Même host que les autres flux -> CSP OK.
-const DOCUMENT_FLOW_URL =
-  'https://default77784041615d4839adf5c63961bdfe.e3.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/55ac4404412141bd8e3748446d1d7b7f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=rPNAeoQdjqP3dHyHcpYZzYpb2Qom-R6Z7VzZG3NVC4I';
-
-// POST JSON vers un flux Power Automate. Lève une Error lisible si la réponse
-// n'est pas OK, sinon renvoie la Response (à lire selon le besoin par l'appelant :
-// .text() / .arrayBuffer()). `body` omis => POST sans corps.
-async function postFlow(url, body) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
-  }
-  return res;
-}
+// Les URLs des flux Power Automate ne sont plus codées en dur ici : elles sont
+// résolues dynamiquement par CLÉ depuis le registre Dataverse cr04e_fluxregistre
+// (voir src/api/flux.js). postFlow(FLUX.XXX, body) fait la résolution + le POST.
 
 // Génère un EAN-13 « bidon » mais valide (clé de contrôle correcte). `prefix`
 // distingue les niveaux (UV / carton / palette) pour des codes lisiblement
@@ -237,7 +186,7 @@ const RecupererBeCPG = ({ onApply }) => {
     setStatus('loading');
     setMessage('');
     try {
-      const res = await postFlow(BECPG_FLOW_URL, { CodePJ: code });
+      const res = await postFlow(FLUX.BECPG, { CodePJ: code });
       const text = await res.text().catch(() => '');
       let json = null;
       try {
@@ -523,7 +472,7 @@ const SheetGrid = ({ grid }) => {
 };
 
 // ---------- Visualiseur de document projet (.xlsm renvoyé par le flux) ----------
-// Bouton « Voir le document » : appelle DOCUMENT_FLOW_URL avec { CodePJ: <code
+// Bouton « Voir le document » : appelle le flux DOCUMENT avec { CodePJ: <code
 // projet> }, récupère le binaire brut du classeur Excel, le parse côté navigateur
 // (SheetJS) et affiche chaque feuille en grille « type Excel Online » dans une
 // modale (onglets). Un bouton « Télécharger » sert de secours (fichier brut).
@@ -545,7 +494,7 @@ const DocumentViewer = ({ codePJ }) => {
     setSheets([]);
     setActive(0);
     try {
-      const res = await postFlow(DOCUMENT_FLOW_URL, { CodePJ: code });
+      const res = await postFlow(FLUX.DOCUMENT, { CodePJ: code });
       const buf = await res.arrayBuffer();
       if (!buf || buf.byteLength === 0) {
         throw new Error(`Réponse vide : aucun document trouvé pour « ${code} ».`);
@@ -1002,7 +951,7 @@ export default function CreerDE() {
       GroupeFraisGeneraux: '',
       GroupeArticleDivision: '',
     };
-    await postFlow(SAP_SEND_FLOW_URL, body);
+    await postFlow(FLUX.SAP_SEND, body);
   };
   const handleDsPushSap = async () => {
     if (isCreatingDs) return;
@@ -1115,7 +1064,7 @@ export default function CreerDE() {
     setNouveauCode('');
     try {
       // Déclenchement sans corps ; on attend la réponse du flux (le code chapeau).
-      const res = await postFlow(NOUVEAU_CODE_FLOW_URL);
+      const res = await postFlow(FLUX.NOUVEAU_CODE);
       const text = await res.text().catch(() => '');
       // Le code vient normalement du corps. Repli best-effort sur des en-têtes
       // (noms ASCII valides uniquement ; get() lève sur un nom invalide).
@@ -1143,11 +1092,11 @@ export default function CreerDE() {
   };
 
   // Mode VL : résout le vrai code chapeau à partir du code de base saisi.
-  // Appelle VL_CODE_FLOW_URL avec { "Numéro": <code de base> } et renvoie le code
+  // Appelle le flux VL_CODE avec { "Numéro": <code de base> } et renvoie le code
   // chapeau (texte simple, ex. « 741603 »). BLOQUANT côté appelant : sans ce code
   // on ne peut pas enchaîner le process classique.
   const requestVlCodeChapeau = async (numero) => {
-    const res = await postFlow(VL_CODE_FLOW_URL, { 'Numéro': numero });
+    const res = await postFlow(FLUX.VL_CODE, { 'Numéro': numero });
     const text = await res.text().catch(() => '');
     const code = extractCodeChapeau(text);
     if (!code) {
@@ -1161,7 +1110,7 @@ export default function CreerDE() {
   // validation de la DE, il affiche seulement un avertissement.
   const triggerValidationFlow = async (numero) => {
     try {
-      await postFlow(VALIDATION_FLOW_URL, { 'Numéro': numero });
+      await postFlow(FLUX.VALIDATION, { 'Numéro': numero });
     } catch (err) {
       toast({
         title: 'Flux non déclenché',
@@ -1191,7 +1140,7 @@ export default function CreerDE() {
       GroupeArticleDivision: formData.groupe_article || '',
     };
     try {
-      await postFlow(SAP_SEND_FLOW_URL, body);
+      await postFlow(FLUX.SAP_SEND, body);
     } catch (err) {
       toast({
         title: 'Envoi SAP non déclenché',

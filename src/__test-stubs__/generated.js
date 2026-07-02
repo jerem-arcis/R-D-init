@@ -8,3 +8,4 @@ export const Cr04e_groupedefraisgenerauxesService = {};
 export const Cr04e_hierarchieproduitfamillesService = {};
 export const Cr04e_centredeprofitcepctsService = {};
 export const Cr04e_projetsService = {};
+export const Cr04e_fluxregistresService = {};

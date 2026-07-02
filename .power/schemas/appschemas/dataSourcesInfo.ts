@@ -33,6 +33,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "cr04e_fluxregistres": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_fluxregistreid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_groupearticledivisions": {
     "tableId": "",
     "version": "",

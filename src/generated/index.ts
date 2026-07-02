@@ -9,6 +9,7 @@ export * as Cr04e_centredeprofitcepctsModel from './models/Cr04e_centredeprofitc
 export * as Cr04e_centredeprofittkao2sModel from './models/Cr04e_centredeprofittkao2sModel';
 export * as Cr04e_classedevalorisationsModel from './models/Cr04e_classedevalorisationsModel';
 export * as Cr04e_divisionusinesModel from './models/Cr04e_divisionusinesModel';
+export * as Cr04e_fluxregistresModel from './models/Cr04e_fluxregistresModel';
 export * as Cr04e_groupearticledivisionsModel from './models/Cr04e_groupearticledivisionsModel';
 export * as Cr04e_groupedefraisgenerauxesModel from './models/Cr04e_groupedefraisgenerauxesModel';
 export * as Cr04e_hierarchieproduitfamillesModel from './models/Cr04e_hierarchieproduitfamillesModel';
@@ -20,6 +21,7 @@ export * from './services/Cr04e_centredeprofitcepctsService';
 export * from './services/Cr04e_centredeprofittkao2sService';
 export * from './services/Cr04e_classedevalorisationsService';
 export * from './services/Cr04e_divisionusinesService';
+export * from './services/Cr04e_fluxregistresService';
 export * from './services/Cr04e_groupearticledivisionsService';
 export * from './services/Cr04e_groupedefraisgenerauxesService';
 export * from './services/Cr04e_hierarchieproduitfamillesService';

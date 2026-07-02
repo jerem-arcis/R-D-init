@@ -47,6 +47,10 @@
         "centredeprofitcepct": {
           "entitySetName": "cr04e_centredeprofitcepcts",
           "logicalName": "cr04e_centredeprofitcepct"
+        },
+        "fluxregistre": {
+          "entitySetName": "cr04e_fluxregistres",
+          "logicalName": "cr04e_fluxregistre"
         }
       },
       "environmentVariableName": ""
