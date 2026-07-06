@@ -1155,8 +1155,8 @@ export default function CreerDE() {
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
   const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
   // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
-  // Brouillon et en_attente_cc restent éditables (création / obtention du code chapeau).
-  const DE_READONLY_STATUTS = ['validee', 'en_attente_dl', 'en_attente_validation_dl', 'refusee'];
+  // Brouillon et de_attente_cc restent éditables (création / obtention du code chapeau).
+  const DE_READONLY_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
   const deReadOnly = formType === 'de' && DE_READONLY_STATUTS.includes(formData.statut);
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
@@ -1232,7 +1232,7 @@ export default function CreerDE() {
     // qu'il apparaisse dans la liste. Non bloquant : si Dataverse échoue, le
     // brouillon est tout de même enregistré localement.
     if (formType === 'de') {
-      const ctx = { codeChapeau, zug, sapOptions, statut: PROJET_STATUT.brouillon };
+      const ctx = { codeChapeau, zug, sapOptions, statut: PROJET_STATUT.de_brouillon };
       try {
         if (projetId) {
           await updateProjetFromDE(projetId, formData, ctx);
@@ -1258,7 +1258,7 @@ export default function CreerDE() {
       zug,
       type_de: formType,
       code_chapeau: codeChapeau,
-      statut: 'brouillon',
+      statut: 'de_brouillon',
     });
   };
 
@@ -1309,13 +1309,14 @@ export default function CreerDE() {
     const effectiveCode = codeChapeau;
     // Écriture de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
     // la table Projet est la sortie principale de l'envoi vers SAP). Statut
-    // « en attente de DL » => la partie DE est validée. Maj si un projet existe
-    // déjà (brouillon), sinon création.
+    // « en attente de validation CDG » => la partie DE est terminée ; la décision
+    // de validation/refus DL revient à CDG (via Power Automate). Maj si un projet
+    // existe déjà (brouillon), sinon création.
     // On capture le GUID du projet Dataverse pour le stocker sur la DE locale :
     // indispensable pour que la phase DL puisse mettre à jour cr04e_statut_en_cours.
     let projetId = formData.projet_id;
     if (formType === 'de') {
-      const ctx = { codeChapeau: effectiveCode, zug, sapOptions, statut: PROJET_STATUT.en_attente_dl };
+      const ctx = { codeChapeau: effectiveCode, zug, sapOptions, statut: PROJET_STATUT.dl_attente_validation_cdg };
       try {
         if (projetId) {
           await updateProjetFromDE(projetId, formData, ctx);
@@ -1350,7 +1351,7 @@ export default function CreerDE() {
       secteur_activite_calc: dsSecteur,
       code_chapeau: effectiveCode,
       date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
-      statut: 'en_attente_dl',
+      statut: 'dl_attente_validation_cdg',
     });
     } finally {
       setIsSubmitting(false);
@@ -1416,7 +1417,7 @@ export default function CreerDE() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Encart « Récupération depuis beCPG » : visible en création d'une DE
                 depuis zéro (et reprise de brouillon). Masqué à l'ouverture d'un
-                projet en_attente_cc (projet_id) : le mapping des champs est alors
+                projet de_attente_cc (projet_id) : le mapping des champs est alors
                 automatique (toFormData + cascade deRules), même comportement que
                 l'import beCPG manuel. */}
             {formType === 'de' && !projetIdParam && (
@@ -2094,7 +2095,7 @@ export default function CreerDE() {
                 formData.statut === 'ds_validee' ? (
                   // DS validée : lecture seule, aucune action.
                   null
-                ) : formData.statut === 'en_attente_creation_code_chapeau' && formData.projet_id ? (
+                ) : formData.statut === 'ds_attente_cc' && formData.projet_id ? (
                   // DS ouverte par l'ADV : obtention du code chapeau puis push SAP
                   <div className="flex items-center gap-3">
                     {!(codeChapeau || formData.code_chapeau) && (
@@ -2118,7 +2119,7 @@ export default function CreerDE() {
                     <Button type="button" variant="outline" onClick={() => handleCreateDs('ds_brouillon')} disabled={isCreatingDs}>
                       <Save className="w-4 h-4 mr-2" /> Enregistrer brouillon
                     </Button>
-                    <Button type="button" onClick={() => handleCreateDs('en_attente_creation_code_chapeau')} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Button type="button" onClick={() => handleCreateDs('ds_attente_cc')} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                       Créer la DS
                     </Button>

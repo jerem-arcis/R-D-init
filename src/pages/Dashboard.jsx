@@ -33,11 +33,11 @@ const TONE_BADGE = {
 
 // Cartes du pipeline : un statut Dataverse (cr04e_statut_en_cours) par carte.
 const PIPELINE = [
-  { key: 'brouillon', label: 'Brouillons', Icon: FileEdit, from: 'from-amber-100', to: 'to-amber-200', text: 'text-amber-700' },
-  { key: 'en_attente_dl', label: 'En attente de DL', Icon: Hourglass, from: 'from-violet-100', to: 'to-violet-200', text: 'text-violet-700' },
-  { key: 'en_attente_validation_dl', label: 'Attente validation DL', Icon: ClipboardCheck, from: 'from-indigo-100', to: 'to-indigo-200', text: 'text-indigo-700' },
-  { key: 'validee', label: 'Validées', Icon: CheckCircle2, from: 'from-emerald-100', to: 'to-emerald-200', text: 'text-emerald-700' },
-  { key: 'refusee', label: 'Refusées', Icon: XCircle, from: 'from-red-100', to: 'to-red-200', text: 'text-red-700' },
+  { key: 'de_brouillon', label: 'Brouillons', Icon: FileEdit, from: 'from-amber-100', to: 'to-amber-200', text: 'text-amber-700' },
+  { key: 'de_attente_cc', label: 'Attente code chapeau', Icon: Hourglass, from: 'from-blue-100', to: 'to-blue-200', text: 'text-blue-700' },
+  { key: 'dl_attente_validation_cdg', label: 'Attente validation CDG', Icon: ClipboardCheck, from: 'from-indigo-100', to: 'to-indigo-200', text: 'text-indigo-700' },
+  { key: 'dl_validee', label: 'Validées', Icon: CheckCircle2, from: 'from-emerald-100', to: 'to-emerald-200', text: 'text-emerald-700' },
+  { key: 'dl_refusee', label: 'Refusées', Icon: XCircle, from: 'from-red-100', to: 'to-red-200', text: 'text-red-700' },
 ];
 
 export default function Dashboard() {
@@ -50,18 +50,18 @@ export default function Dashboard() {
   const { counts, totalActif, recents } = useMemo(() => {
     const counts = Object.fromEntries(Object.keys(STATUTS).map((k) => [k, 0]));
     for (const p of projets) {
-      const s = p.statut || 'brouillon';
+      const s = p.statut || 'de_brouillon';
       if (counts[s] != null) counts[s] += 1;
     }
     // « Actif » = tout sauf refusé (pipeline en cours + validés).
-    const totalActif = projets.filter((p) => p.statut !== 'refusee').length;
+    const totalActif = projets.filter((p) => p.statut !== 'dl_refusee').length;
     const recents = [...projets]
       .sort((a, b) => (b.created_date || '').localeCompare(a.created_date || ''))
       .slice(0, 8);
     return { counts, totalActif, recents };
   }, [projets]);
 
-  const enCours = (counts.brouillon || 0) + (counts.en_attente_dl || 0) + (counts.en_attente_validation_dl || 0);
+  const enCours = (counts.de_brouillon || 0) + (counts.de_attente_cc || 0) + (counts.dl_attente_validation_cdg || 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,8 +123,8 @@ export default function Dashboard() {
                       <Hourglass className="w-4 h-4 text-white" />
                     </div>
                     <div className="leading-tight">
-                      <p className="text-2xl font-extrabold text-white">{counts.en_attente_dl || 0}</p>
-                      <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">En attente de DL</p>
+                      <p className="text-2xl font-extrabold text-white">{counts.dl_attente_validation_cdg || 0}</p>
+                      <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">Attente validation CDG</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm ring-1 ring-white/15">
@@ -132,7 +132,7 @@ export default function Dashboard() {
                       <CheckCircle2 className="w-4 h-4 text-white" />
                     </div>
                     <div className="leading-tight">
-                      <p className="text-2xl font-extrabold text-white">{counts.validee || 0}</p>
+                      <p className="text-2xl font-extrabold text-white">{counts.dl_validee || 0}</p>
                       <p className="text-[10px] uppercase tracking-widest text-white/70 font-semibold">Validées</p>
                     </div>
                   </div>

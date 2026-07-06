@@ -1,46 +1,42 @@
 // Source unique de vérité du pipeline de statuts d'une DE/projet et des
 // alertes ADV liées à l'attente du code chapeau.
 
+// Convention parlante par phase : préfixe `de_` / `dl_` (chemin DE → DL → FL) et
+// `ds_` (chemin DS → FL). Le préfixe indique où en est le projet dans le pipeline.
 export const STATUTS = {
-  brouillon: { key: "brouillon", label: "Brouillon", tone: "amber", order: 0 },
+  de_brouillon: { key: "de_brouillon", label: "Brouillon", tone: "amber", order: 0 },
   ds_brouillon: { key: "ds_brouillon", label: "Brouillon", tone: "amber", order: 0 },
-  en_attente_cc: {
-    key: "en_attente_cc",
+  de_attente_cc: {
+    key: "de_attente_cc",
     label: "En attente de code chapeau",
     tone: "blue",
     order: 1,
   },
-  en_attente_creation_code_chapeau: {
-    key: "en_attente_creation_code_chapeau",
-    // Libellé volontairement identique à `en_attente_cc` : DE et DS affichent
+  ds_attente_cc: {
+    key: "ds_attente_cc",
+    // Libellé volontairement identique à `de_attente_cc` : DE et DS affichent
     // « En attente de code chapeau ». La clé technique reste distincte pour
     // différencier DE/DS côté Dataverse.
     label: "En attente de code chapeau",
     tone: "blue",
     order: 1,
   },
-  en_attente_dl: {
-    key: "en_attente_dl",
-    label: "En attente de DL",
-    tone: "violet",
-    order: 2,
-  },
-  en_attente_validation_dl: {
-    key: "en_attente_validation_dl",
-    label: "En attente de validation DL",
+  dl_attente_validation_cdg: {
+    key: "dl_attente_validation_cdg",
+    label: "En attente de validation CDG",
     tone: "indigo",
     order: 3,
   },
-  validee: { key: "validee", label: "Validée", tone: "emerald", order: 4 },
+  dl_validee: { key: "dl_validee", label: "Validée", tone: "emerald", order: 4 },
   ds_validee: { key: "ds_validee", label: "DS validée", tone: "emerald", order: 4 },
-  refusee: { key: "refusee", label: "Refusée", tone: "red", order: 5 },
+  dl_refusee: { key: "dl_refusee", label: "Refusée", tone: "red", order: 5 },
 };
 
 export const STATUT_ORDER = Object.values(STATUTS)
   .sort((a, b) => a.order - b.order)
   .map((s) => s.key);
 
-export const getStatutMeta = (key) => STATUTS[key] || STATUTS.brouillon;
+export const getStatutMeta = (key) => STATUTS[key] || STATUTS.de_brouillon;
 
 const MS_PER_DAY = 86_400_000;
 const startOfDay = (x) =>
@@ -51,7 +47,7 @@ const startOfDay = (x) =>
 export const codeChapeauAlert = (de, today = new Date()) => {
   if (
     !de ||
-    de.statut !== "en_attente_cc" ||
+    de.statut !== "de_attente_cc" ||
     !de.date_demande_code_chapeau
   ) {
     return { level: "none", joursEcoules: null };

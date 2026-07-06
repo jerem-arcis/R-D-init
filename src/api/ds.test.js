@@ -26,13 +26,13 @@ const base = {
 
 describe('DS_STATUTS', () => {
   it('liste les 3 statuts DS', () => {
-    expect(DS_STATUTS).toEqual(['ds_brouillon', 'en_attente_creation_code_chapeau', 'ds_validee']);
+    expect(DS_STATUTS).toEqual(['ds_brouillon', 'ds_attente_cc', 'ds_validee']);
   });
 });
 
 describe('buildDsPayload', () => {
   it('mappe les champs + calculs + nouvelles colonnes', () => {
-    const p = buildDsPayload(base, { sapOptions, statut: 'en_attente_creation_code_chapeau' });
+    const p = buildDsPayload(base, { sapOptions, statut: 'ds_attente_cc' });
     expect(p.cr04e_demandeur).toBe('Jean');
     expect(p.cr04e_datedelademande).toBe('2026-07-02');
     expect(p.cr04e_typedelademande).toBe('1');
@@ -40,7 +40,7 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_poidsnet).toBe(0.25);
     expect(p.cr04e_codeprojet).toBe('12345678'); // code article origine
     expect(p.cr04e_codechapeau).toBe('741603');
-    expect(p.cr04e_statut_en_cours).toBe('en_attente_creation_code_chapeau');
+    expect(p.cr04e_statut_en_cours).toBe('ds_attente_cc');
     // calculs
     expect(p.cr04e_secteurdactivite).toBe('12'); // GMS
     expect(p.cr04e_codedivisionorigine).toBe('2859'); // Aire origine
@@ -65,7 +65,7 @@ describe('buildDsPayload', () => {
     // Phase de dev : champ auto-calculé débloqué puis saisi à la main.
     const p = buildDsPayload(
       { ...base, _ds_secteur_ovr: '99', _ds_classe_valo_ovr: '2038' },
-      { sapOptions, statut: 'en_attente_creation_code_chapeau' },
+      { sapOptions, statut: 'ds_attente_cc' },
     );
     expect(p.cr04e_secteurdactivite).toBe('99'); // override, pas le '12' calculé
     expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // 2038 forcé

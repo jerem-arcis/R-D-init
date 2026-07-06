@@ -13,13 +13,17 @@ const PROJET_LOOKUPS = [
   ['familles_produit', 'famille_produit', 'cr04e_Hierarchieproduitfamille@odata.bind'],
 ];
 
-// Statuts portés par cr04e_statut_en_cours.
+// Statuts portés par cr04e_statut_en_cours (convention parlante par phase).
 export const PROJET_STATUT = {
-  brouillon: 'brouillon',
-  en_attente_cc: 'en_attente_cc',
-  en_attente_dl: 'en_attente_dl',
+  de_brouillon: 'de_brouillon',
+  de_attente_cc: 'de_attente_cc',
+  // Envoi vers SAP : la DE passe directement en attente de validation CDG
+  // (la décision de validation/refus DL est déléguée à CDG via Power Automate).
+  dl_attente_validation_cdg: 'dl_attente_validation_cdg',
+  dl_validee: 'dl_validee',
+  dl_refusee: 'dl_refusee',
   ds_brouillon: 'ds_brouillon',
-  en_attente_creation_code_chapeau: 'en_attente_creation_code_chapeau',
+  ds_attente_cc: 'ds_attente_cc',
   ds_validee: 'ds_validee',
 };
 
@@ -92,7 +96,7 @@ const toFormData = (p) => ({
   // divisionCodeFromPlant, comme le fait l'import beCPG. Si c'est déjà un code,
   // on le garde tel quel.
   division: divisionCodeFromPlant(p.cr04e_divisionimport) || (p.cr04e_divisionimport ?? ''),
-  statut: p.cr04e_statut_en_cours || PROJET_STATUT.en_attente_cc,
+  statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_attente_cc,
 });
 
 // Lit une ligne cr04e_projet par son GUID et la renvoie au format formData DE.
@@ -133,7 +137,7 @@ const toListShape = (p) => ({
   demandeur: p.cr04e_demandeur ?? '',
   type_demande_de: p.cr04e_typedelademande ?? '',
   usine_validee: p.cr04e_divisionusinename ?? '',
-  statut: p.cr04e_statut_en_cours || PROJET_STATUT.brouillon,
+  statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_brouillon,
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,
 });

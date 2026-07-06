@@ -72,7 +72,7 @@ export default function TraiterDE() {
   const typeBadge = TYPE_BADGE[typeDe] || TYPE_BADGE.de;
   const codeChapeauVisible =
     de.code_chapeau &&
-    ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(de.statut);
+    ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'].includes(de.statut);
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,11 +110,11 @@ export default function TraiterDE() {
             </AlertDescription>
           </Alert>
         )}
-        {de.statut === 'refusee' && (
+        {de.statut === 'dl_refusee' && (
           <Alert className="bg-red-50 border-red-200">
             <XCircle className="w-4 h-4 text-red-600" />
             <AlertDescription className="text-red-700">
-              Demande refusée — Motif : {de.motif_refus}
+              Demande refusée.
             </AlertDescription>
           </Alert>
         )}
@@ -211,7 +211,7 @@ export default function TraiterDE() {
         )}
 
         {/* ===== Lien vers la DL ===== */}
-        {(de.statut === 'en_attente_dl' || de.statut === 'en_attente_validation_dl') && (
+        {['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'].includes(de.statut) && (
           <div className="flex justify-end">
             <Link to={createPageUrl(`DL?id=${de.id}`)}>
               <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-md">

@@ -42,20 +42,23 @@ const TONE_BADGE = {
   red: 'bg-red-100 text-red-700 border-red-200',
 };
 
-// Côté DE, une fois le code chapeau reçu (phase DL ou validé) la DE est « Validée ».
+// Côté DE, une fois le code chapeau reçu (envoyée vers SAP / phase DL ou validée)
+// la DE est « Validée » : le statut courant termine la phase DE. Le refus DL
+// (dl_refusee) reste affiché « Refusée » côté DE.
 const isDEValidated = (statut) =>
-  ['en_attente_dl', 'en_attente_validation_dl', 'validee'].includes(statut);
+  ['dl_attente_validation_cdg', 'dl_validee'].includes(statut);
 
-// « En attente de code chapeau » couvre la DE (en_attente_cc) ET la DS
-// (en_attente_creation_code_chapeau) : même libellé, clés techniques distinctes.
+// « En attente de code chapeau » couvre la DE (de_attente_cc) ET la DS
+// (ds_attente_cc) : même libellé, clés techniques distinctes.
 const isEnAttenteCC = (statut) =>
-  statut === 'en_attente_cc' || statut === 'en_attente_creation_code_chapeau';
+  statut === 'de_attente_cc' || statut === 'ds_attente_cc';
 
 // « Validée » côté compteur : DE validée/phase DL + DS validée (ds_validee).
 const isValideeCount = (statut) => isDEValidated(statut) || statut === 'ds_validee';
 
-// Onglets de la liste DE (les statuts DL ne sont pas exposés ici, ils ont leur onglet).
-const DE_TABS = ['brouillon', 'en_attente_cc', 'validee', 'refusee'];
+// Onglets de la liste DE (les statuts DL en cours ne sont pas exposés ici, ils ont
+// leur onglet). Clés = statuts DE ; les libellés viennent de STATUTS.
+const DE_TABS = ['de_brouillon', 'de_attente_cc', 'dl_validee', 'dl_refusee'];
 
 // Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
 const getType = (de) => de.type_de || 'de';
@@ -139,14 +142,14 @@ export default function DemandesEtude() {
   const filteredDemandes = demandes.filter(de => {
     if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
     if (filter !== 'toutes') {
-      if (filter === 'validee') {
+      if (filter === 'dl_validee') {
         if (!isValideeCount(de.statut)) return false;
-      } else if (filter === 'en_attente_cc') {
+      } else if (filter === 'de_attente_cc') {
         // Onglet « En attente de code chapeau » : DE + DS (même sens métier).
         if (!isEnAttenteCC(de.statut)) return false;
-      } else if (filter === 'brouillon') {
-        // Onglet « Brouillon » : DE (brouillon) + DS (ds_brouillon).
-        if (de.statut !== 'brouillon' && de.statut !== 'ds_brouillon') return false;
+      } else if (filter === 'de_brouillon') {
+        // Onglet « Brouillon » : DE (de_brouillon) + DS (ds_brouillon).
+        if (de.statut !== 'de_brouillon' && de.statut !== 'ds_brouillon') return false;
       } else if (de.statut !== filter) {
         return false;
       }
@@ -191,7 +194,7 @@ export default function DemandesEtude() {
     // Une fois les étapes DE passées (le projet est en phase DL ou validé),
     // on l'affiche comme « Validée » côté DE — le suivi DL vit dans l'onglet DL.
     if (isDEValidated(statut)) {
-      return <Badge className={TONE_BADGE.emerald}>{STATUTS.validee.label}</Badge>;
+      return <Badge className={TONE_BADGE.emerald}>{STATUTS.dl_validee.label}</Badge>;
     }
     const meta = getStatutMeta(statut);
     return <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>;
@@ -317,7 +320,7 @@ export default function DemandesEtude() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {demandes.filter(d => d.statut === 'refusee').length}
+                  {demandes.filter(d => d.statut === 'dl_refusee').length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
               </div>
@@ -504,11 +507,11 @@ export default function DemandesEtude() {
                         // chapeau (édition locale si dispo, sinon chargement projet_id).
                         // Sinon (phase DL+) : détail DL.
                         const target =
-                          de.statut === 'brouillon'
+                          de.statut === 'de_brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
-                            : de.statut === 'ds_brouillon' || de.statut === 'en_attente_creation_code_chapeau' || de.statut === 'ds_validee'
+                            : de.statut === 'ds_brouillon' || de.statut === 'ds_attente_cc' || de.statut === 'ds_validee'
                               ? `CreerDE?projet_id=${de.id}`
-                              : de.statut === 'en_attente_cc'
+                              : de.statut === 'de_attente_cc'
                                 ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
                                 // Validée / phase DL / refusée : on ouvre la DE en
                                 // LECTURE SEULE (la DL a son propre onglet). On charge

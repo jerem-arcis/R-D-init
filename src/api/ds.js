@@ -17,7 +17,7 @@ import {
 
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
-export const DS_STATUTS = ['ds_brouillon', 'en_attente_creation_code_chapeau', 'ds_validee'];
+export const DS_STATUTS = ['ds_brouillon', 'ds_attente_cc', 'ds_validee'];
 
 // Valeurs calculées d'une DS à partir de formData (réutilisé par le payload et la
 // vue/synthèse). Tout est dérivé des inputs via dsRules.

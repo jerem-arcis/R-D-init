@@ -1,47 +1,45 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { listProjets, updateProjetStatut } from '@/api/projet';
+import { listProjets } from '@/api/projet';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { normalizeText as normalize } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
-  ArrowLeft, Upload, CheckCircle2, XCircle, Loader2, FileText,
-  Package, ChevronRight, Clock, Search, X,
+  ArrowLeft, CheckCircle2, XCircle, Loader2, Package, ChevronRight, Clock, Search, X, Hourglass,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getStatutMeta } from '@/lib/deStatus';
-import { parseDLFile } from '@/lib/parseDL';
-import { useToast } from '@/components/ui/use-toast';
+
+// ---------- Métadonnées de statut DL (phase DL du chemin DE → DL → FL) ----------
+const DL_STATUT_BADGE = {
+  dl_attente_validation_cdg: { label: 'En attente de validation CDG', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  dl_validee: { label: 'Validée', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  dl_refusee: { label: 'Refusée', cls: 'bg-red-100 text-red-700 border-red-200' },
+};
+// Ordre d'affichage : en attente d'abord, finalisées ensuite.
+const DL_ORDRE = { dl_attente_validation_cdg: 0, dl_validee: 1, dl_refusee: 2 };
+// Onglets de la liste DL.
+const DL_TABS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
+// Statuts portés par un projet en phase DL (ceux affichés dans cette liste).
+const DL_PHASE_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
 
 // Détail DL. Peut s'ouvrir de deux façons :
-//  - ?id=<id local>      : DE présente dans le localStorage de ce navigateur
-//                          (enrichissement : fichier importé, champs DL, motif).
-//  - ?projet_id=<guid>   : ouverture DIRECTE depuis Dataverse (cr04e_projet),
-//                          sans aucune donnée locale. Indispensable en navigation
-//                          privée / sur un autre poste : la donnée vit dans
-//                          Dataverse, plus dans le localStorage. Le statut et les
-//                          transitions passent par Dataverse ; le détail d'import
-//                          reste un bonus affiché seulement si le local existe.
+//  - ?id=<id local>    : DE présente dans le localStorage de ce navigateur.
+//  - ?projet_id=<guid> : ouverture DIRECTE depuis Dataverse (cr04e_projet), sans
+//                        aucune donnée locale (nav privée / autre poste).
+// La page DL est désormais un simple ÉTAT D'ATTENTE : la décision de validation
+// ou de refus est prise par CDG et écrite dans Dataverse par Power Automate
+// (dl_validee / dl_refusee). Aucune action n'est disponible ici.
 function DLDetail({ deId, projetId }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const [showRefus, setShowRefus] = useState(false);
-  const [motifRefus, setMotifRefus] = useState('');
-  const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState('');
 
   const { data: de, isLoading: deLoading } = useQuery({
     queryKey: ['demande_etude', deId],
@@ -50,8 +48,7 @@ function DLDetail({ deId, projetId }) {
     select: (data) => data[0] || null,
   });
 
-  // Projets Dataverse (cache partagé avec la liste) : source de vérité du projet
-  // et de son statut quand on ouvre par projet_id (ou en repli quand le local manque).
+  // Projets Dataverse (cache partagé avec la liste) : source de vérité du statut.
   const { data: projets = [], isLoading: projetsLoading } = useQuery({
     queryKey: ['projets-de'],
     queryFn: listProjets,
@@ -63,146 +60,12 @@ function DLDetail({ deId, projetId }) {
       const byId = projets.find((p) => p.id === wantedId);
       if (byId) return byId;
     }
-    // Repli : DE locale sans projet_id (créée avant le fix) -> on retrouve le
-    // projet Dataverse par code chapeau, pour pouvoir mettre à jour son statut.
     const cc = de?.code_chapeau;
     if (cc) return projets.find((p) => p.code_chapeau === cc) || null;
     return null;
   }, [projets, projetId, de]);
 
-  const { data: dl } = useQuery({
-    queryKey: ['declinaison_logistique', deId],
-    queryFn: () => base44.entities.DeclinaisonLogistique.filter({ demande_etude_id: deId }),
-    enabled: !!deId,
-    select: (data) => data[0] || null,
-  });
-
-  // GUID du projet Dataverse à mettre à jour (présent dans les deux modes).
-  const resolvedProjetId = projet?.id || de?.projet_id || projetId || null;
   const isLoading = (deId ? deLoading : false) || (projetId && !de ? projetsLoading : false);
-
-  const updateDE = useMutation({
-    mutationFn: ({ data }) => base44.entities.DemandeEtude.update(deId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
-      queryClient.invalidateQueries({ queryKey: ['demande_etude', deId] });
-    },
-  });
-
-  const upsertDL = useMutation({
-    mutationFn: async (data) => {
-      if (dl) return base44.entities.DeclinaisonLogistique.update(dl.id, data);
-      return base44.entities.DeclinaisonLogistique.create({ demande_etude_id: deId, ...data });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['declinaison_logistique', deId] });
-      queryClient.invalidateQueries({ queryKey: ['declinaisons'] });
-    },
-  });
-
-  const createFLMutation = useMutation({
-    mutationFn: (data) => base44.entities.FicheLancement.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiches'] }),
-  });
-
-  // Fait remonter le statut DL dans Dataverse (cr04e_statut_en_cours) pour que
-  // la liste DL et le suivi reflètent l'avancement réel. Le détail/refus restent
-  // stockés localement (périmètre « afficher l'existant »), mais le STATUT, lui,
-  // est persisté côté Dataverse — sinon il retomberait sur « en attente de DL ».
-  const persistProjetStatut = async (statut) => {
-    if (!resolvedProjetId) return;
-    try {
-      await updateProjetStatut(resolvedProjetId, statut);
-      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
-    } catch (err) {
-      toast({
-        title: 'Statut non synchronisé',
-        description: `Le statut a changé localement mais la synchro Dataverse a échoué : ${err?.message || 'erreur inconnue'}.`,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleImport = async (file) => {
-    if (!file) return;
-    setImportError('');
-    setImporting(true);
-    try {
-      // Lecture réelle du fichier Excel : on extrait les lignes (colonne G) et
-      // leurs valeurs DL (colonne I) de l'onglet « Fiche Demande ».
-      const { champs, fichier } = await parseDLFile(file);
-      await upsertDL.mutateAsync({
-        champs_dl: champs,
-        imported_file: fichier,
-        date_import: new Date().toISOString(),
-        statut: 'en_attente_dl',
-      });
-      await updateDE.mutateAsync({ data: { statut: 'en_attente_dl' } });
-    } catch (err) {
-      setImportError(err?.message || "Impossible de lire ce fichier. Vérifiez qu'il s'agit bien du fichier de Demande d'Étude (.xlsm/.xlsx).");
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleValider = async () => {
-    // Statut Dataverse d'abord (marche dans les deux modes, y compris sans local).
-    await persistProjetStatut('validee');
-    // Enrichissement local (FL + DL + DE) uniquement si la DE locale existe.
-    if (deId && de) {
-      const designationVal = de.designation_article || de.autre_designation;
-      const fl = await createFLMutation.mutateAsync({
-        code_article: de.code_chapeau,
-        code_chapeau: de.code_chapeau,
-        libelle_article: designationVal,
-        demande_etude_id: deId,
-        declinaison_logistique_id: dl?.id || null,
-        etat_global: 'en_attente',
-        etape_courante: 1,
-      });
-      await upsertDL.mutateAsync({
-        statut: 'validee',
-        date_validation: new Date().toISOString(),
-        fiche_lancement_id: fl.id,
-      });
-      await updateDE.mutateAsync({
-        data: {
-          statut: 'validee',
-          date_validation: new Date().toISOString(),
-          fiche_lancement_id: fl.id,
-        },
-      });
-    }
-    navigate(createPageUrl('DemandesEtude'));
-  };
-
-  const handleRefuser = async () => {
-    if (!motifRefus.trim()) { alert('Veuillez saisir un motif de refus'); return; }
-    // Le refus porte sur la DL uniquement. Statut Dataverse + historique local si présent.
-    await persistProjetStatut('refusee');
-    if (deId) {
-      await upsertDL.mutateAsync({ statut: 'refusee', motif_refus: motifRefus, date_refus: new Date().toISOString() });
-    }
-    navigate(createPageUrl('DL'));
-  };
-
-  const handleEnvoyerValidation = async () => {
-    // Passage « En attente de DL » -> « En attente de validation DL ».
-    await persistProjetStatut('en_attente_validation_dl');
-    if (deId) {
-      await upsertDL.mutateAsync({
-        statut: 'en_attente_validation_dl',
-        date_envoi_validation: new Date().toISOString(),
-      });
-      await updateDE.mutateAsync({ data: { statut: 'en_attente_validation_dl' } });
-    }
-    navigate(createPageUrl('DL'));
-  };
-
-  const imported = useMemo(
-    () => !!dl?.imported_file,
-    [dl]
-  );
 
   if (isLoading || (!de && !projet)) {
     return (
@@ -212,16 +75,11 @@ function DLDetail({ deId, projetId }) {
     );
   }
 
-  // Valeurs unifiées : local en priorité (plus riche), repli Dataverse.
   const designation =
     de?.designation_article || de?.autre_designation || projet?.designation_article || '';
   const codeChapeauVal = de?.code_chapeau || projet?.code_chapeau || '';
-  // Statut = Dataverse (source de vérité, écrit à chaque transition), repli local.
-  const dlStatut = projet?.statut || dl?.statut || de?.statut || 'en_attente_dl';
-  const isFinal = dlStatut === 'validee' || dlStatut === 'refusee';
-  // Vrai dès qu'on a un contexte local (permet l'import de fichier). En mode
-  // Dataverse-seul, l'import détaillé n'est pas disponible mais le statut l'est.
-  const hasLocal = !!deId && !!de;
+  // Statut = Dataverse (source de vérité, écrit par l'app puis Power Automate).
+  const dlStatut = projet?.statut || de?.statut || 'dl_attente_validation_cdg';
 
   return (
     <div className="min-h-screen bg-background">
@@ -252,158 +110,31 @@ function DLDetail({ deId, projetId }) {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {/* Zone d'import : le fichier importé vit dans le localStorage, donc on ne
-            la propose qu'avec un contexte local (?id). En mode Dataverse-seul
-            (?projet_id, ex. navigation privée), on l'indique simplement — le
-            statut et les actions ci-dessous restent pleinement opérationnels. */}
-        {!hasLocal ? (
-          <Alert className="bg-violet-50 border-violet-200">
-            <FileText className="w-4 h-4 text-violet-600" />
-            <AlertDescription className="text-violet-700">
-              Détail d'import non disponible dans cette session (le fichier est stocké
-              localement sur le poste d'origine). Le statut et les actions ci-dessous
-              sont gérés via Dataverse et restent disponibles.
+        {dlStatut === 'dl_attente_validation_cdg' && (
+          <Alert className="bg-indigo-50 border-indigo-200">
+            <Hourglass className="w-4 h-4 text-indigo-600" />
+            <AlertDescription className="text-indigo-700">
+              En attente de validation CDG. La décision (validation ou refus) est prise par le
+              Contrôle de Gestion et remontée automatiquement via Power Automate — aucune action
+              n'est requise ici.
             </AlertDescription>
           </Alert>
-        ) : !imported ? (
-          <div className="bg-gradient-to-r from-violet-500/5 via-violet-500/10 to-violet-500/5 rounded-xl border-2 border-dashed border-violet-500/30 p-8 text-center">
-            <Upload className="w-10 h-10 text-violet-600 mx-auto mb-3" />
-            <h2 className="text-base font-bold text-foreground">Importer le fichier de Demande de Lancement</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">
-              Importez le fichier Excel de la Demande d'Étude : les lignes de l'onglet « Fiche Demande » et leurs valeurs DL seront extraites.
-            </p>
-            <label
-              htmlFor="dl-file"
-              className={`inline-flex items-center gap-2 h-10 px-4 rounded-md text-xs font-bold uppercase tracking-wide shadow-md ${importing ? 'bg-violet-300 text-white cursor-wait' : 'bg-violet-600 text-white hover:bg-violet-700 cursor-pointer'}`}
-            >
-              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {importing ? 'Lecture du fichier…' : 'Importer le fichier'}
-            </label>
-            <input
-              id="dl-file"
-              type="file"
-              accept=".xlsm,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
-              disabled={importing}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ''; }}
-              className="sr-only"
-            />
-            {importError && (
-              <Alert className="bg-red-50 border-red-200 mt-4 text-left">
-                <XCircle className="w-4 h-4 text-red-600" />
-                <AlertDescription className="text-red-700">{importError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-        ) : (
-          <>
-            {dl?.imported_file && (
-              <Alert className="bg-violet-50 border-violet-200">
-                <CheckCircle2 className="w-4 h-4 text-violet-600" />
-                <AlertDescription className="text-violet-700 flex items-center gap-3 flex-wrap">
-                  <span>Fichier importé : <strong>{dl.imported_file}</strong></span>
-                  {!isFinal && (
-                    <>
-                      <label
-                        htmlFor="dl-file-change"
-                        className={`ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border ${importing ? 'border-violet-200 text-violet-300 cursor-wait' : 'border-violet-300 text-violet-700 hover:bg-violet-100 cursor-pointer'}`}
-                      >
-                        {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                        {importing ? 'Lecture…' : 'Changer le fichier'}
-                      </label>
-                      <input
-                        id="dl-file-change"
-                        type="file"
-                        accept=".xlsm,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
-                        disabled={importing}
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ''; }}
-                        className="sr-only"
-                      />
-                    </>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-            {importError && (
-              <Alert className="bg-red-50 border-red-200">
-                <XCircle className="w-4 h-4 text-red-600" />
-                <AlertDescription className="text-red-700">{importError}</AlertDescription>
-              </Alert>
-            )}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-slate-500" />
-                <h3 className="font-semibold text-slate-700 text-sm">
-                  Champs extraits — onglet « Fiche Demande »
-                </h3>
-                <span className="ml-auto text-xs text-slate-400">{dl?.champs_dl?.length || 0} lignes</span>
-              </div>
-              {dl?.champs_dl?.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary">
-                      <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Ligne</TableHead>
-                      <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide text-right w-32">Valeur DE</TableHead>
-                      <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide text-right w-32">Valeur DL</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dl.champs_dl.map((c, idx) => (
-                      <TableRow key={idx} className="border-b border-border">
-                        <TableCell className="text-sm text-slate-700">{c.ligne}</TableCell>
-                        <TableCell className="text-sm text-right text-slate-500 font-mono">{c.de !== '' ? c.de : '—'}</TableCell>
-                        <TableCell className="text-sm text-right font-mono font-semibold text-slate-900">{c.dl !== '' ? c.dl : '—'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="p-6 text-sm text-muted-foreground text-center">Aucune ligne extraite du fichier.</p>
-              )}
-            </div>
-          </>
         )}
-
-        {/* Actions de transition : pilotées par le STATUT Dataverse, hors de la
-            zone d'import — disponibles aussi en mode Dataverse-seul. */}
-        {dlStatut === 'refusee' && (
+        {dlStatut === 'dl_validee' && (
+          <Alert className="bg-emerald-50 border-emerald-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-700">
+              DL validée. La Fiche de Lancement a été démarrée automatiquement.
+            </AlertDescription>
+          </Alert>
+        )}
+        {dlStatut === 'dl_refusee' && (
           <Alert className="bg-red-50 border-red-200">
             <XCircle className="w-4 h-4 text-red-600" />
             <AlertDescription className="text-red-700">
-              DL refusée{dl?.motif_refus ? ` — Motif : ${dl.motif_refus}` : ''}
+              DL refusée.
             </AlertDescription>
           </Alert>
-        )}
-
-        {!isFinal && !showRefus && dlStatut === 'en_attente_dl' && (
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button onClick={handleEnvoyerValidation} disabled={upsertDL.isPending || updateDE.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-              <CheckCircle2 className="w-4 h-4 mr-2" /> Envoyer en validation
-            </Button>
-          </div>
-        )}
-
-        {!isFinal && !showRefus && dlStatut === 'en_attente_validation_dl' && (
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowRefus(true)} className="border-red-300 text-red-600 hover:bg-red-50">
-              <XCircle className="w-4 h-4 mr-2" /> Refuser
-            </Button>
-            <Button onClick={handleValider} disabled={updateDE.isPending || createFLMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-              <CheckCircle2 className="w-4 h-4 mr-2" /> Valider la DL → FL
-            </Button>
-          </div>
-        )}
-
-        {!isFinal && showRefus && (
-          <div className="space-y-3 bg-card rounded-xl border border-border p-5">
-            <Label className="text-xs font-semibold text-slate-700">Motif de refus <span className="text-red-500">*</span></Label>
-            <Textarea value={motifRefus} onChange={(e) => setMotifRefus(e.target.value)} placeholder="Expliquer le refus…" className="min-h-[100px]" />
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setShowRefus(false); setMotifRefus(''); }}>Annuler</Button>
-              <Button onClick={handleRefuser} disabled={updateDE.isPending} className="bg-red-600 hover:bg-red-700 text-white">
-                <XCircle className="w-4 h-4 mr-2" /> Confirmer le refus
-              </Button>
-            </div>
-          </div>
         )}
       </main>
     </div>
@@ -411,88 +142,113 @@ function DLDetail({ deId, projetId }) {
 }
 
 // ---------- Liste des DL ----------
-const DL_STATUT_BADGE = {
-  en_attente_dl: { label: 'En attente de DL', cls: 'bg-violet-100 text-violet-700 border-violet-200' },
-  en_attente_validation_dl: { label: 'En attente de validation DL', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  validee: { label: 'Validée', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  refusee: { label: 'Refusée', cls: 'bg-red-100 text-red-700 border-red-200' },
-};
-// Ordre d'affichage : DL en cours en premier, finalisées ensuite.
-const DL_ORDRE = { en_attente_dl: 0, en_attente_validation_dl: 1, validee: 2, refusee: 3 };
-
-// Onglets de la liste DL (par statut).
-const DL_TABS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
-// Statuts portés par un projet en phase DL (ceux affichés dans cette liste).
-const DL_PHASE_STATUTS = ['en_attente_dl', 'en_attente_validation_dl', 'validee', 'refusee'];
-
 function DLList({ initialCode = '' }) {
   const navigate = useNavigate();
-  const [motifDL, setMotifDL] = useState(null);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('toutes');
   const [search, setSearch] = useState(initialCode);
 
-  // Liste branchée sur Dataverse : les projets en phase DL (statut en_attente_dl).
+  // Liste branchée sur Dataverse : les projets en phase DL.
   const { data: projets = [], isLoading } = useQuery({
     queryKey: ['projets-de'],
     queryFn: listProjets,
   });
-  // DL locales (localStorage) : portent l'avancement DL (import, validation,
-  // refus) et l'id local nécessaire au détail. Jointes au projet par code chapeau.
-  const { data: declinaisons = [] } = useQuery({
-    queryKey: ['declinaisons'],
-    queryFn: () => base44.entities.DeclinaisonLogistique.list('-created_date'),
-  });
+  // DE locales (localStorage) : id local pour le détail enrichi + contexte pour
+  // l'auto-création de la FL.
   const { data: localDEs = [] } = useQuery({
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
+  // Fiches de Lancement existantes : sert à l'idempotence de l'auto-création.
+  const { data: fiches = [] } = useQuery({
+    queryKey: ['fiches'],
+    queryFn: () => base44.entities.FicheLancement.list('-created_date'),
+  });
 
-  // L'état d'une DL est porté par son enregistrement DeclinaisonLogistique local.
-  // On part des projets « en attente de DL » (Dataverse) et on y rattache la DL
-  // locale + l'id local via le code chapeau, quand ils existent dans ce navigateur.
   const rows = useMemo(() => {
-    const localDEById = new Map(localDEs.map((d) => [d.id, d]));
-    const localIdByChapeau = new Map();
-    const localIdByProjetId = new Map();
-    const dlByChapeau = new Map();
+    const localByProjetId = new Map();
+    const localByChapeau = new Map();
     localDEs.forEach((d) => {
-      if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
-      if (d.projet_id) localIdByProjetId.set(d.projet_id, d.id);
+      if (d.projet_id) localByProjetId.set(d.projet_id, d);
+      if (d.code_chapeau) localByChapeau.set(d.code_chapeau, d);
     });
-    declinaisons.forEach((dl) => {
-      const de = localDEById.get(dl.demande_etude_id);
-      if (de?.code_chapeau) dlByChapeau.set(de.code_chapeau, dl);
-    });
-
-    const out = projets
-      // On retient tous les projets entrés en phase DL. Le STATUT vient de
-      // Dataverse (cr04e_statut_en_cours) — source de vérité unique, écrite à
-      // chaque transition (envoi en validation / validation / refus). On ne
-      // dépend plus du localStorage pour l'état (qui était vide sans seed et
-      // figeait tout sur « en attente de DL »).
+    return projets
+      // Tous les projets entrés en phase DL. Le STATUT vient de Dataverse
+      // (cr04e_statut_en_cours) — source de vérité écrite à l'envoi vers SAP
+      // puis par Power Automate (validation / refus CDG).
       .filter((p) => DL_PHASE_STATUTS.includes(p.statut))
       .map((p) => {
-        const dl = p.code_chapeau ? dlByChapeau.get(p.code_chapeau) || null : null;
-        const localId =
-          localIdByProjetId.get(p.id) ||
-          (p.code_chapeau ? localIdByChapeau.get(p.code_chapeau) || null : null);
+        const localDE =
+          localByProjetId.get(p.id) ||
+          (p.code_chapeau ? localByChapeau.get(p.code_chapeau) : null) ||
+          null;
         return {
           key: `projet-${p.id}`,
           de: p,
-          dl,
-          localId,
-          statut: p.statut || dl?.statut || 'en_attente_dl',
+          localDE,
+          localId: localDE?.id || null,
+          statut: p.statut,
         };
-      });
-    return out.sort((a, b) => (DL_ORDRE[a.statut] ?? 9) - (DL_ORDRE[b.statut] ?? 9));
-  }, [projets, declinaisons, localDEs]);
+      })
+      .sort((a, b) => (DL_ORDRE[a.statut] ?? 9) - (DL_ORDRE[b.statut] ?? 9));
+  }, [projets, localDEs]);
+
+  // Auto-création de la FL : dès qu'un projet passe `dl_validee` (écrit par Power
+  // Automate), si sa DE locale existe et n'a pas encore de FL, on démarre la FL et
+  // on relie la DE. Idempotent : garde sur fiche_lancement_id, sur les FL existantes
+  // (par demande_etude_id) et sur un Set anti-double-exécution.
+  const createFL = useMutation({ mutationFn: (data) => base44.entities.FicheLancement.create(data) });
+  const updateDE = useMutation({ mutationFn: ({ id, data }) => base44.entities.DemandeEtude.update(id, data) });
+  const processing = useRef(new Set());
+
+  useEffect(() => {
+    if (isLoading) return;
+    const flByDe = new Set(fiches.map((f) => f.demande_etude_id).filter(Boolean));
+    (async () => {
+      let created = false;
+      for (const row of rows) {
+        if (row.statut !== 'dl_validee') continue;
+        const de = row.localDE;
+        if (!de || de.fiche_lancement_id) continue;
+        if (flByDe.has(de.id) || processing.current.has(de.id)) continue;
+        processing.current.add(de.id);
+        try {
+          const designation = de.designation_article || de.autre_designation || '';
+          const fl = await createFL.mutateAsync({
+            code_article: de.code_chapeau,
+            code_chapeau: de.code_chapeau,
+            libelle_article: designation,
+            demande_etude_id: de.id,
+            declinaison_logistique_id: null,
+            etat_global: 'en_attente',
+            etape_courante: 1,
+          });
+          await updateDE.mutateAsync({
+            id: de.id,
+            data: {
+              statut: 'dl_validee',
+              date_validation: new Date().toISOString(),
+              fiche_lancement_id: fl.id,
+            },
+          });
+          created = true;
+        } catch {
+          processing.current.delete(de.id); // on réessaiera au prochain chargement
+        }
+      }
+      if (created) {
+        queryClient.invalidateQueries({ queryKey: ['fiches'] });
+        queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
+      }
+    })();
+    // createFL / updateDE / queryClient sont stables ; on ne dépend que des données.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, fiches, isLoading]);
 
   const count = (statut) => rows.filter((r) => r.statut === statut).length;
 
   // Lien profond (email) : si le code chapeau correspond à exactement un projet,
-  // on ouvre directement son détail DL. On ouvre par id local s'il existe (détail
-  // enrichi), sinon par projet_id Dataverse — ce qui marche aussi en navigation
-  // privée / sur un autre poste, où le localStorage est vide.
+  // on ouvre directement son détail DL (par id local si dispo, sinon par projet_id).
   const codeNorm = normalize(initialCode.trim());
   useEffect(() => {
     if (!codeNorm || isLoading) return;
@@ -536,7 +292,7 @@ function DLList({ initialCode = '' }) {
               <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight">
                 Demandes de Lancement <span className="text-violet-600">(DL)</span>
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Gestion des demandes de lancement</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Suivi de la validation CDG des demandes de lancement</p>
             </div>
           </div>
         </div>
@@ -565,26 +321,15 @@ function DLList({ initialCode = '' }) {
           </Tabs>
         </div>
 
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Clock className="w-6 h-6 text-violet-700" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-foreground">{count('en_attente_dl')}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En attente de DL</p>
-              </div>
-            </div>
-          </div>
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6 text-indigo-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-foreground">{count('en_attente_validation_dl')}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente validation DL</p>
+                <p className="text-3xl font-bold text-foreground">{count('dl_attente_validation_cdg')}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente validation CDG</p>
               </div>
             </div>
           </div>
@@ -594,7 +339,7 @@ function DLList({ initialCode = '' }) {
                 <CheckCircle2 className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-foreground">{count('validee')}</p>
+                <p className="text-3xl font-bold text-foreground">{count('dl_validee')}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Validées</p>
               </div>
             </div>
@@ -605,7 +350,7 @@ function DLList({ initialCode = '' }) {
                 <XCircle className="w-6 h-6 text-red-700" />
               </div>
               <div>
-                <p className="text-3xl font-bold text-foreground">{count('refusee')}</p>
+                <p className="text-3xl font-bold text-foreground">{count('dl_refusee')}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Refusées</p>
               </div>
             </div>
@@ -663,10 +408,9 @@ function DLList({ initialCode = '' }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRows.map(({ key, de, dl, statut, localId }) => {
-                  const badge = DL_STATUT_BADGE[statut] || DL_STATUT_BADGE.en_attente_dl;
-                  const estRefusee = statut === 'refusee';
-                  const dateRef = dl?.date_import || de.created_date;
+                {filteredRows.map(({ key, de, statut, localId }) => {
+                  const badge = DL_STATUT_BADGE[statut] || DL_STATUT_BADGE.dl_attente_validation_cdg;
+                  const dateRef = de.created_date;
                   const isMatch = codeNorm && normalize(de.code_chapeau) === codeNorm;
                   return (
                     <TableRow key={key} className={`hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border ${isMatch ? 'bg-violet-50 ring-2 ring-inset ring-violet-400' : ''}`}>
@@ -680,19 +424,7 @@ function DLList({ initialCode = '' }) {
                         {de.demandeur || de.autre_demandeur || <span className="text-muted-foreground/50">—</span>}
                       </TableCell>
                       <TableCell>
-                        {estRefusee ? (
-                          <button
-                            type="button"
-                            onClick={() => setMotifDL({ de, dl })}
-                            className="inline-flex items-center gap-1 group/badge"
-                            title="Voir le motif du refus"
-                          >
-                            <Badge className={`${badge.cls} group-hover/badge:brightness-95`}>{badge.label}</Badge>
-                            <span className="text-[11px] text-red-500 underline underline-offset-2">voir le motif</span>
-                          </button>
-                        ) : (
-                          <Badge className={badge.cls}>{badge.label}</Badge>
-                        )}
+                        <Badge className={badge.cls}>{badge.label}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {dateRef ? format(new Date(dateRef), 'dd MMM yyyy', { locale: fr }) : '—'}
@@ -712,28 +444,6 @@ function DLList({ initialCode = '' }) {
           )}
         </div>
       </main>
-
-      <Dialog open={!!motifDL} onOpenChange={(o) => !o && setMotifDL(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-700">
-              <XCircle className="w-5 h-5" /> DL refusée
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {motifDL?.de?.designation_article || motifDL?.de?.autre_designation || 'Demande de Lancement'}
-              {motifDL?.de?.code_chapeau && <> · <span className="font-mono">{motifDL.de.code_chapeau}</span></>}
-            </p>
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-[11px] uppercase tracking-wide font-semibold text-red-600 mb-1">Motif du refus</p>
-              <p className="text-sm text-red-800 whitespace-pre-wrap">
-                {motifDL?.dl?.motif_refus || 'Aucun motif renseigné.'}
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
