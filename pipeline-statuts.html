@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline de statuts &amp; validation CDG — Boncolac</title>
+<style>
+  :root {
+    --ground: #f4f4f9;
+    --surface: #ffffff;
+    --ink: #211c31;
+    --muted: #6c6883;
+    --faint: #9a97ac;
+    --hairline: #e7e4f0;
+    --app: #7c3aed;      /* violet — App Boncolac */
+    --sap: #0f766e;      /* teal — SAP */
+    --flux: #2563eb;     /* blue — Power Automate */
+    --cdg: #b45309;      /* amber — CDG (humain) */
+    --amber: #b7791f;    /* brouillon */
+    --indigo: #4f46e5;   /* attente CDG */
+    --emerald: #059669;  /* validée */
+    --red: #dc2626;      /* refusée */
+    --ds: #0d9488;       /* chemin DS */
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2rem) 5rem;
+  }
+
+  /* ---------- Header ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--app);
+    margin: 0 0 .9rem;
+  }
+  h1 {
+    font-size: clamp(1.9rem, 5vw, 2.9rem);
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    font-weight: 800;
+    text-wrap: balance;
+    margin: 0 0 .7rem;
+  }
+  .lede {
+    font-size: 1.06rem;
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0 0 2rem;
+  }
+
+  /* ---------- Golden rule callout ---------- */
+  .rule {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--flux);
+    border-radius: 10px;
+    padding: 1.15rem 1.3rem;
+    margin: 0 0 3rem;
+    box-shadow: 0 1px 2px rgba(33,28,49,.04);
+  }
+  .rule h3 {
+    margin: 0 0 .55rem;
+    font-size: .8rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--flux);
+  }
+  .rule p { margin: 0; color: var(--muted); font-size: .96rem; }
+  .rule code, .code {
+    font-family: var(--mono);
+    font-size: .88em;
+    background: #eef1fb;
+    color: #1d3a8f;
+    padding: .12em .45em;
+    border-radius: 5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* ---------- Section ---------- */
+  section { margin: 0 0 3.4rem; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin: 0 0 1.6rem;
+    padding-bottom: .7rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .sec-head h2 {
+    font-size: 1.4rem;
+    letter-spacing: -.01em;
+    margin: 0;
+    font-weight: 750;
+  }
+  .sec-head .tag {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---------- Actor legend ---------- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem .55rem;
+    margin: 0 0 3rem;
+  }
+  .actor {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .84rem;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: .4rem .85rem .4rem .65rem;
+    color: var(--ink);
+  }
+  .actor .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--c, var(--muted));
+    flex: none;
+  }
+  .actor small { color: var(--faint); }
+
+  /* ---------- Timeline ---------- */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 1rem;
+    position: relative;
+  }
+  .rail { display: flex; flex-direction: column; align-items: center; }
+  .rail .node {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--surface);
+    border: 3px solid var(--c, var(--app));
+    margin-top: 6px;
+    flex: none;
+    z-index: 1;
+  }
+  .rail .line {
+    width: 2px; flex: 1 1 auto;
+    background: linear-gradient(var(--hairline), var(--hairline));
+    margin: 4px 0;
+    min-height: 14px;
+  }
+  .step:last-child .rail .line { display: none; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.05rem;
+    box-shadow: 0 1px 2px rgba(33,28,49,.04);
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+    margin-bottom: .5rem;
+  }
+  .statut {
+    font-family: var(--mono);
+    font-size: .84rem;
+    font-weight: 700;
+    color: var(--c, var(--ink));
+    background: color-mix(in srgb, var(--c, #000) 9%, transparent);
+    padding: .2rem .55rem;
+    border-radius: 6px;
+    letter-spacing: -.01em;
+  }
+  .statut.none {
+    color: var(--faint);
+    background: repeating-linear-gradient(45deg, #f0eef6, #f0eef6 4px, #f7f6fb 4px, #f7f6fb 8px);
+  }
+  .card-top .label { font-weight: 650; font-size: 1rem; }
+  .pill {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .74rem;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: .2rem .6rem;
+  }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pc, var(--muted)); flex: none; }
+  .card p { margin: 0; color: var(--muted); font-size: .93rem; }
+  .card .action {
+    font-size: .8rem; color: var(--faint);
+    margin-top: .5rem;
+    font-family: var(--mono);
+  }
+  .card .action b { color: var(--app); font-weight: 600; }
+
+  /* ---------- Branch ---------- */
+  .branch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .9rem;
+    margin-bottom: 1.05rem;
+  }
+  .branch .card { margin-bottom: 0; height: 100%; }
+  .branch-note {
+    grid-column: 1 / -1;
+    font-size: .8rem;
+    font-family: var(--mono);
+    color: var(--flux);
+    display: flex; align-items: center; gap: .5rem;
+    margin-bottom: .2rem;
+  }
+  @media (max-width: 560px) { .branch { grid-template-columns: 1fr; } }
+
+  /* ---------- Tables ---------- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 11px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 460px; }
+  th, td { text-align: left; padding: .7rem .95rem; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  thead th {
+    font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); font-weight: 650; background: #faf9fd;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td .code, th .code { white-space: nowrap; }
+  .old { font-family: var(--mono); color: var(--faint); text-decoration: line-through; font-size: .84rem; }
+  .arrow { color: var(--faint); padding: 0 .2rem; }
+  .newc { font-family: var(--mono); color: var(--app); font-weight: 650; font-size: .86rem; }
+  .removed { font-family: var(--mono); color: var(--red); font-size: .84rem; }
+
+  /* ---------- Note ---------- */
+  .note {
+    background: #fbfaff;
+    border: 1px dashed var(--hairline);
+    border-radius: 11px;
+    padding: 1.1rem 1.3rem;
+    color: var(--muted);
+    font-size: .92rem;
+  }
+  .note strong { color: var(--ink); }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.3rem;
+    border-top: 1px solid var(--hairline);
+    font-size: .8rem;
+    color: var(--faint);
+    font-family: var(--mono);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .step, .rule, .legend, .table-scroll, .note { animation: rise .5s cubic-bezier(.2,.7,.3,1) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Boncolac · cr04e_statut_en_cours</p>
+  <h1>Pipeline de statuts &amp; validation CDG</h1>
+  <p class="lede">
+    Les deux chemins d'un projet — <strong>DE&nbsp;→&nbsp;DL&nbsp;→&nbsp;FL</strong> et
+    <strong>DS&nbsp;→&nbsp;FL</strong> — avec, pour chaque statut, l'action qui le déclenche
+    et l'acteur qui l'écrit. La décision de validation DL est déléguée à CDG via Power Automate.
+  </p>
+
+  <div class="rule">
+    <h3>Règle d'or — ce que Power Automate doit écrire</h3>
+    <p>
+      Dans le champ <code>cr04e_statut_en_cours</code> de <code>cr04e_projet</code>, écrire la valeur
+      <strong>exacte</strong> (minuscules, sans accent) : <code>dl_validee</code> pour valider,
+      <code>dl_refusee</code> pour refuser. L'app détecte le changement et démarre la FL sur validation.
+    </p>
+  </div>
+
+  <div class="legend">
+    <span class="actor"><span class="dot" style="--c:var(--app)"></span> App Boncolac <small>· action utilisateur</small></span>
+    <span class="actor"><span class="dot" style="--c:var(--sap)"></span> SAP <small>· renvoie le code chapeau</small></span>
+    <span class="actor"><span class="dot" style="--c:var(--flux)"></span> Power Automate <small>· écrit le statut final</small></span>
+    <span class="actor"><span class="dot" style="--c:var(--cdg)"></span> CDG <small>· décide (déclenche le flux)</small></span>
+  </div>
+
+  <!-- ============ CHEMIN DE → DL → FL ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>Chemin&nbsp;DE&nbsp;→&nbsp;DL&nbsp;→&nbsp;FL</h2>
+      <span class="tag">Demande d'Étude · préfixes de_ / dl_</span>
+    </div>
+
+    <div class="flow">
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--amber)"></span><span class="line"></span></div>
+        <div class="card" style="--c:var(--amber)">
+          <div class="card-top">
+            <span class="statut">de_brouillon</span>
+            <span class="label">Brouillon</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App</span>
+          </div>
+          <p>Saisie de la Demande d'Étude, non encore envoyée. Étape optionnelle.</p>
+          <div class="action">action · <b>Enregistrer brouillon</b></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--flux)"></span><span class="line"></span></div>
+        <div class="card" style="--c:var(--flux)">
+          <div class="card-top">
+            <span class="statut">de_attente_cc</span>
+            <span class="label">En attente de code chapeau</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App → <span class="dot" style="--pc:var(--sap)"></span> SAP</span>
+          </div>
+          <p>La DE part en demande de code chapeau&nbsp;; on attend le retour de SAP. Alertes ADV J+0 puis J+6.</p>
+          <div class="action">puis · code chapeau reçu et renseigné</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--indigo)"></span><span class="line"></span></div>
+        <div class="card" style="--c:var(--indigo)">
+          <div class="card-top">
+            <span class="statut">dl_attente_validation_cdg</span>
+            <span class="label">En attente de validation CDG</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App</span>
+          </div>
+          <p>
+            Point de bascule&nbsp;: l'action <b style="color:var(--app)">« Envoyer vers SAP »</b> côté DE pose
+            directement ce statut (et déclenche le flux SAP_SEND). La page DL n'est plus qu'un
+            <strong>état d'attente</strong> — aucun bouton. La décision revient à CDG.
+          </p>
+          <div class="action">action · <b>Envoyer vers SAP</b> (CreerDE)</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--flux)"></span><span class="line"></span></div>
+        <div style="flex:1">
+          <div class="branch">
+            <div class="branch-note">⎇ CDG décide → Power Automate écrit le statut final</div>
+            <div class="card" style="--c:var(--emerald)">
+              <div class="card-top">
+                <span class="statut">dl_validee</span>
+                <span class="label">Validée</span>
+                <span class="pill"><span class="dot" style="--pc:var(--flux)"></span> Power Automate</span>
+              </div>
+              <p>DL validée par CDG. L'app enchaîne sur la création de la FL.</p>
+            </div>
+            <div class="card" style="--c:var(--red)">
+              <div class="card-top">
+                <span class="statut">dl_refusee</span>
+                <span class="label">Refusée</span>
+                <span class="pill"><span class="dot" style="--pc:var(--flux)"></span> Power Automate</span>
+              </div>
+              <p>DL refusée. État final, sans motif dans l'app.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--emerald)"></span></div>
+        <div class="card" style="--c:var(--emerald)">
+          <div class="card-top">
+            <span class="statut" style="--c:var(--emerald)">Fiche de Lancement</span>
+            <span class="label">Démarrage automatique</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App</span>
+          </div>
+          <p>
+            Dès que l'app voit un projet passé à <span class="code" style="background:#e7f6ef;color:#046c4e">dl_validee</span>
+            sans FL liée, elle crée la <strong>FicheLancement</strong>
+            (<span class="code" style="background:#f3f1fb;color:var(--app)">etat_global: en_attente</span>, étape&nbsp;1) et la relie à la DE.
+          </p>
+          <div class="action">déclencheur · ouverture de la liste DL</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ CHEMIN DS → FL ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>Chemin&nbsp;DS&nbsp;→&nbsp;FL</h2>
+      <span class="tag">Demande de Substitution · préfixe ds_</span>
+    </div>
+
+    <div class="flow">
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--amber)"></span><span class="line"></span></div>
+        <div class="card" style="--c:var(--amber)">
+          <div class="card-top">
+            <span class="statut">ds_brouillon</span>
+            <span class="label">Brouillon</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App</span>
+          </div>
+          <p>Saisie de la DS (type « autre »), non encore envoyée.</p>
+          <div class="action">action · <b>Enregistrer brouillon</b></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--flux)"></span><span class="line"></span></div>
+        <div class="card" style="--c:var(--flux)">
+          <div class="card-top">
+            <span class="statut">ds_attente_cc</span>
+            <span class="label">En attente de code chapeau</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App → <span class="dot" style="--pc:var(--sap)"></span> SAP</span>
+          </div>
+          <p>DS envoyée en demande de code chapeau, en attente du retour SAP.</p>
+          <div class="action">renommé depuis <span class="old">en_attente_creation_code_chapeau</span></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="rail"><span class="node" style="--c:var(--emerald)"></span></div>
+        <div class="card" style="--c:var(--emerald)">
+          <div class="card-top">
+            <span class="statut">ds_validee</span>
+            <span class="label">Validée → FL</span>
+            <span class="pill"><span class="dot" style="--pc:var(--app)"></span> App</span>
+          </div>
+          <p>Envoi vers SAP validé&nbsp;: la DS passe validée et alimente la Fiche de Lancement.</p>
+          <div class="action">action · <b>Envoyer vers SAP</b> (ADV)</div>
+        </div>
+      </div>
+
+    </div>
+    <p style="margin:.4rem 0 0;font-size:.83rem;color:var(--faint)">
+      Le chemin DS n'a pas d'étape de validation CDG ni de statut de refus (hors périmètre pour l'instant).
+    </p>
+  </section>
+
+  <!-- ============ VALEURS POWER AUTOMATE ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>Valeurs à écrire par Power Automate</h2>
+      <span class="tag">cr04e_statut_en_cours</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Décision CDG</th><th>Valeur exacte</th><th>Effet dans l'app</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Validé</td>
+            <td><span class="code" style="background:#e7f6ef;color:#046c4e">dl_validee</span></td>
+            <td>DL « Validée » + démarrage automatique de la FL</td>
+          </tr>
+          <tr>
+            <td>Refusé</td>
+            <td><span class="code" style="background:#fdeaea;color:#b3261e">dl_refusee</span></td>
+            <td>DL « Refusée » — état final</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TABLE DE RENOMMAGE ============ -->
+  <section>
+    <div class="sec-head">
+      <h2>Renommage des statuts</h2>
+      <span class="tag">convention par phase · de_ / dl_ / ds_</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Ancienne clé</th><th></th><th>Nouvelle clé</th><th>Libellé</th><th>Phase</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="old">brouillon</td><td class="arrow">→</td><td class="newc">de_brouillon</td><td>Brouillon</td><td>DE</td></tr>
+          <tr><td class="old">en_attente_cc</td><td class="arrow">→</td><td class="newc">de_attente_cc</td><td>En attente de code chapeau</td><td>DE</td></tr>
+          <tr><td class="old">en_attente_dl</td><td class="arrow">→</td><td class="removed">supprimé</td><td>— (étape retirée)</td><td>DL</td></tr>
+          <tr><td class="old">en_attente_validation_dl</td><td class="arrow">→</td><td class="newc">dl_attente_validation_cdg</td><td>En attente de validation CDG</td><td>DL</td></tr>
+          <tr><td class="old">validee</td><td class="arrow">→</td><td class="newc">dl_validee</td><td>Validée</td><td>DL → FL</td></tr>
+          <tr><td class="old">refusee</td><td class="arrow">→</td><td class="newc">dl_refusee</td><td>Refusée</td><td>DL</td></tr>
+          <tr><td class="old">en_attente_creation_code_chapeau</td><td class="arrow">→</td><td class="newc">ds_attente_cc</td><td>En attente de code chapeau</td><td>DS</td></tr>
+          <tr><td class="old">ds_brouillon</td><td class="arrow">→</td><td class="newc">ds_brouillon</td><td>Brouillon <em style="color:var(--faint)">(inchangé)</em></td><td>DS</td></tr>
+          <tr><td class="old">ds_validee</td><td class="arrow">→</td><td class="newc">ds_validee</td><td>Validée <em style="color:var(--faint)">(inchangé)</em></td><td>DS → FL</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="note">
+    <strong>À savoir sur l'auto-création de la FL.</strong> La FicheLancement vit en localStorage
+    (comme la DE) — seul le statut du projet est en Dataverse. La création automatique se déclenche donc
+    à l'ouverture de la liste DL, <strong>sur un poste qui a la DE en local</strong>. Elle est idempotente&nbsp;:
+    aucune FL n'est jamais créée en double ni écrasée.
+  </div>
+
+  <footer>
+    Boncolac · pipeline de statuts — 2026-07-06 · réf. spec 2026-07-06-statuts-parlants-cdg-design.md
+  </footer>
+
+</div>
+</body>
+</html>
