@@ -210,12 +210,12 @@ export default function TraiterDE() {
           </>
         )}
 
-        {/* ===== Lien vers la DL ===== */}
+        {/* ===== Lien vers la DE en lecture seule (phase DL / validée / refusée) ===== */}
         {['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'].includes(de.statut) && (
           <div className="flex justify-end">
-            <Link to={createPageUrl(`DL?id=${de.id}`)}>
+            <Link to={createPageUrl(`CreerDE?id=${de.id}`)}>
               <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-md">
-                Ouvrir la Déclinaison Logistique
+                Ouvrir la demande
               </Button>
             </Link>
           </div>

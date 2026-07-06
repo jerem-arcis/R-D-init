@@ -11,7 +11,6 @@ import {
   X,
   ChevronRight,
   Settings2,
-  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getStaleWaitingTransitions } from '@/lib/cycleStats';
@@ -19,7 +18,6 @@ import { getStaleWaitingTransitions } from '@/lib/cycleStats';
 const NAV_ITEMS = [
   { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"], badgeKey: "delays" },
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
-  { label: "Demande de lancement", page: "DL",           icon: Package,         match: ["DL"] },
   { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail", "CreerFL"] },
   { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"] },
 ];

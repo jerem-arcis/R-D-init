@@ -6,7 +6,7 @@ import { getContext } from '@microsoft/power-apps/app';
 // Le bouton de l'e-mail ouvre l'app via le player Power Apps avec un paramètre :
 //   - ?projet_id=<guid>   -> ouvre le formulaire DE prérempli (mail « en attente
 //                            de code chapeau », l'ADV doit obtenir le code) ;
-//   - ?code_chapeau=<code> -> ouvre la fiche DL (suivi).
+//   - ?code_chapeau=<code> -> ouvre le board DE avec la recherche pré-remplie (suivi).
 // Le player ne propage PAS la query string jusqu'à window.location de l'app
 // (iframe) : on lit le paramètre via le SDK Power Apps. IMPORTANT : getContext()
 // est ASYNCHRONE (Promise<IContext>), il faut l'await — sinon ctx.app.queryParams
@@ -23,7 +23,7 @@ const ROUTES = [
   {
     param: 'code_chapeau',
     ssKey: 'deeplink:code_chapeau',
-    to: (v) => `/DL?code_chapeau=${encodeURIComponent(v)}`,
+    to: (v) => `/DemandesEtude?code_chapeau=${encodeURIComponent(v)}`,
   },
 ];
 

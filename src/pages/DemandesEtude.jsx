@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { listProjets } from '@/api/projet';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { normalizeText as normalize } from '@/lib/utils';
 import { 
@@ -42,11 +42,11 @@ const TONE_BADGE = {
   red: 'bg-red-100 text-red-700 border-red-200',
 };
 
-// Côté DE, une fois le code chapeau reçu (envoyée vers SAP / phase DL ou validée)
-// la DE est « Validée » : le statut courant termine la phase DE. Le refus DL
-// (dl_refusee) reste affiché « Refusée » côté DE.
-const isDEValidated = (statut) =>
-  ['dl_attente_validation_cdg', 'dl_validee'].includes(statut);
+// Côté DE, une DE est « Validée » lorsque la validation CDG est acquise
+// (dl_validee). « En attente de validation CDG » (dl_attente_validation_cdg) est
+// désormais un statut à part entière du board DE, avec son propre onglet et son
+// badge indigo. Le refus (dl_refusee) reste affiché « Refusée ».
+const isDEValidated = (statut) => statut === 'dl_validee';
 
 // « En attente de code chapeau » couvre la DE (de_attente_cc) ET la DS
 // (ds_attente_cc) : même libellé, clés techniques distinctes.
@@ -56,9 +56,10 @@ const isEnAttenteCC = (statut) =>
 // « Validée » côté compteur : DE validée/phase DL + DS validée (ds_validee).
 const isValideeCount = (statut) => isDEValidated(statut) || statut === 'ds_validee';
 
-// Onglets de la liste DE (les statuts DL en cours ne sont pas exposés ici, ils ont
-// leur onglet). Clés = statuts DE ; les libellés viennent de STATUTS.
-const DE_TABS = ['de_brouillon', 'de_attente_cc', 'dl_validee', 'dl_refusee'];
+// Onglets de la liste DE. Depuis la suppression de la vue DL dédiée, le statut
+// « En attente de validation CDG » est exposé ici comme un onglet à part entière.
+// Clés = statuts ; les libellés viennent de STATUTS.
+const DE_TABS = ['de_brouillon', 'de_attente_cc', 'dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
 
 // Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
 const getType = (de) => de.type_de || 'de';
@@ -102,9 +103,15 @@ const DS_CAS_OPTIONS = [
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
 
 export default function DemandesEtude() {
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('toutes');
   const [typeFilter, setTypeFilter] = useState('tous');
-  const [search, setSearch] = useState('');
+  // Recherche pré-remplie par le deep-link e-mail (?code_chapeau) — remplace
+  // l'ex-liste DL vers laquelle pointait ce lien.
+  const [search, setSearch] = useState(
+    () => searchParams.get('code_chapeau') || searchParams.get('search') || '',
+  );
   const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
   const [dsCasFilter, setDsCasFilter] = useState('tous'); // sous-type DS (1 à 7)
   const [usineFilter, setUsineFilter] = useState('toutes');
@@ -121,6 +128,74 @@ export default function DemandesEtude() {
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
+  // Fiches de Lancement existantes : sert à l'idempotence de l'auto-création.
+  const { data: fiches = [] } = useQuery({
+    queryKey: ['fiches'],
+    queryFn: () => base44.entities.FicheLancement.list('-created_date'),
+  });
+
+  // Auto-création de la FL — relocalisée ici depuis l'ancienne vue DL (supprimée).
+  // Dès qu'un projet passe `dl_validee` (écrit par Power Automate), si sa DE locale
+  // existe et n'a pas encore de FL, on démarre la FL et on relie la DE. Idempotent :
+  // garde sur fiche_lancement_id, sur les FL existantes (par demande_etude_id) et
+  // sur un Set anti-double-exécution.
+  const createFL = useMutation({ mutationFn: (data) => base44.entities.FicheLancement.create(data) });
+  const updateDE = useMutation({ mutationFn: ({ id, data }) => base44.entities.DemandeEtude.update(id, data) });
+  const processing = useRef(new Set());
+
+  useEffect(() => {
+    if (isLoading) return;
+    // DE locales indexées pour retrouver l'objet complet à partir du projet.
+    const localByProjetId = new Map();
+    const localByChapeau = new Map();
+    localDEs.forEach((d) => {
+      if (d.projet_id) localByProjetId.set(d.projet_id, d);
+      if (d.code_chapeau) localByChapeau.set(d.code_chapeau, d);
+    });
+    const flByDe = new Set(fiches.map((f) => f.demande_etude_id).filter(Boolean));
+    (async () => {
+      let created = false;
+      for (const p of demandes) {
+        if (p.statut !== 'dl_validee') continue;
+        const de =
+          localByProjetId.get(p.id) ||
+          (p.code_chapeau ? localByChapeau.get(p.code_chapeau) : null);
+        if (!de || de.fiche_lancement_id) continue;
+        if (flByDe.has(de.id) || processing.current.has(de.id)) continue;
+        processing.current.add(de.id);
+        try {
+          const designation = de.designation_article || de.autre_designation || '';
+          const fl = await createFL.mutateAsync({
+            code_article: de.code_chapeau,
+            code_chapeau: de.code_chapeau,
+            libelle_article: designation,
+            demande_etude_id: de.id,
+            declinaison_logistique_id: null,
+            etat_global: 'en_attente',
+            etape_courante: 1,
+          });
+          await updateDE.mutateAsync({
+            id: de.id,
+            data: {
+              statut: 'dl_validee',
+              date_validation: new Date().toISOString(),
+              fiche_lancement_id: fl.id,
+            },
+          });
+          created = true;
+        } catch {
+          processing.current.delete(de.id); // on réessaiera au prochain chargement
+        }
+      }
+      if (created) {
+        queryClient.invalidateQueries({ queryKey: ['fiches'] });
+        queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
+      }
+    })();
+    // createFL / updateDE / queryClient sont stables ; on ne dépend que des données.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demandes, localDEs, fiches, isLoading]);
+
   // Clé de jointure principale : projet_id (stocké sur la DE locale au moment de
   // l'écriture du projet). Robuste même quand code_projet/code_chapeau sont vides
   // (brouillon). On garde code_chapeau/code_projet en repli.
@@ -191,8 +266,8 @@ export default function DemandesEtude() {
   };
 
   const getStatutBadge = (statut) => {
-    // Une fois les étapes DE passées (le projet est en phase DL ou validé),
-    // on l'affiche comme « Validée » côté DE — le suivi DL vit dans l'onglet DL.
+    // Validation CDG acquise (dl_validee) → badge « Validée ». Les autres statuts,
+    // dont « En attente de validation CDG », utilisent leur meta (badge indigo).
     if (isDEValidated(statut)) {
       return <Badge className={TONE_BADGE.emerald}>{STATUTS.dl_validee.label}</Badge>;
     }
@@ -286,7 +361,7 @@ export default function DemandesEtude() {
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -297,6 +372,19 @@ export default function DemandesEtude() {
                   {demandes.filter(d => isEnAttenteCC(d.statut)).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente code chapeau</p>
+              </div>
+            </div>
+          </div>
+          <div className="group bg-card rounded-xl border border-border p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6 text-indigo-700" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-foreground">
+                  {demandes.filter(d => d.statut === 'dl_attente_validation_cdg').length}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Attente validation CDG</p>
               </div>
             </div>
           </div>
@@ -494,18 +582,17 @@ export default function DemandesEtude() {
                     <TableCell>
                       {(() => {
                         const localId = localIdFor(de);
-                        // Brouillon : on édite la DE locale (si présente dans ce
-                        // navigateur). Sinon (DE envoyée) : lien profond DL par
-                        // code chapeau, ou détail local s'il existe.
-                        // Brouillon : édition (DE locale si présente). Sinon : détail
-                        // DL — par id local si dispo (détail enrichi), sinon par
-                        // projet_id Dataverse (marche sans localStorage : nav privée,
-                        // autre poste). de.id = cr04e_projetid (vient de listProjets).
-                        // Brouillon : édition de la DE locale (si présente).
-                        // « En attente de code chapeau » : on ouvre le formulaire DE
-                        // prérempli depuis Dataverse pour que l'ADV obtienne le code
-                        // chapeau (édition locale si dispo, sinon chargement projet_id).
-                        // Sinon (phase DL+) : détail DL.
+                        // Cible d'ouverture de la ligne, selon le statut :
+                        //  - Brouillon : édition de la DE locale (si présente dans ce
+                        //    navigateur), sinon formulaire vierge.
+                        //  - DS (brouillon / attente CC / validée) : chargement par
+                        //    projet_id depuis Dataverse.
+                        //  - « En attente de code chapeau » : formulaire DE prérempli
+                        //    pour que l'ADV renseigne le code (local si dispo, sinon
+                        //    projet_id).
+                        //  - En attente validation CDG / validée / refusée : DE en
+                        //    LECTURE SEULE, chargée par projet_id depuis Dataverse
+                        //    (évite un détournement vers un brouillon local obsolète).
                         const target =
                           de.statut === 'de_brouillon'
                             ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
@@ -513,10 +600,6 @@ export default function DemandesEtude() {
                               ? `CreerDE?projet_id=${de.id}`
                               : de.statut === 'de_attente_cc'
                                 ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
-                                // Validée / phase DL / refusée : on ouvre la DE en
-                                // LECTURE SEULE (la DL a son propre onglet). On charge
-                                // depuis Dataverse par projet_id (évite le détournement
-                                // vers un brouillon local obsolète).
                                 : `CreerDE?projet_id=${de.id}`;
                         return (
                       <Link to={createPageUrl(target)}>
