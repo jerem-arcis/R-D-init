@@ -1115,6 +1115,7 @@ export default function CreerDE() {
       HierarchieProduitFamille: hierarchieCode,
       SecteurActivite: formData.marque || '',
       PoidsNet: formData.poids_net === '' || formData.poids_net == null ? '' : String(formData.poids_net),
+      ZUG: zug === '' || zug == null ? '' : String(zug),
       DivisionUsine: formData.division || '',
       ClasseValorisation: formData.classe_valorisation || '',
       CentreProfit: formData.centre_profit || '',
@@ -1325,9 +1326,13 @@ export default function CreerDE() {
           projetId = created?.cr04e_projetid || '';
         }
       } catch (err) {
+        // Échec de l'écriture dans la table Dataverse cr04e_projet (et NON de
+        // l'envoi SAP, qui vient après) : typiquement un 403 « privilège manquant »
+        // quand l'utilisateur n'a pas le rôle de sécurité sur la table. On affiche
+        // le message serveur tel quel pour un diagnostic immédiat.
         toast({
-          title: 'Envoi vers SAP échoué',
-          description: `La DE n'a pas été envoyée : ${err?.message || 'erreur inconnue'}.`,
+          title: 'Enregistrement Dataverse échoué',
+          description: `La DE n'a PAS été enregistrée : ${err?.message || 'erreur inconnue'}. Vérifie les droits Dataverse de l'utilisateur sur la table cr04e_projet.`,
           variant: 'destructive',
         });
         return;
@@ -2130,6 +2135,11 @@ export default function CreerDE() {
                 null
               ) : (
                 <>
+                  {formType === 'de' && !codeChapeau && (
+                    <span className="mr-auto self-center max-w-md text-xs text-amber-700 italic">
+                      Code chapeau requis pour l'envoi vers SAP : coche « Besoin d'une VL » → « Demander mon code », ou « Besoin d'un nouveau code ».
+                    </span>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

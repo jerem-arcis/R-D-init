@@ -104,7 +104,13 @@ export async function listSapTable(key) {
 export function lookupBind(key, code, rows = []) {
   const cfg = SAP_LIST_CONFIG[key];
   if (!cfg || !code) return null;
-  const match = rows.find((r) => r.value === code);
+  // Match tolérant aux séparateurs : le référentiel hiérarchie stocke des
+  // TABULATIONS ("22\tDE\tDE\tDE"), mais d'anciens brouillons ont pu enregistrer
+  // la même valeur avec des espaces. On compare sur les blancs normalisés pour
+  // que le lookup se lie quand même (sans effet sur les codes sans blanc interne).
+  const norm = (v) => String(v ?? '').trim().replace(/\s+/g, ' ');
+  const target = norm(code);
+  const match = rows.find((r) => norm(r.value) === target);
   if (!match || !match.id) return null;
   return `/${cfg.entitySet}(${match.id})`;
 }

@@ -88,10 +88,12 @@ export const agenChoixFromCentre = (centre) => {
   return '';
 };
 
+// Segments séparés par des TABULATIONS (\t) : format exact du référentiel SAP
+// (cf. computeHierarchieDE dans deRules.js).
 export const computeHierarchieDS = (activite) => {
-  if (activite === 'PATISSERIES') return '22 DE DE DE';
-  if (activite === 'TRAITEUR') return '27 DE DE DE';
-  if (activite === 'MOCHIS') return '21 DE DE DE';
+  if (activite === 'PATISSERIES') return '22\tDE\tDE\tDE';
+  if (activite === 'TRAITEUR') return '27\tDE\tDE\tDE';
+  if (activite === 'MOCHIS') return '21\tDE\tDE\tDE';
   return '';
 };
 

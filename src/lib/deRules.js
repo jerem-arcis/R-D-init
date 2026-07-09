@@ -28,10 +28,14 @@ export const usineFromDivision = (code) => DE_DIVISIONS[String(code ?? '').trim(
 
 // Hiérarchie produit famille selon le métier de l'usine :
 // Bonloc/Rivesaltes (Pâtisseries) -> 22, Agen/Aire (Traiteur) -> 27.
+// IMPORTANT : les segments sont séparés par des TABULATIONS (\t), pas des
+// espaces — c'est le format exact du référentiel SAP (cr04e_hierarchieproduits).
+// Le rapprochement liste déroulante / lookup Dataverse se fait par égalité
+// stricte : une valeur à espaces ne matcherait aucune ligne du référentiel.
 export const computeHierarchieDE = (code) => {
   const u = usineFromDivision(code);
-  if (u === 'Bonloc' || u === 'Rivesaltes') return '22 DE DE DE';
-  if (u === 'Agen' || u === 'Aire') return '27 DE DE DE';
+  if (u === 'Bonloc' || u === 'Rivesaltes') return '22\tDE\tDE\tDE';
+  if (u === 'Agen' || u === 'Aire') return '27\tDE\tDE\tDE';
   return '';
 };
 

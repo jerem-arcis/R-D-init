@@ -42,13 +42,13 @@ describe('usineFromDivision', () => {
 });
 
 describe('computeHierarchieDE', () => {
-  it('22 pour Pâtisseries (Bonloc, Rivesaltes)', () => {
-    expect(computeHierarchieDE('2886')).toBe('22 DE DE DE');
-    expect(computeHierarchieDE('2866')).toBe('22 DE DE DE');
+  it('22 pour Pâtisseries (Bonloc, Rivesaltes) — segments séparés par des tabs', () => {
+    expect(computeHierarchieDE('2886')).toBe('22\tDE\tDE\tDE');
+    expect(computeHierarchieDE('2866')).toBe('22\tDE\tDE\tDE');
   });
-  it('27 pour Traiteur (Agen, Aire)', () => {
-    expect(computeHierarchieDE('2847')).toBe('27 DE DE DE');
-    expect(computeHierarchieDE('2859')).toBe('27 DE DE DE');
+  it('27 pour Traiteur (Agen, Aire) — segments séparés par des tabs', () => {
+    expect(computeHierarchieDE('2847')).toBe('27\tDE\tDE\tDE');
+    expect(computeHierarchieDE('2859')).toBe('27\tDE\tDE\tDE');
   });
   it('vide si division inconnue', () => {
     expect(computeHierarchieDE('')).toBe('');

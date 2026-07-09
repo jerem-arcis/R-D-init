@@ -90,9 +90,9 @@ describe('codeDivisionFabrication', () => {
 
 describe('computeHierarchieDS', () => {
   it('activite -> hierarchie SAP', () => {
-    expect(computeHierarchieDS('PATISSERIES')).toBe('22 DE DE DE');
-    expect(computeHierarchieDS('TRAITEUR')).toBe('27 DE DE DE');
-    expect(computeHierarchieDS('MOCHIS')).toBe('21 DE DE DE');
+    expect(computeHierarchieDS('PATISSERIES')).toBe('22\tDE\tDE\tDE');
+    expect(computeHierarchieDS('TRAITEUR')).toBe('27\tDE\tDE\tDE');
+    expect(computeHierarchieDS('MOCHIS')).toBe('21\tDE\tDE\tDE');
     expect(computeHierarchieDS('')).toBe('');
   });
 });
