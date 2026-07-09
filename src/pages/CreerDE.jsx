@@ -19,6 +19,14 @@ import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } 
 import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, FLUX } from '@/api/flux';
+import { decimalStr, toNumber } from '@/api/_odata';
+
+// Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
+// (formData.famille_produit / dsHierarchie) comme source, mais on force des
+// TABULATIONS entre les segments à l'envoi — SAP attend "22\tDE\tDE", jamais des
+// espaces. Idempotent : une valeur déjà tabulée reste inchangée ; une valeur à
+// espaces ("22 DE DE") est convertie.
+const hierarchieToTabs = (v) => String(v ?? '').trim().replace(/\s+/g, '\t');
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -926,9 +934,9 @@ export default function CreerDE() {
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: (dsHierarchie || '').split(/\s+/)[0] || '',
+      HierarchieProduitFamille: hierarchieToTabs(dsHierarchie),
       SecteurActivite: dsSecteur || '',
-      PoidsNet: formData.autre_poids_net_uv === '' || formData.autre_poids_net_uv == null ? '' : String(formData.autre_poids_net_uv),
+      PoidsNet: decimalStr(formData.autre_poids_net_uv),
       DivisionUsine: dsDivisionFab || '',
       ClasseValorisation: dsClasseValo || '',
       CentreProfit: dsCentreProfit || '',
@@ -1105,17 +1113,21 @@ export default function CreerDE() {
 
   // Envoi vers SAP : POST l'ensemble des champs de la DE au flux dédié. On envoie
   // les CODES bruts (formData.<champ> = code, pas le libellé « code — désignation »).
-  // La hiérarchie produit est figée (« 21 DE DE DE ») -> on n'envoie que le code
-  // de tête (« 21 »). Non bloquant : un échec n'annule pas la validation.
+  // Format aligné sur ce que SAP accepte (cf. test Postman) :
+  //  - HierarchieProduitFamille : la valeur COMPLÈTE du champ Dataverse, avec des
+  //    TABULATIONS forcées entre segments ("22\tDE\tDE"), non le seul code de tête ;
+  //  - PoidsNet : décimal à POINT ("1.598") — une virgule fait échouer SAP
+  //    (« ungültiger Wert '1,598' ») ;
+  //  - ZUG : entier (poids × 1000) sans bruit flottant.
+  // Non bloquant : un échec n'annule pas la validation.
   const triggerSapSend = async (codeChapeau) => {
-    const hierarchieCode = (formData.famille_produit || '').trim().split(/\s+/)[0] || '';
     const body = {
       CodeChapeau: codeChapeau || '',
       NomProduit: formData.designation_article || '',
-      HierarchieProduitFamille: hierarchieCode,
+      HierarchieProduitFamille: hierarchieToTabs(formData.famille_produit),
       SecteurActivite: formData.marque || '',
-      PoidsNet: formData.poids_net === '' || formData.poids_net == null ? '' : String(formData.poids_net),
-      ZUG: zug === '' || zug == null ? '' : String(zug),
+      PoidsNet: decimalStr(formData.poids_net),
+      ZUG: zug === '' || zug == null ? '' : String(Math.round(Number(zug))),
       DivisionUsine: formData.division || '',
       ClasseValorisation: formData.classe_valorisation || '',
       CentreProfit: formData.centre_profit || '',
@@ -1175,10 +1187,14 @@ export default function CreerDE() {
     }
   });
 
-  // ZUG = poids net × 1000 (auto). Phase de dev : éditable -> une saisie manuelle
-  // (formData.zug) surcharge le calcul et alimente l'envoi SAP.
-  const zugAuto = formData.poids_net === '' ? '' : Number(formData.poids_net) * 1000;
-  const zug = formData.zug === '' || formData.zug == null ? zugAuto : Number(formData.zug);
+  // ZUG = poids net × 1000 (auto), arrondi à l'entier pour éviter le bruit
+  // flottant (1.598 × 1000 = 1597.9999…). toNumber tolère la virgule décimale.
+  // Phase de dev : éditable -> une saisie manuelle (formData.zug) surcharge le
+  // calcul et alimente l'envoi SAP.
+  const poidsNetNum = toNumber(formData.poids_net);
+  const zugAuto = poidsNetNum == null ? '' : Math.round(poidsNetNum * 1000);
+  const zugManuel = toNumber(formData.zug);
+  const zug = formData.zug === '' || formData.zug == null ? zugAuto : (zugManuel ?? '');
 
   // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
   // Liste Division restreinte aux 4 sites de fabrication.

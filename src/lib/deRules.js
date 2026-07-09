@@ -34,8 +34,8 @@ export const usineFromDivision = (code) => DE_DIVISIONS[String(code ?? '').trim(
 // stricte : une valeur à espaces ne matcherait aucune ligne du référentiel.
 export const computeHierarchieDE = (code) => {
   const u = usineFromDivision(code);
-  if (u === 'Bonloc' || u === 'Rivesaltes') return '22\tDE\tDE\tDE';
-  if (u === 'Agen' || u === 'Aire') return '27\tDE\tDE\tDE';
+  if (u === 'Bonloc' || u === 'Rivesaltes') return '22\tDE\tDE';
+  if (u === 'Agen' || u === 'Aire') return '27\tDE\tDE';
   return '';
 };
 
