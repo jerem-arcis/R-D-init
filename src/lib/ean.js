@@ -64,17 +64,20 @@ export const eanCarton = (code) => gtin14(code, '01'); // EAN14CT
 export const eanCouche = (code) => gtin14(code, '02'); // EAN14CO
 export const eanPalette = (code) => gtin14(code, '03'); // EAN14PL
 
-// Jeu UV / Carton / Palette pour le formulaire DE (le niveau Couche existe aussi
-// via eanCouche() pour la fiche produit). `code` peut être un code long (code
-// chapeau) : on en prend les 4 premiers chiffres comme base. Renvoie des chaînes
-// vides si moins de 4 chiffres sont disponibles — évite de produire des EAN faux.
+// Jeu Couche / Carton / Palette pour le formulaire DE — les trois niveaux de
+// conditionnement de la fiche produit (GTIN-14). Le niveau « Couche » (CO,
+// suffixe 02) remplace l'UV : la fiche ne track pas d'unité de vente conso, son
+// plus petit niveau est la couche. L'UV reste disponible via eanUV() si besoin.
+// `code` peut être un code long (code chapeau) : on en prend les 4 premiers
+// chiffres comme base. Renvoie des chaînes vides si moins de 4 chiffres sont
+// disponibles — évite de produire des EAN faux.
 export function buildEANSet(code) {
   const base = baseCodeFromCode(code);
   if (!base) {
-    return { ean_uv: '', ean_carton: '', ean_palette: '' };
+    return { ean_couche: '', ean_carton: '', ean_palette: '' };
   }
   return {
-    ean_uv: eanUV(base),
+    ean_couche: eanCouche(base),
     ean_carton: eanCarton(base),
     ean_palette: eanPalette(base),
   };

@@ -747,7 +747,7 @@ export default function CreerDE() {
 
     // Codes EAN (bloc optionnel) — codes générés à l'activation.
     besoin_ean: false,
-    ean_uv: '',
+    ean_couche: '',
     ean_carton: '',
     ean_palette: '',
 
@@ -1029,7 +1029,7 @@ export default function CreerDE() {
       setFormData((prev) => ({
         ...prev,
         besoin_ean: false,
-        ean_uv: '',
+        ean_couche: '',
         ean_carton: '',
         ean_palette: '',
       }));
@@ -1279,9 +1279,9 @@ export default function CreerDE() {
   useEffect(() => {
     if (!formData.besoin_ean) return;
     const eans = buildEANSet(codeChapeau);
-    if (!eans.ean_uv) return;
+    if (!eans.ean_couche) return;
     setFormData((prev) =>
-      prev.ean_uv === eans.ean_uv &&
+      prev.ean_couche === eans.ean_couche &&
       prev.ean_carton === eans.ean_carton &&
       prev.ean_palette === eans.ean_palette
         ? prev
@@ -1745,7 +1745,7 @@ export default function CreerDE() {
                   {formData.besoin_ean && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
                       {[
-                        { label: 'EAN UV', value: formData.ean_uv },
+                        { label: 'EAN Couche', value: formData.ean_couche },
                         { label: 'EAN Carton', value: formData.ean_carton },
                         { label: 'EAN Palette', value: formData.ean_palette },
                       ].map((e) => (

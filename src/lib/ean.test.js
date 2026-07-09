@@ -60,9 +60,9 @@ describe('constructions EAN (code 1125)', () => {
 });
 
 describe('buildEANSet', () => {
-  it('renvoie UV / Carton / Palette pour un code à 4 chiffres', () => {
+  it('renvoie Couche / Carton / Palette pour un code à 4 chiffres', () => {
     expect(buildEANSet('1124')).toEqual({
-      ean_uv: '3251511124007',
+      ean_couche: '03251511124021',
       ean_carton: '03251511124014',
       ean_palette: '03251511124038',
     });
@@ -75,8 +75,8 @@ describe('buildEANSet', () => {
     expect(buildEANSet('741603')).toEqual(buildEANSet('7416'));
   });
   it('renvoie des chaînes vides si moins de 4 chiffres', () => {
-    expect(buildEANSet('741')).toEqual({ ean_uv: '', ean_carton: '', ean_palette: '' });
-    expect(buildEANSet('')).toEqual({ ean_uv: '', ean_carton: '', ean_palette: '' });
+    expect(buildEANSet('741')).toEqual({ ean_couche: '', ean_carton: '', ean_palette: '' });
+    expect(buildEANSet('')).toEqual({ ean_couche: '', ean_carton: '', ean_palette: '' });
   });
 });
 
