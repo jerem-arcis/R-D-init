@@ -58,12 +58,32 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
   return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined));
 }
 
+// Le client Power Apps (@microsoft/power-apps/data) NE LÈVE PAS en cas d'échec :
+// il résout un IOperationResult { success:false, error, data:undefined }
+// (ex. 403 « privilège prvCreatecr04e_projet manquant » si l'utilisateur n'a pas
+// le rôle de sécurité Dataverse). Sans ce garde, une écriture refusée renverrait
+// `null` en silence et le formulaire continuerait comme si tout allait bien.
+// On transforme donc l'échec en exception explicite, avec un message actionnable
+// (statut HTTP + message serveur + requestId pour retrouver la trace côté Dataverse).
+function unwrap(result, action) {
+  if (result && result.success === false) {
+    const err = result.error || {};
+    const status = err.status ? `HTTP ${err.status}` : 'échec';
+    const reqId = err.requestId ? ` [requestId ${err.requestId}]` : '';
+    const e = new Error(`${action} Dataverse — ${status} : ${err.message || 'erreur inconnue'}${reqId}`);
+    e.status = err.status;
+    e.requestId = err.requestId;
+    throw e;
+  }
+  return result?.data ?? null;
+}
+
 // Crée la ligne cr04e_projet. Renvoie l'enregistrement créé (avec cr04e_projetid).
 // Lève en cas d'échec (traitement bloquant côté appelant si voulu).
 export async function createProjetFromDE(formData, ctx) {
   const payload = buildProjetPayload(formData, ctx);
   const result = await Cr04e_projetsService.create(payload);
-  return result?.data ?? null;
+  return unwrap(result, 'Création');
 }
 
 // Mappe une ligne cr04e_projet (Dataverse) vers la forme formData attendue par le
@@ -104,7 +124,7 @@ const toFormData = (p) => ({
 export async function getProjetById(id) {
   if (!id) return null;
   const result = await Cr04e_projetsService.get(id);
-  const p = result?.data ?? null;
+  const p = unwrap(result, 'Lecture');
   return p ? toFormData(p) : null;
 }
 
@@ -112,7 +132,7 @@ export async function getProjetById(id) {
 export async function updateProjetFromDE(id, formData, ctx) {
   const payload = buildProjetPayload(formData, ctx);
   const result = await Cr04e_projetsService.update(id, payload);
-  return result?.data ?? null;
+  return unwrap(result, 'Mise à jour');
 }
 
 // Met à jour UNIQUEMENT le statut du projet (cr04e_statut_en_cours). Sert aux
@@ -123,7 +143,7 @@ export async function updateProjetStatut(id, statut) {
   const result = await Cr04e_projetsService.update(id, {
     cr04e_statut_en_cours: statut,
   });
-  return result?.data ?? null;
+  return unwrap(result, 'Mise à jour statut');
 }
 
 // Mappe une ligne cr04e_projet vers la forme attendue par la liste DE
@@ -155,7 +175,7 @@ export async function listProjets() {
       maxPageSize: 5000,
       ...(skipToken ? { skipToken } : {}),
     });
-    all.push(...(result?.data ?? []));
+    all.push(...(unwrap(result, 'Liste') ?? []));
     skipToken = result?.skipToken;
     guard += 1;
   } while (skipToken && guard < 100);
