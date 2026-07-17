@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { listProjets } from '@/api/projet';
+import { ficheFromProjet } from '@/lib/flFromProjet';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -170,13 +171,10 @@ export default function DemandesEtude() {
         if (de && (de.fiche_lancement_id || flByDe.has(de.id))) continue;
         processing.current.add(chapeau);
         try {
-          const designation =
-            p.designation_article || de?.designation_article || de?.autre_designation || '';
+          // Préremplissage depuis le projet Dataverse (identité + code projet + EAN
+          // générés par la règle GS1 existante). Voir src/lib/flFromProjet.js.
           const fl = await createFL.mutateAsync({
-            code_article: chapeau,
-            code_chapeau: chapeau,
-            libelle_article: designation,
-            demande_etude_id: de?.id ?? null,
+            ...ficheFromProjet(p, de),
             declinaison_logistique_id: null,
             etat_global: 'en_attente',
             etape_courante: 1,
