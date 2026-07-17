@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   FL_FIELDS, NATURE_META, STATUS_META,
-  groupBySection, counts, ruleCounts,
+  groupBySection, counts, ruleCounts, saisieCounts,
 } from './flMapping';
 
 const CATS = ['SAISIE', 'CONSTANTE', 'REGLE', 'CALCUL', 'WORKFLOW'];
@@ -44,6 +44,26 @@ describe('ruleCounts', () => {
     const nbRegles = FL_FIELDS.filter((f) => f.cat === 'REGLE').length;
     expect(rc.reusable + rc.todo).toBe(nbRegles);
     expect(rc.total).toBe(nbRegles);
+  });
+});
+
+describe('saisieCounts', () => {
+  it('brut = effectives + doublons, et = total des SAISIE', () => {
+    const s = saisieCounts();
+    const nbSaisie = FL_FIELDS.filter((f) => f.cat === 'SAISIE').length;
+    expect(s.brut).toBe(nbSaisie);
+    expect(s.effective + s.doublons).toBe(s.brut);
+    expect(s.inPage + s.missing).toBe(s.effective);
+  });
+
+  it('les 2 champs ajoutés (VERSG, XCHPF) sont désormais en page', () => {
+    const versg = FL_FIELDS.find((f) => f.cellule === 'D50');
+    const xchpf = FL_FIELDS.find((f) => f.cellule === 'I55');
+    for (const f of [versg, xchpf]) {
+      expect(f.effective).toBe(true);
+      expect(f.inPage).toBe(true);
+      expect(f.justAdded).toBe(true);
+    }
   });
 });
 

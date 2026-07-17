@@ -6,14 +6,23 @@ import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Search, X, ChevronDown, ChevronRight, ListChecks } from 'lucide-react';
+import { ArrowLeft, Search, X, ChevronDown, ChevronRight, ListChecks, ClipboardCheck, Info } from 'lucide-react';
 import {
   FL_FIELDS, NATURE_META, STATUS_META,
-  groupBySection, counts, ruleCounts,
+  groupBySection, counts, ruleCounts, saisieCounts,
 } from '@/lib/flMapping';
 
 // Ordre d'affichage des natures dans le bandeau de compteurs.
 const NATURE_ORDER = ['SAISIE', 'REGLE', 'CONSTANTE', 'CALCUL', 'WORKFLOW'];
+
+// Colonne « Dans ta page ? » : couverture d'un champ dans le formulaire FL actuel.
+const coverage = (f) => {
+  if (f.cat !== 'SAISIE') return { label: 'auto (généré)', cls: 'text-slate-300' };
+  if (!f.effective) return { label: 'doublon / constante', cls: 'text-slate-400' };
+  if (f.justAdded) return { label: '✅ ajouté', cls: 'text-emerald-700 font-semibold' };
+  if (f.inPage) return { label: '✅ oui', cls: 'text-emerald-600' };
+  return { label: '❌ à ajouter', cls: 'text-red-600 font-semibold' };
+};
 
 // Badge coloré générique (classes Tailwind fournies par les META du module).
 const Pill = ({ badge, children }) => (
@@ -26,9 +35,10 @@ const Pill = ({ badge, children }) => (
 const FieldRow = ({ f }) => {
   const nat = NATURE_META[f.cat];
   const st = STATUS_META[f.status];
+  const cov = coverage(f);
   const ruleOrVal = f.rule || f.valeur;
   return (
-    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 align-top">
+    <tr className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/60 align-top ${f.justAdded ? 'bg-emerald-50/40' : ''}`}>
       <td className="px-4 py-2.5">
         <div className="font-medium text-slate-800">{f.lib || '—'}</div>
         {f.cellule && <div className="text-[11px] text-slate-400">{f.cellule}</div>}
@@ -38,7 +48,8 @@ const FieldRow = ({ f }) => {
       </td>
       <td className="px-4 py-2.5"><Pill badge={nat.badge}>{nat.label}</Pill></td>
       <td className="px-4 py-2.5"><Pill badge={st.badge}>{st.label}</Pill></td>
-      <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[380px]">
+      <td className={`px-4 py-2.5 text-xs whitespace-nowrap ${cov.cls}`}>{cov.label}</td>
+      <td className="px-4 py-2.5 text-xs text-slate-500 max-w-[340px]">
         {ruleOrVal || <span className="text-slate-300">—</span>}
       </td>
       <td className="px-4 py-2.5 text-[11px] text-slate-400 whitespace-nowrap">{f.metier || '—'}</td>
@@ -69,6 +80,7 @@ const SectionGroup = ({ section, items, open, onToggle }) => (
               <th className="px-4 py-2 text-left font-semibold">Champ SAP</th>
               <th className="px-4 py-2 text-left font-semibold">Nature</th>
               <th className="px-4 py-2 text-left font-semibold">Statut</th>
+              <th className="px-4 py-2 text-left font-semibold">Dans ta page ?</th>
               <th className="px-4 py-2 text-left font-semibold">Valeur / Règle</th>
               <th className="px-4 py-2 text-left font-semibold">Champ métier</th>
             </tr>
@@ -88,9 +100,11 @@ export default function FicheComplete() {
   const [query, setQuery] = useState('');
   const [todoOnly, setTodoOnly] = useState(false);
   const [collapsed, setCollapsed] = useState(() => new Set());
+  const [legendOpen, setLegendOpen] = useState(true);
 
   const natureCounts = useMemo(() => counts(), []);
   const rc = useMemo(() => ruleCounts(), []);
+  const sc = useMemo(() => saisieCounts(), []);
   const sections = useMemo(() => [...new Set(FL_FIELDS.map((f) => f.section))], []);
 
   const filtered = useMemo(() => {
@@ -143,6 +157,62 @@ export default function FicheComplete() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-4">
+        {/* Bandeau explicatif : comment lire la page + d'où viennent les données */}
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setLegendOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 px-5 py-2.5 text-left hover:bg-slate-50 transition-colors"
+          >
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Info className="w-4 h-4 text-slate-400" />
+              Comment lire cette page
+            </h2>
+            {legendOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+          </button>
+          {legendOpen && (
+            <div className="px-5 pb-5 pt-1 space-y-4 text-sm text-slate-600">
+              <p className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                <strong>Source :</strong> tous les champs sont extraits du fichier
+                <span className="font-mono text-teal-700"> Mapping_champs_SAP.xlsx</span> (onglet « Mapping FL »).
+                Le fichier client <span className="font-mono">734501-FL.xls</span> n'est pas exploité (format binaire non lu).
+              </p>
+
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Nature — d'où vient la valeur du champ</div>
+                <ul className="space-y-1.5">
+                  <li className="flex gap-2 items-start"><Pill badge={NATURE_META.SAISIE.badge}>Saisie</Pill><span>un humain la tape → doit figurer dans le formulaire.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={NATURE_META.CONSTANTE.badge}>Constante</Pill><span>toujours la même valeur → mise « en dur » par le code.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={NATURE_META.REGLE.badge}>Règle</Pill><span>calculée selon d'autres champs (« Si… → ») → logique à coder.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={NATURE_META.CALCUL.badge}>Calcul</Pill><span>dérivée / concaténée (ex. libellés collés) → code.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={NATURE_META.WORKFLOW.badge}>Workflow</Pill><span>visa / date → géré par l'appli, pas envoyé à SAP.</span></li>
+                </ul>
+              </div>
+
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Statut — pour les règles : « on a » vs « il nous faut »</div>
+                <ul className="space-y-1.5">
+                  <li className="flex gap-2 items-start"><Pill badge={STATUS_META.regle_reusable.badge}>Règle · on a</Pill><span>une fonction existe <strong>déjà dans ton code</strong> (<span className="font-mono text-xs">deRules / dsRules</span>) → réutilisable. ⚠️ Vient de <strong>ton code</strong>, pas de l'Excel.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={STATUS_META.regle_todo.badge}>Règle · à coder</Pill><span>la logique est décrite dans l'Excel mais <strong>pas encore codée</strong>.</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={STATUS_META.constante.badge}>Constante</Pill><span>valeur fixe (rappel de la nature).</span></li>
+                  <li className="flex gap-2 items-start"><Pill badge={STATUS_META.calcul.badge}>Calcul</Pill><span>dérivé (rappel de la nature).</span></li>
+                </ul>
+              </div>
+
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Dans ta page ? — couverture du formulaire FL actuel</div>
+                <ul className="space-y-1 text-xs">
+                  <li><span className="text-emerald-600 font-semibold">✅ oui</span> — le champ est déjà dans ton formulaire.</li>
+                  <li><span className="text-emerald-700 font-semibold">✅ ajouté</span> — tout juste ajouté (Groupe statistique article, Gestion par lots).</li>
+                  <li><span className="text-red-600 font-semibold">❌ à ajouter</span> — vraie saisie encore absente du formulaire.</li>
+                  <li><span className="text-slate-400">doublon / constante</span> — fausse saisie (doublon du fichier ou valeur toujours identique) → à ignorer.</li>
+                  <li><span className="text-slate-300">auto (généré)</span> — pas une saisie : rempli par le code, n'a pas à être dans le formulaire.</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Compteurs par nature (cliquables) */}
         <div className="flex flex-wrap gap-3">
           <button
@@ -166,8 +236,24 @@ export default function FicheComplete() {
               <div className="text-xs text-slate-500 uppercase tracking-wide">{NATURE_META[cat].label}</div>
             </button>
           ))}
-          {/* Carte règles : on a vs à coder */}
+          {/* Carte saisies : brut → vraies → en page */}
           <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex items-center gap-4 ml-auto">
+            <ClipboardCheck className="w-5 h-5 text-slate-400" />
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wide">Saisies</div>
+              <div className="text-sm font-semibold text-slate-800">
+                <span className="text-emerald-600">{sc.effective} réelles</span>
+                <span className="text-slate-300 mx-1.5">·</span>
+                <span className="text-slate-500">{sc.inPage} en page</span>
+                <span className="text-slate-300 mx-1.5">·</span>
+                <span className={sc.missing ? 'text-red-600' : 'text-slate-400'}>{sc.missing} manquant{sc.missing > 1 ? 's' : ''}</span>
+              </div>
+              <div className="text-[11px] text-slate-400">({sc.doublons} doublons/fausses saisies écartés du brut {sc.brut})</div>
+            </div>
+          </div>
+
+          {/* Carte règles : on a vs à coder */}
+          <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex items-center gap-4">
             <ListChecks className="w-5 h-5 text-slate-400" />
             <div>
               <div className="text-xs text-slate-500 uppercase tracking-wide">Règles</div>

@@ -1822,6 +1822,50 @@ export const FL_FIELDS = [
   }
 ];
 
+// ---------------------------------------------------------------------------
+// Curation des SAISIES (par cellule source du fichier client).
+// Le fichier compte 51 « saisie » brutes, mais certaines sont des DOUBLONS
+// (2ᵉ bloc MRP « exemple rempli ») ou des FAUSSES SAISIES (valeur toujours
+// identique = constante déguisée). On distingue donc la vraie saisie humaine.
+// ---------------------------------------------------------------------------
+
+// Saisies NON effectives : doublons + constantes déguisées + vues techniques.
+const SAISIE_NON_EFFECTIVE = new Set([
+  'D5',   // Branche = Agro (constante)
+  'K46', 'D48', // OC1 secteur / groupe marchandise (doublons des données de base)
+  'K168', 'G171', 'G172', // consignes POP fictif (générées/spéciales)
+  'F192', 'K192', 'N192', // MRP1 2ᵉ bloc (doublons)
+  'F193', 'F196', 'M196', 'F197', 'L197', 'F198', 'K199', 'K201', 'N201', // MRP2 2ᵉ bloc
+  'F203', // CCR groupe frais gén (barré)
+  'E207', 'E208', 'E209', // MMSC (config technique)
+]);
+
+// Saisies effectives déjà présentes dans le formulaire FL (FicheDetailV2).
+// D50 (Groupe statistique article) et I55 (Gestion par lots) viennent d'être
+// ajoutés — donc désormais présents eux aussi.
+const SAISIE_IN_PAGE = new Set([
+  'D4', 'D6', 'D12', 'I12', 'D15', 'D19', 'D20', 'D21', 'I23', 'D24', 'D25', 'I25',
+  'D50', 'K50', 'D51', 'K51', 'D52', 'I55', 'I59', 'J63', 'H89', 'L89', 'J103',
+  'K143', 'K144', 'K145', 'K146', 'L151', 'F195',
+]);
+
+// Champs tout juste ajoutés au formulaire (mise en évidence sur la page d'aperçu).
+const SAISIE_JUST_ADDED = new Set(['D50', 'I55']);
+
+// Décore chaque saisie : effective (vraie saisie), inPage (présent au formulaire),
+// justAdded (ajouté récemment). Champs non-saisie : effective/inPage = null.
+for (const f of FL_FIELDS) {
+  if (f.cat === 'SAISIE') {
+    f.effective = !SAISIE_NON_EFFECTIVE.has(f.cellule);
+    f.inPage = f.effective ? SAISIE_IN_PAGE.has(f.cellule) : false;
+    f.justAdded = SAISIE_JUST_ADDED.has(f.cellule);
+  } else {
+    f.effective = null;
+    f.inPage = null;
+    f.justAdded = false;
+  }
+}
+
 // Métadonnées d'affichage par nature (libellé + classes Tailwind du badge).
 export const NATURE_META = {
   SAISIE:    { label: 'Saisie',    badge: 'bg-emerald-100 text-emerald-800' },
@@ -1866,4 +1910,18 @@ export function ruleCounts(fields = FL_FIELDS) {
     else if (f.status === 'regle_todo') todo += 1;
   }
   return { reusable, todo, total: reusable + todo };
+}
+
+// Compte des saisies : brut (51), effectives (vraies), doublons, en page, manquantes.
+export function saisieCounts(fields = FL_FIELDS) {
+  const saisies = fields.filter((f) => f.cat === 'SAISIE');
+  const effective = saisies.filter((f) => f.effective);
+  const inPage = effective.filter((f) => f.inPage);
+  return {
+    brut: saisies.length,
+    effective: effective.length,
+    doublons: saisies.length - effective.length,
+    inPage: inPage.length,
+    missing: effective.length - inPage.length,
+  };
 }
