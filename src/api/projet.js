@@ -160,6 +160,9 @@ const toListShape = (p) => ({
   demandeur: p.cr04e_demandeur ?? '',
   type_demande_de: p.cr04e_typedelademande ?? '',
   usine_validee: p.cr04e_divisionusinename ?? '',
+  // Réseau : sert à dériver le secteur d'activité pour le préremplissage FL
+  // (computeSecteurFromReseau), même règle que la DE.
+  reseau: p.cr04e_reseau ?? '',
   statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_brouillon,
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,

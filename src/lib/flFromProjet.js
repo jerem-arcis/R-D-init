@@ -1,22 +1,41 @@
 // Héritage projet Dataverse (dl_validee) → Fiche de Lancement.
 //
 // À la matérialisation automatique d'une FL (cf. DemandesEtude.jsx), on préremplit
-// ce que Dataverse connaît déjà pour éviter les ressaisies. On reste sur les champs
-// FIABLES et directement réutilisables :
+// ce que Dataverse connaît déjà pour éviter les ressaisies :
 //   - identité : code chapeau / code article / désignation / code projet ;
-//   - EAN : générés par la règle GS1 existante (src/lib/ean.js), format FL = tableau.
-//
-// Les champs pilotés par règle (secteur, hiérarchie, classe valo, centre profit…)
-// ne sont PAS prérenseignés ici : le projet les stocke en codes bruts alors que la
-// FL attend des libellés de liste — mapping à établir avant de les hériter.
+//   - EAN : générés par la règle GS1 existante (src/lib/ean.js), format FL = tableau ;
+//   - secteur d'activité et hiérarchie produit : MÊMES règles que la DE
+//     (computeSecteurFromReseau / computeHierarchieDE), mappées code → libellé.
 
 import { buildEANSet } from '@/lib/ean';
+import {
+  computeSecteurFromReseau,
+  divisionCodeFromPlant,
+  usineFromDivision,
+} from '@/lib/deRules';
+import { SECTEURS_ACTIVITE } from '@/lib/ficheSchema';
+
+// Hiérarchie produit : usine → libellé (même découpage que computeHierarchieDE :
+// Bonloc/Rivesaltes → 22 Pâtisseries, Agen/Aire → 27 Traiteur).
+const HIERARCHIE_PAR_USINE = {
+  Bonloc: '22 - Pâtisseries',
+  Rivesaltes: '22 - Pâtisseries',
+  Agen: '27 - Traiteur',
+  Aire: '27 - Traiteur',
+};
+
+// Secteur : code SAP (10/12/15, issu de computeSecteurFromReseau) → option de la
+// liste FL correspondante (match par préfixe de code). '' si aucune option FL ne
+// correspond (ex. code non couvert par la liste actuelle) → laissé à la saisie.
+function secteurLabelFromCode(code) {
+  if (!code) return '';
+  return SECTEURS_ACTIVITE.find((o) => o.trim().startsWith(`${code} `)) || '';
+}
 
 // Construit les champs FL hérités d'un projet Dataverse.
 // `projet` : ligne au format liste (toListShape) — { code_chapeau, code_projet,
-//            designation_article, ... }.
-// `deLocale` : DE locale éventuelle (localStorage), uniquement en repli désignation
-//            et pour relier le brouillon éditable.
+//            designation_article, usine_validee, reseau, ... }.
+// `deLocale` : DE locale éventuelle (repli désignation + lien brouillon).
 export function ficheFromProjet(projet, deLocale = null) {
   const chapeau = projet?.code_chapeau || '';
   const designation =
@@ -34,14 +53,22 @@ export function ficheFromProjet(projet, deLocale = null) {
   };
 
   // EAN : mêmes règles que la DE (préfixe GS1 325151 + 4 premiers chiffres du code
-  // chapeau + niveau + clé). buildEANSet renvoie '' si < 4 chiffres → on n'ajoute
-  // rien dans ce cas (pas d'EAN faux). Format FL : un tableau par niveau.
+  // chapeau + niveau + clé). '' si < 4 chiffres → on n'ajoute rien. Format FL : tableau.
   const eans = buildEANSet(chapeau);
   if (eans.ean_couche) {
     fields.ean_couche = [eans.ean_couche];
     fields.ean_carton = [eans.ean_carton];
     fields.ean_palette = [eans.ean_palette];
   }
+
+  // Secteur d'activité : réseau → code (règle DE) → libellé FL.
+  const secteur = secteurLabelFromCode(computeSecteurFromReseau(projet?.reseau));
+  if (secteur) fields.secteur_activite = secteur;
+
+  // Hiérarchie produit : usine → libellé (même 22/27 que computeHierarchieDE).
+  const usine = usineFromDivision(divisionCodeFromPlant(projet?.usine_validee));
+  const hierarchie = HIERARCHIE_PAR_USINE[usine] || '';
+  if (hierarchie) fields.hierarchie_produit = hierarchie;
 
   return fields;
 }
