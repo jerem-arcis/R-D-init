@@ -6,6 +6,7 @@ import DemandesEtude from './pages/DemandesEtude';
 import CreerDE from './pages/CreerDE';
 import TraiterDE from './pages/TraiterDE';
 import CreerFL from './pages/CreerFL';
+import FicheComplete from './pages/FicheComplete';
 import Admin from './pages/Admin';
 import __Layout from './Layout.jsx';
 
@@ -19,6 +20,7 @@ export const PAGES = {
     "CreerDE": CreerDE,
     "TraiterDE": TraiterDE,
     "CreerFL": CreerFL,
+    "FicheComplete": FicheComplete,
     "Admin": Admin,
 }
 

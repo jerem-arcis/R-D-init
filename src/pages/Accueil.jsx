@@ -31,6 +31,7 @@ import {
   AlertCircle,
   Search,
   X,
+  Layers,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -206,6 +207,12 @@ export default function Accueil() {
                 <p className="text-sm text-muted-foreground mt-0.5">Gestion des fiches de lancement produit</p>
               </div>
             </div>
+            <Link to={createPageUrl('FicheComplete')}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Layers className="w-4 h-4" />
+                Aperçu FL → SAP
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
