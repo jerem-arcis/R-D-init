@@ -2,7 +2,6 @@ import {
   Cr04e_divisionusinesService,
   Cr04e_classedevalorisationsService,
   Cr04e_groupearticledivisionsService,
-  Cr04e_groupedefraisgenerauxesService,
   Cr04e_hierarchieproduitfamillesService,
   Cr04e_centredeprofitcepctsService,
 } from '@/generated';
@@ -32,13 +31,6 @@ export const SAP_LIST_CONFIG = {
     designationField: 'cr04e_designgroupemarch',
     idField: 'cr04e_groupearticledivisionid',
     entitySet: 'cr04e_groupearticledivisions',
-  },
-  groupes_frais_generaux: {
-    service: Cr04e_groupedefraisgenerauxesService,
-    valueField: 'cr04e_groupedefraisgen',
-    designationField: 'cr04e_domainevalorisation',
-    idField: 'cr04e_groupedefraisgenerauxid',
-    entitySet: 'cr04e_groupedefraisgenerauxes',
   },
   familles_produit: {
     service: Cr04e_hierarchieproduitfamillesService,

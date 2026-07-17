@@ -9,7 +9,6 @@ const PROJET_LOOKUPS = [
   ['divisions', 'division', 'cr04e_DivisionUsine@odata.bind'],
   ['classes_valorisation', 'classe_valorisation', 'cr04e_Classedevalorisation@odata.bind'],
   ['groupes_article', 'groupe_article', 'cr04e_Groupearticledivision@odata.bind'],
-  ['groupes_frais_generaux', 'groupe_frais_generaux', 'cr04e_Groupedefraisgeneraux@odata.bind'],
   ['familles_produit', 'famille_produit', 'cr04e_Hierarchieproduitfamille@odata.bind'],
 ];
 
@@ -43,6 +42,9 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
     cr04e_secteurdactivite: trimOrUndef(formData.marque),
     cr04e_client: trimOrUndef(formData.client),
     cr04e_groupedautorisation: trimOrUndef(formData.groupe_autorisation),
+    // Groupe de frais généraux : désormais un CHAMP TEXTE simple (FG / NEGO),
+    // plus un lookup vers une table annexe.
+    cr04e_groupedefraisgeneraux: trimOrUndef(formData.groupe_frais_generaux),
     cr04e_poidsnet: toNumber(formData.poids_net),
     cr04e_qteprevisionnelleannuelle: toNumber(formData.qte_previsionnelle_annuelle),
     cr04e_zug: toNumber(zug),
@@ -106,6 +108,7 @@ const toFormData = (p) => ({
   marque: p.cr04e_secteurdactivite ?? '',
   client: p.cr04e_client ?? '',
   groupe_autorisation: p.cr04e_groupedautorisation ?? '',
+  groupe_frais_generaux: p.cr04e_groupedefraisgeneraux ?? '',
   poids_net: p.cr04e_poidsnet ?? '',
   qte_previsionnelle_annuelle: p.cr04e_qteprevisionnelleannuelle ?? '',
   code_chapeau: p.cr04e_codechapeau ?? '',

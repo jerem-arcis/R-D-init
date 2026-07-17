@@ -1645,8 +1645,8 @@ export default function CreerDE() {
                       <SearchableSelect
                         value={formData.groupe_frais_generaux}
                         onChange={(v) => handleChange('groupe_frais_generaux', v)}
-                        options={buildOptions(sapOptions.groupes_frais_generaux, formData.groupe_frais_generaux)}
-                        placeholder="Sélectionner un groupe"
+                        options={buildOptions([{ value: 'FG' }, { value: 'NEGO' }], formData.groupe_frais_generaux)}
+                        placeholder="FG ou NEGO"
                       />
                     </Field>
                     {deGroupeArticleLocked ? (

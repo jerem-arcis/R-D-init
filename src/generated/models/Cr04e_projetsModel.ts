@@ -29,7 +29,7 @@ export interface Cr04e_projetsBase {
   "cr04e_DivisionUsine@odata.bind"?: string;
   "cr04e_Groupearticledivision@odata.bind"?: string;
   cr04e_groupedautorisation?: string;
-  "cr04e_Groupedefraisgeneraux@odata.bind"?: string;
+  cr04e_groupedefraisgeneraux?: string;
   cr04e_hierarchiefamilleimport?: string;
   "cr04e_Hierarchieproduitfamille@odata.bind"?: string;
   cr04e_nomduproduitdesignation?: string;
@@ -57,7 +57,6 @@ export interface Cr04e_projets extends Cr04e_projetsBase {
   cr04e_classedevalorisationname?: string;
   cr04e_divisionusinename?: string;
   cr04e_groupearticledivisionname?: string;
-  cr04e_groupedefraisgenerauxname?: string;
   cr04e_hierarchieproduitfamillename?: string;
   createdbyname?: string;
   createdbyyominame: string;
@@ -83,8 +82,6 @@ export interface Cr04e_projets extends Cr04e_projetsBase {
   _cr04e_divisionusine_value?: string;
   cr04e_groupearticledivision?: object;
   _cr04e_groupearticledivision_value?: string;
-  cr04e_groupedefraisgeneraux?: object;
-  _cr04e_groupedefraisgeneraux_value?: string;
   cr04e_hierarchieproduitfamille?: object;
   _cr04e_hierarchieproduitfamille_value?: string;
   createdby?: object;

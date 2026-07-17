@@ -166,17 +166,9 @@
           "type": "string",
           "title": "Groupe de frais généraux",
           "x-ms-dataverse-attribute": "cr04e_groupedefraisgeneraux",
-          "x-ms-dataverse-type": "LookupType",
-          "x-ms-schema-name": "cr04e_Groupedefraisgeneraux"
-        },
-        "cr04e_groupedefraisgenerauxname": {
-          "type": "string",
-          "title": "cr04e_groupedefraisgenerauxname",
-          "x-ms-dataverse-attribute": "cr04e_groupedefraisgenerauxname",
           "x-ms-dataverse-type": "StringType",
-          "x-ms-schema-name": "cr04e_GroupedefraisgenerauxName",
-          "x-ms-read-only": true,
-          "maxLength": 850
+          "x-ms-schema-name": "cr04e_Groupedefraisgeneraux",
+          "maxLength": 1000
         },
         "cr04e_hierarchiefamilleimport": {
           "type": "string",

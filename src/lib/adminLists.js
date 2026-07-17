@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { listAll } from '@/api/optionSet';
 
 // Listes réellement stockées dans la table option-set (cr04e_optionsetcodeapps).
-// Les 5 référentiels alimentés par SAP (divisions, groupes_article,
-// classes_valorisation, groupes_frais_generaux, familles_produit) ont leur propre
+// Les référentiels alimentés par SAP (divisions, groupes_article,
+// classes_valorisation, familles_produit, centres_profit) ont leur propre
 // table Dataverse et sont gérés via @/lib/sapLists — voir SAP_LIST_KEYS.
+// (Le groupe de frais généraux n'en fait plus partie : c'est un champ texte
+// simple FG / NEGO, plus de table annexe.)
 export const DROPDOWN_KEYS = [
   'reseaux',
   'groupes_autorisation',
