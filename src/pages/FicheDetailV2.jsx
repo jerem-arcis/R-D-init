@@ -23,6 +23,7 @@ import {
   MASQUES_ETIQUETTE_COLIS, UNITES_DUREE_VIE, STATUTS_LANCEMENT, FABRICATION_NEGOCE,
   ORIGINES_FABRICATION, CANAUX_DISTRIBUTION, SECTEURS_ACTIVITE, MARQUES,
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
+  GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
 } from '@/lib/ficheSchema';
 
@@ -277,6 +278,7 @@ export default function FicheDetailV2() {
             <Fld visible={showField('groupe_article')}><SelectField label="Groupe article" {...fld('groupe_article')} options={GROUPES_ARTICLE} fromSAP /></Fld>
             <Fld visible={showField('groupe_ristourne')}><SelectField label="Groupe de ristourne" {...fld('groupe_ristourne')} options={GROUPES_RISTOURNE} fromSAP /></Fld>
             <Fld visible={showField('groupe_imputation')}><SelectField label="Groupe d'imputation" {...fld('groupe_imputation')} options={GROUPES_IMPUTATION} fromSAP /></Fld>
+            <Fld visible={showField('groupe_statistique_article')}><SelectField label="Groupe statistique article" {...fld('groupe_statistique_article')} options={GROUPES_STATISTIQUE} fromSAP /></Fld>
             <Fld visible={showField('nomenclature_douaniere')}><SelectField label="Nomenclature douanière" {...fld('nomenclature_douaniere')} options={NOMENCLATURES_DOUANIERES} fromSAP /></Fld>
           </div>
         </Group>
@@ -286,6 +288,7 @@ export default function FicheDetailV2() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} options={SITES_STOCKAGE} fromSAP /></Fld>
             <Fld visible={showField('dluc_dluo_critique')}><TextField label="DLC/DLUO critique (j)" type="number" {...fld('dluc_dluo_critique')} /></Fld>
+            <Fld visible={showField('gestion_par_lots')}><SelectField label="Gestion par lots" {...fld('gestion_par_lots')} options={GESTION_PAR_LOTS} /></Fld>
             <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot — usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
             <Fld visible={showField('cle_calcul_lot_stockiste')}><SelectField label="Clé calcul lot — stockage" {...fld('cle_calcul_lot_stockiste')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
             <Fld visible={showField('profil_couverture_usine')}><SelectField label="Profil couverture — usine" {...fld('profil_couverture_usine')} options={PROFILS_COUVERTURE} /></Fld>

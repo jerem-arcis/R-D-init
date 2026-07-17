@@ -44,6 +44,17 @@ export const GROUPES_IMPUTATION = [
   '04 - Produits export',
 ];
 
+// MVKE-VERSG — Groupe statistique article (nouveau champ FL).
+// ⚠️ Valeurs provisoires : à remplacer par le référentiel SAP réel.
+export const GROUPES_STATISTIQUE = [
+  '1 - Groupe article 1',
+  '2 - Groupe article 2',
+  '3 - Groupe article 3',
+];
+
+// MARA-XCHPF — Gestion par lots (nouveau champ FL). Indicateur oui/non.
+export const GESTION_PAR_LOTS = ['Oui', 'Non'];
+
 export const CLES_CALCUL_LOT = [
   'EX - Lot exact / commande à la demande',
   'ZN - Niveau de stock cible',
@@ -249,6 +260,8 @@ export const FIELD_OWNERS = {
   groupe_article: 'sc',
   groupe_ristourne: 'sc',
   groupe_imputation: 'sc',
+  groupe_statistique_article: 'sc', // MVKE-VERSG (nouveau)
+  gestion_par_lots: 'sc',           // MARA-XCHPF (nouveau — responsable à confirmer)
   article_prix: 'sc',
   dluc_dluo_critique: 'sc',
 

@@ -9,6 +9,8 @@ import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
+  GROUPES_STATISTIQUE,
+  GESTION_PAR_LOTS,
 } from '@/lib/ficheSchema';
 
 export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
@@ -64,6 +66,13 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           disabled={disabled}
           placeholder="Durée min. restante (j)"
         />
+        <SelectField
+          label="Gestion par lots"
+          value={fiche.gestion_par_lots}
+          onChange={set('gestion_par_lots')}
+          disabled={disabled}
+          options={GESTION_PAR_LOTS}
+        />
       </FieldGrid>
 
       <FieldGrid title="Compteur GTIN" cols={3}>
@@ -118,6 +127,14 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('groupe_imputation')}
           disabled={disabled}
           options={GROUPES_IMPUTATION}
+          fromSAP
+        />
+        <SelectField
+          label="Groupe statistique article"
+          value={fiche.groupe_statistique_article}
+          onChange={set('groupe_statistique_article')}
+          disabled={disabled}
+          options={GROUPES_STATISTIQUE}
           fromSAP
         />
       </FieldGrid>
