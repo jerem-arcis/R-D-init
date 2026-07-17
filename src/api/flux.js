@@ -71,7 +71,14 @@ export async function postFlow(cle, body) {
   const url = await getFluxUrl(cle);
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // Force la culture du run Power Automate en invariant/EN. Sans ça, le
+      // navigateur envoie « Accept-Language: fr-FR », et le connecteur SAP
+      // OData sérialise les Edm.Decimal (NetWeight) avec la virgule décimale
+      // française -> SAP renvoie « ungültiger Wert '6,123' » (400 BadRequest).
+      'Accept-Language': 'en-US',
+    },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!res.ok) {
