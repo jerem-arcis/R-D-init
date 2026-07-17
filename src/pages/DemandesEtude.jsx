@@ -135,56 +135,66 @@ export default function DemandesEtude() {
   });
 
   // Auto-création de la FL — relocalisée ici depuis l'ancienne vue DL (supprimée).
-  // Dès qu'un projet passe `dl_validee` (écrit par Power Automate), si sa DE locale
-  // existe et n'a pas encore de FL, on démarre la FL et on relie la DE. Idempotent :
-  // garde sur fiche_lancement_id, sur les FL existantes (par demande_etude_id) et
-  // sur un Set anti-double-exécution.
+  // Dès qu'un projet Dataverse passe `dl_validee` (écrit par Power Automate), on
+  // matérialise SA Fiche de Lancement — SANS exiger de DE locale dans ce navigateur
+  // (la DE locale reste facultative, uniquement pour relier un brouillon éditable).
+  // Idempotent : une FL par code chapeau (clé stable projet ↔ FL), plus les gardes
+  // héritées (fiche_lancement_id / demande_etude_id) et un Set anti-double-exécution.
   const createFL = useMutation({ mutationFn: (data) => base44.entities.FicheLancement.create(data) });
   const updateDE = useMutation({ mutationFn: ({ id, data }) => base44.entities.DemandeEtude.update(id, data) });
   const processing = useRef(new Set());
 
   useEffect(() => {
     if (isLoading) return;
-    // DE locales indexées pour retrouver l'objet complet à partir du projet.
+    // DE locales éventuelles (localStorage, propre à ce navigateur) : servent
+    // uniquement à relier/enrichir un brouillon si présent — PLUS obligatoires.
     const localByProjetId = new Map();
     const localByChapeau = new Map();
     localDEs.forEach((d) => {
       if (d.projet_id) localByProjetId.set(d.projet_id, d);
       if (d.code_chapeau) localByChapeau.set(d.code_chapeau, d);
     });
+    // Idempotence : une FL par code chapeau (clé présente sur le projet ET la FL).
+    const flByChapeau = new Set(fiches.map((f) => f.code_chapeau).filter(Boolean));
     const flByDe = new Set(fiches.map((f) => f.demande_etude_id).filter(Boolean));
     (async () => {
       let created = false;
       for (const p of demandes) {
         if (p.statut !== 'dl_validee') continue;
-        const de =
-          localByProjetId.get(p.id) ||
-          (p.code_chapeau ? localByChapeau.get(p.code_chapeau) : null);
-        if (!de || de.fiche_lancement_id) continue;
-        if (flByDe.has(de.id) || processing.current.has(de.id)) continue;
-        processing.current.add(de.id);
+        const chapeau = p.code_chapeau;
+        if (!chapeau) continue;                 // sans code chapeau : pas de clé d'idempotence fiable
+        if (flByChapeau.has(chapeau)) continue; // FL déjà matérialisée pour ce projet
+        if (processing.current.has(chapeau)) continue;
+        // DE locale si elle existe dans CE navigateur (facultative).
+        const de = localByProjetId.get(p.id) || localByChapeau.get(chapeau) || null;
+        if (de && (de.fiche_lancement_id || flByDe.has(de.id))) continue;
+        processing.current.add(chapeau);
         try {
-          const designation = de.designation_article || de.autre_designation || '';
+          const designation =
+            p.designation_article || de?.designation_article || de?.autre_designation || '';
           const fl = await createFL.mutateAsync({
-            code_article: de.code_chapeau,
-            code_chapeau: de.code_chapeau,
+            code_article: chapeau,
+            code_chapeau: chapeau,
             libelle_article: designation,
-            demande_etude_id: de.id,
+            demande_etude_id: de?.id ?? null,
             declinaison_logistique_id: null,
             etat_global: 'en_attente',
             etape_courante: 1,
           });
-          await updateDE.mutateAsync({
-            id: de.id,
-            data: {
-              statut: 'dl_validee',
-              date_validation: new Date().toISOString(),
-              fiche_lancement_id: fl.id,
-            },
-          });
+          // Relie la DE locale si présente (pour l'édition du brouillon).
+          if (de) {
+            await updateDE.mutateAsync({
+              id: de.id,
+              data: {
+                statut: 'dl_validee',
+                date_validation: new Date().toISOString(),
+                fiche_lancement_id: fl.id,
+              },
+            });
+          }
           created = true;
         } catch {
-          processing.current.delete(de.id); // on réessaiera au prochain chargement
+          processing.current.delete(chapeau); // on réessaiera au prochain chargement
         }
       }
       if (created) {
