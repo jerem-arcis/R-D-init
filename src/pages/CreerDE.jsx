@@ -22,11 +22,19 @@ import { postFlow, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
 
 // Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
-// (formData.famille_produit / dsHierarchie) comme source, mais on force des
-// TABULATIONS entre les segments à l'envoi — SAP attend "22\tDE\tDE", jamais des
-// espaces. Idempotent : une valeur déjà tabulée reste inchangée ; une valeur à
-// espaces ("22 DE DE") est convertie.
-const hierarchieToTabs = (v) => String(v ?? '').trim().replace(/\s+/g, '\t');
+// (formData.famille_produit / dsHierarchie) comme source, mais on normalise les
+// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE", pas des
+// tabulations. La valeur du référentiel Dataverse (cr04e_hierarchieproduits) reste
+// stockée en tabulations pour le dropdown / lookup ; seul le payload sortant change.
+// On découpe sur les séparateurs (tabulations réelles OU "\t" littéraux, ou espaces
+// déjà présents) puis on rejoint par 3 espaces. Idempotent sur une valeur déjà
+// formatée.
+const hierarchieToSpaces = (v) =>
+  String(v ?? '')
+    .trim()
+    .split(/(?:\\t|\s)+/)
+    .filter(Boolean)
+    .join('   ');
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -934,7 +942,7 @@ export default function CreerDE() {
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: hierarchieToTabs(dsHierarchie),
+      HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
       SecteurActivite: dsSecteur || '',
       PoidsNet: decimalStr(formData.autre_poids_net_uv),
       DivisionUsine: dsDivisionFab || '',
@@ -1115,7 +1123,7 @@ export default function CreerDE() {
   // les CODES bruts (formData.<champ> = code, pas le libellé « code — désignation »).
   // Format aligné sur ce que SAP accepte (cf. test Postman) :
   //  - HierarchieProduitFamille : la valeur COMPLÈTE du champ Dataverse, avec des
-  //    TABULATIONS forcées entre segments ("22\tDE\tDE"), non le seul code de tête ;
+  //    ESPACES simples entre segments ("22 DE DE"), non le seul code de tête ;
   //  - PoidsNet : décimal à POINT ("1.598") — une virgule fait échouer SAP
   //    (« ungültiger Wert '1,598' ») ;
   //  - ZUG : entier (poids × 1000) sans bruit flottant.
@@ -1124,7 +1132,7 @@ export default function CreerDE() {
     const body = {
       CodeChapeau: codeChapeau || '',
       NomProduit: formData.designation_article || '',
-      HierarchieProduitFamille: hierarchieToTabs(formData.famille_produit),
+      HierarchieProduitFamille: hierarchieToSpaces(formData.famille_produit),
       SecteurActivite: formData.marque || '',
       PoidsNet: decimalStr(formData.poids_net),
       ZUG: zug === '' || zug == null ? '' : String(Math.round(Number(zug))),
