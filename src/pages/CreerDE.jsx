@@ -951,6 +951,7 @@ export default function CreerDE() {
       GroupeAutorisation: '',
       GroupeFraisGeneraux: '',
       GroupeArticleDivision: '',
+      TypeProduit: 'NEGO',
     };
     await postFlow(FLUX.SAP_SEND, body);
   };
@@ -1142,6 +1143,7 @@ export default function CreerDE() {
       GroupeAutorisation: formData.groupe_autorisation || '',
       GroupeFraisGeneraux: formData.groupe_frais_generaux || '',
       GroupeArticleDivision: formData.groupe_article || '',
+      TypeProduit: 'PFIN',
     };
     try {
       await postFlow(FLUX.SAP_SEND, body);
