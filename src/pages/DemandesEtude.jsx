@@ -33,7 +33,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { STATUTS, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
-import { CodeChapeauAlertBadge } from '@/components/CodeChapeauAlertBadge';
+import { CodeChapeauAlertIcon } from '@/components/CodeChapeauAlertIcon';
 
 const TONE_BADGE = {
   amber: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -569,15 +569,17 @@ export default function DemandesEtude() {
                       {getUsine(de) || <span className="text-muted-foreground/50">—</span>}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatutBadge(de.statut)}
-                        <CodeChapeauAlertBadge de={de} />
-                      </div>
+                      {getStatutBadge(de.statut)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {de.created_date
-                        ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
-                        : '—'}
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {de.created_date
+                            ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
+                            : '—'}
+                        </span>
+                        <CodeChapeauAlertIcon de={de} />
+                      </div>
                     </TableCell>
                     <TableCell>
                       {(() => {
