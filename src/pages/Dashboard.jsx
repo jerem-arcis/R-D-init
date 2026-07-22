@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { STATUTS, getStatutMeta } from '@/lib/deStatus';
+import { CodeChapeauAlertBadge } from '@/components/CodeChapeauAlertBadge';
 
 const FADE_UP_KEYFRAMES = `
 @keyframes fadeUp {
@@ -206,7 +207,10 @@ export default function Dashboard() {
                             {p.code_chapeau || <span className="text-muted-foreground/50">—</span>}
                           </TableCell>
                           <TableCell>
-                            <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>
+                              <CodeChapeauAlertBadge de={p} />
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {p.created_date ? format(new Date(p.created_date), 'dd MMM yyyy', { locale: fr }) : '—'}

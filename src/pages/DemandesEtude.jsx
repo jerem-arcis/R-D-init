@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { STATUTS, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
+import { CodeChapeauAlertBadge } from '@/components/CodeChapeauAlertBadge';
 
 const TONE_BADGE = {
   amber: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -570,16 +571,7 @@ export default function DemandesEtude() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getStatutBadge(de.statut)}
-                        {(() => {
-                          const a = codeChapeauAlert(de);
-                          if (a.level === 'none') return null;
-                          return (
-                            <Badge className={a.level === 'j6' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'}>
-                              <Clock className="w-3 h-3 mr-1" />
-                              {a.level === 'j6' ? `Relance J+${a.joursEcoules}` : `J+${a.joursEcoules}`}
-                            </Badge>
-                          );
-                        })()}
+                        <CodeChapeauAlertBadge de={de} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

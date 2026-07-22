@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { STATUTS, STATUT_ORDER, getStatutMeta, codeChapeauAlert } from "./deStatus";
+import {
+  STATUTS,
+  STATUT_ORDER,
+  getStatutMeta,
+  codeChapeauAlert,
+  joursOuvresEcoules,
+} from "./deStatus";
 
 describe('statuts DS', () => {
   it('expose les 3 statuts DS', () => {
@@ -35,29 +41,48 @@ describe("STATUTS", () => {
   });
 });
 
+describe("joursOuvresEcoules", () => {
+  it("renvoie 0 le jour même", () => {
+    // 2026-06-15 = lundi
+    expect(joursOuvresEcoules(new Date("2026-06-15"), new Date("2026-06-15"))).toBe(0);
+  });
+  it("ignore le week-end (vendredi -> lundi = 1)", () => {
+    expect(joursOuvresEcoules(new Date("2026-06-19"), new Date("2026-06-22"))).toBe(1);
+  });
+  it("compte 5 jours ouvrés du lundi au lundi suivant (7 jours calendaires)", () => {
+    expect(joursOuvresEcoules(new Date("2026-06-15"), new Date("2026-06-22"))).toBe(5);
+  });
+  it("compte 4 jours ouvrés du lundi au samedi", () => {
+    expect(joursOuvresEcoules(new Date("2026-06-15"), new Date("2026-06-20"))).toBe(4);
+  });
+  it("renvoie 0 si to <= from", () => {
+    expect(joursOuvresEcoules(new Date("2026-06-22"), new Date("2026-06-15"))).toBe(0);
+  });
+});
+
 describe("codeChapeauAlert", () => {
-  const mkDe = (statut, dateDemande) => ({ statut, date_demande_code_chapeau: dateDemande });
-  it("renvoie none hors statut de_attente_cc", () => {
-    const r = codeChapeauAlert(mkDe("dl_validee", "2026-06-01"), new Date("2026-06-20"));
+  const mkDe = (statut, created) => ({ statut, created_date: created });
+  it("renvoie none hors statut d'attente code chapeau", () => {
+    const r = codeChapeauAlert(mkDe("dl_validee", "2026-06-01"), new Date("2026-06-22"));
     expect(r.level).toBe("none");
   });
-  it("renvoie none si pas de date", () => {
-    const r = codeChapeauAlert(mkDe("de_attente_cc", null), new Date("2026-06-20"));
+  it("renvoie none si pas de date de création", () => {
+    const r = codeChapeauAlert(mkDe("de_attente_cc", null), new Date("2026-06-22"));
     expect(r.level).toBe("none");
   });
-  it("renvoie j0 le jour même de la demande", () => {
-    const r = codeChapeauAlert(mkDe("de_attente_cc", "2026-06-20"), new Date("2026-06-20"));
-    expect(r.level).toBe("j0");
-    expect(r.joursEcoules).toBe(0);
+  it("renvoie none en deçà de 5 jours ouvrés", () => {
+    // lundi -> vendredi = 4 jours ouvrés
+    const r = codeChapeauAlert(mkDe("de_attente_cc", "2026-06-15"), new Date("2026-06-19"));
+    expect(r.level).toBe("none");
+    expect(r.joursOuvres).toBe(4);
   });
-  it("renvoie j0 entre J+1 et J+5", () => {
-    const r = codeChapeauAlert(mkDe("de_attente_cc", "2026-06-15"), new Date("2026-06-20"));
-    expect(r.level).toBe("j0");
-    expect(r.joursEcoules).toBe(5);
+  it("renvoie retard à 5 jours ouvrés (lundi -> lundi suivant)", () => {
+    const r = codeChapeauAlert(mkDe("de_attente_cc", "2026-06-15"), new Date("2026-06-22"));
+    expect(r.level).toBe("retard");
+    expect(r.joursOuvres).toBe(5);
   });
-  it("renvoie j6 à partir de J+6", () => {
-    const r = codeChapeauAlert(mkDe("de_attente_cc", "2026-06-14"), new Date("2026-06-20"));
-    expect(r.level).toBe("j6");
-    expect(r.joursEcoules).toBe(6);
+  it("s'applique aussi aux DS (ds_attente_cc)", () => {
+    const r = codeChapeauAlert(mkDe("ds_attente_cc", "2026-06-15"), new Date("2026-06-22"));
+    expect(r.level).toBe("retard");
   });
 });

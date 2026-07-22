@@ -38,26 +38,44 @@ export const STATUT_ORDER = Object.values(STATUTS)
 
 export const getStatutMeta = (key) => STATUTS[key] || STATUTS.de_brouillon;
 
-const MS_PER_DAY = 86_400_000;
-const startOfDay = (x) =>
-  new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+const isWeekend = (d) => {
+  const g = d.getDay();
+  return g === 0 || g === 6; // dimanche / samedi
+};
 
-// Alerte ADV pour une DE en attente du code chapeau.
-// Référence : date_demande_code_chapeau. J+0 dès la demande, J+6 renforcée.
-export const codeChapeauAlert = (de, today = new Date()) => {
-  if (
-    !de ||
-    de.statut !== "de_attente_cc" ||
-    !de.date_demande_code_chapeau
-  ) {
-    return { level: "none", joursEcoules: null };
+// Nombre de jours ouvrés (lun-ven) écoulés entre `from` et `to`, jour 0 = `from`.
+// Week-ends exclus ; jours fériés non gérés. Renvoie 0 si `to` <= `from`.
+export const joursOuvresEcoules = (from, to) => {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  if (end <= start) return 0;
+  let count = 0;
+  const cur = new Date(start);
+  while (cur < end) {
+    cur.setDate(cur.getDate() + 1);
+    if (!isWeekend(cur)) count += 1;
   }
-  const d = new Date(de.date_demande_code_chapeau);
-  if (Number.isNaN(d.getTime())) return { level: "none", joursEcoules: null };
-  const joursEcoules = Math.round(
-    (startOfDay(today) - startOfDay(d)) / MS_PER_DAY
-  );
-  if (joursEcoules < 0) return { level: "none", joursEcoules };
-  if (joursEcoules >= 6) return { level: "j6", joursEcoules };
-  return { level: "j0", joursEcoules };
+  return count;
+};
+
+// Seuil de retard ADV : 5 jours ouvrés (≈ 7 jours calendaires) d'attente du code
+// chapeau déclenchent le panneau d'attention rouge.
+export const SEUIL_RETARD_JOURS_OUVRES = 5;
+
+// Alerte ADV pour une demande (DE ou DS) en attente du code chapeau. Référence :
+// created_date (createdon). Purement visuelle — n'altère jamais le statut, la
+// demande reste « En attente de code chapeau ».
+export const codeChapeauAlert = (de, today = new Date()) => {
+  const enAttente =
+    de && (de.statut === "de_attente_cc" || de.statut === "ds_attente_cc");
+  if (!enAttente || !de.created_date) {
+    return { level: "none", joursOuvres: null };
+  }
+  const d = new Date(de.created_date);
+  if (Number.isNaN(d.getTime())) return { level: "none", joursOuvres: null };
+  const joursOuvres = joursOuvresEcoules(d, today);
+  if (joursOuvres >= SEUIL_RETARD_JOURS_OUVRES) {
+    return { level: "retard", joursOuvres };
+  }
+  return { level: "none", joursOuvres };
 };
