@@ -7,6 +7,7 @@ import {
   computeClasseValoDS,
   computeCentreProfitDS,
   computeSecteurDS,
+  isTypeNegoce,
   usineOrigineFromDivision,
   usineFabFromDivision,
   activiteFromHierarchie,
@@ -39,9 +40,14 @@ export function computeDsValues(formData) {
     const v = formData[key];
     return v === '' || v == null ? computed : v;
   };
+  // En négoce (usine d'origine = « Produit négoce »), pas de code division
+  // d'origine : forcé vide, un éventuel override est ignoré (rien n'est poussé).
+  const origineNegoce = formData.autre_usine_origine === 'Produit négoce';
   return {
     divisionFab: ovr('_ds_division_fab_ovr', codeDivisionFabrication(ctx)),
-    divisionOrigine: ovr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine)),
+    divisionOrigine: origineNegoce
+      ? ''
+      : ovr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine)),
     hierarchie: ovr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite)),
     classeValo: ovr('_ds_classe_valo_ovr', computeClasseValoDS(ctx)),
     centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
@@ -120,7 +126,11 @@ export async function getDsById(id, sapOptions = {}) {
     autre_code_origine: p.cr04e_codeprojet ?? '',
     autre_designation: p.cr04e_nomduproduitdesignation ?? '',
     autre_poids_net_uv: p.cr04e_poidsnet ?? '',
-    autre_usine_origine: usineOrigineFromDivision(divisionOrigine),
+    // Négoce : la division d'origine est vide (pas de code) -> on repose l'usine
+    // d'origine « Produit négoce » à partir du type de demande.
+    autre_usine_origine:
+      usineOrigineFromDivision(divisionOrigine) ||
+      (isTypeNegoce(p.cr04e_typedelademande) ? 'Produit négoce' : ''),
     autre_usine_fab: usineFab,
     // Activité : colonne dédiée en priorité ; repli sur la déduction depuis la hiérarchie.
     autre_activite: (p.cr04e_activite_ds ?? '') || activiteFromHierarchie(hierarchie),

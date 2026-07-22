@@ -59,6 +59,7 @@ import {
   AGEN_CHOIX,
   isTypeNegoce,
   codeDivisionOrigine,
+  LABEL_DIVISION_ORIGINE_NEGOCE,
   codeDivisionFabrication,
   computeHierarchieDS,
   computeClasseValoDS,
@@ -1899,13 +1900,23 @@ export default function CreerDE() {
                         </SelectContent>
                       </Select>
                     </Field>
-                    <ReadOnlyField
-                      label="Code division d'origine"
-                      value={dsDivisionOrigine}
-                      onChange={(v) => handleChange('_ds_division_origine_ovr', v)}
-                      options={sapOptions.divisions}
-                      hint="Auto selon l'usine d'origine"
-                    />
+                    {formData.autre_usine_origine === 'Produit négoce' ? (
+                      // Négoce : pas de code division d'origine. Champ verrouillé
+                      // (ni sélection ni override), valeur persistée vide.
+                      <ReadOnlyField
+                        label="Code division d'origine"
+                        value={LABEL_DIVISION_ORIGINE_NEGOCE}
+                        hint="Usine négoce : pas de code division d'origine"
+                      />
+                    ) : (
+                      <ReadOnlyField
+                        label="Code division d'origine"
+                        value={dsDivisionOrigine}
+                        onChange={(v) => handleChange('_ds_division_origine_ovr', v)}
+                        options={sapOptions.divisions}
+                        hint="Auto selon l'usine d'origine"
+                      />
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-6 pt-2">
                     <label className="flex items-center gap-2 cursor-pointer">

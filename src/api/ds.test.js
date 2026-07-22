@@ -61,6 +61,19 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_statut_en_cours).toBe('ds_brouillon');
   });
 
+  it('négoce : aucun code division d\'origine persisté (override ignoré)', () => {
+    const p = buildDsPayload(
+      {
+        ...base,
+        autre_type_demande: '4',
+        autre_usine_origine: 'Produit négoce',
+        _ds_division_origine_ovr: '9999',
+      },
+      { sapOptions, statut: 'ds_attente_cc' },
+    );
+    expect(p.cr04e_codedivisionorigine).toBeUndefined(); // vide -> champ omis
+  });
+
   it('un override manuel (_ds_*_ovr) gagne sur la valeur calculée', () => {
     // Phase de dev : champ auto-calculé débloqué puis saisi à la main.
     const p = buildDsPayload(

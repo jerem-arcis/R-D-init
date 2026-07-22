@@ -56,7 +56,9 @@ describe('codeDivisionOrigine', () => {
     expect(codeDivisionOrigine('Aire')).toBe('2859');
     expect(codeDivisionOrigine('Agen')).toBe('2847');
     expect(codeDivisionOrigine('Faux frais STEF Agen')).toBe('2823');
-    expect(codeDivisionOrigine('Produit négoce')).toBe('2820');
+  });
+  it('vide pour le négoce (« Produit négoce » : pas de code d\'origine)', () => {
+    expect(codeDivisionOrigine('Produit négoce')).toBe('');
   });
   it('vide si inconnu', () => {
     expect(codeDivisionOrigine('')).toBe('');

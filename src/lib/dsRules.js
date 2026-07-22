@@ -27,7 +27,14 @@ export const TYPES_DEMANDE_NEGOCE = ['4', '5'];
 
 export const isTypeNegoce = (t) => ['4', '5'].includes(String(t ?? '').trim());
 
-export const codeDivisionOrigine = (usine) => DIVISION_ORIGINE[usine] || '';
+// Libellé affiché (et non un code) pour le « Code division d'origine » lorsque
+// l'usine d'origine est « Produit négoce » : un produit de négoce n'a pas de
+// division d'origine. Champ verrouillé côté formulaire, valeur persistée vide.
+export const LABEL_DIVISION_ORIGINE_NEGOCE = 'pas de code – usine négoce';
+
+// En négoce, pas de code division d'origine (rien n'est persisté ni poussé).
+export const codeDivisionOrigine = (usine) =>
+  usine === 'Produit négoce' ? '' : DIVISION_ORIGINE[usine] || '';
 
 // Division de fabrication (celle envoyee a SAP).
 export const codeDivisionFabrication = ({ type_demande, usine, agen_type } = {}) => {
