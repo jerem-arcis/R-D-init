@@ -84,6 +84,65 @@ const TYPES_DEMANDE_AUTRE = [
   { value: '7', label: '7 - Modification palettisation mineure avec impact financier de moins de 2%' }
 ];
 
+// ---------- Champs obligatoires (validation avant envoi) ----------
+// Réplique les champs marqués `required` dans le formulaire, avec la même
+// logique conditionnelle que le rendu. `getValue` renvoie la valeur effective
+// (valeurs auto-calculées incluses) ; `isRequired` filtre les champs
+// conditionnels. Sert à désactiver l'envoi et à lister les champs manquants.
+const REQUIRED_FIELDS_DE = [
+  { key: 'code_projet', label: 'Code projet' },
+  { key: 'date_demande', label: 'Date de la demande' },
+  { key: 'reseau', label: 'Réseau' },
+  { key: 'demandeur', label: 'Demandeur' },
+  { key: 'division', label: 'Division (Usine)' },
+  { key: 'designation_article', label: 'Nom du produit / Désignation' },
+  {
+    key: 'groupe_article',
+    label: 'Groupe article (division)',
+    // Satisfait si la division impose/verrouille la valeur.
+    getValue: (fd, ctx) => fd.groupe_article || ctx.deGroupeArticleLocked,
+  },
+];
+
+const REQUIRED_FIELDS_DS = [
+  { key: 'autre_demandeur', label: 'Demandeur' },
+  { key: 'autre_date', label: 'Date' },
+  { key: 'autre_service', label: 'Service' },
+  { key: 'autre_type_demande', label: 'Type de demande' },
+  { key: 'autre_usine_origine', label: "Usine de fabrication d'origine" },
+  { key: 'autre_designation', label: 'Désignation article' },
+  {
+    key: 'autre_usine_fab',
+    label: 'Usine de fabrication',
+    // Forcé à « Produit négoce (2820) » pour les types 4 et 5 -> non requis.
+    isRequired: (fd) => !isTypeNegoce(fd.autre_type_demande),
+  },
+  {
+    key: 'autre_agen_type',
+    label: 'Agen — type',
+    isRequired: (fd) => fd.autre_usine_fab === 'Agen' && !isTypeNegoce(fd.autre_type_demande),
+  },
+  {
+    key: 'autre_agen_choix',
+    label: 'Agen — choix',
+    isRequired: (fd) => fd.autre_usine_fab === 'Agen' && !isTypeNegoce(fd.autre_type_demande),
+  },
+  { key: 'autre_activite', label: 'Activité' },
+  { key: 'autre_poids_net_uv', label: 'Poids net pour 1 UV (en kg)' },
+  { key: 'autre_type_marque', label: 'Type de marque' },
+];
+
+// Renvoie les libellés des champs obligatoires encore vides pour le formulaire
+// courant. `ctx` porte les valeurs calculées (ex. deGroupeArticleLocked).
+const computeMissingRequired = (formType, formData, ctx = {}) => {
+  const config = formType === 'de' ? REQUIRED_FIELDS_DE : REQUIRED_FIELDS_DS;
+  const isBlank = (v) => v === null || v === undefined || String(v).trim() === '';
+  return config
+    .filter((f) => (f.isRequired ? f.isRequired(formData) : true))
+    .filter((f) => isBlank(f.getValue ? f.getValue(formData, ctx) : formData[f.key]))
+    .map((f) => f.label);
+};
+
 // Exemples affichés à côté du sélecteur Type de demande (scope Commerce/Marketing).
 const CAS_USAGE_EXEMPLES = [
   { value: '1', titre: 'Transfert industriel restant dans nos savoir-faire', exemple: 'Transfert de la TCM de Rivesaltes vers Bonloc / Mi cuit Domino\'s de Bonloc vers Rivesaltes' },
@@ -1220,6 +1279,10 @@ export default function CreerDE() {
   const deSecteur = computeSecteurFromReseau(formData.reseau);
   const deAgenWarning = needsSurgeleWarningDE(formData.division);
 
+  // Champs obligatoires encore vides pour le formulaire courant : bloque l'envoi
+  // et alimente la liste affichée sous les boutons.
+  const missingRequired = computeMissingRequired(formType, formData, { deGroupeArticleLocked });
+
   // Reporte les valeurs calculées dans formData (envoi SAP / écriture Dataverse).
   // Champs verrouillés : toujours forcés à la valeur de la règle. Champs libres
   // (centre de profit Agen, groupe article Agen/Aire) : on ne pose qu'un DÉFAUT
@@ -2132,7 +2195,16 @@ export default function CreerDE() {
               </fieldset>
             )}
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="space-y-3 pt-2">
+              {!deReadOnly && !(formType === 'autre' && formData.statut === 'ds_validee') && missingRequired.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  <span className="font-semibold">
+                    Il manque {missingRequired.length} champ{missingRequired.length > 1 ? 's' : ''} obligatoire{missingRequired.length > 1 ? 's' : ''} :
+                  </span>{' '}
+                  {missingRequired.join(', ')}.
+                </div>
+              )}
+              <div className="flex justify-end gap-3">
               {formType === 'autre' ? (
                 formData.statut === 'ds_validee' ? (
                   // DS validée : lecture seule, aucune action.
@@ -2148,7 +2220,7 @@ export default function CreerDE() {
                     <Button
                       type="button"
                       onClick={handleDsPushSap}
-                      disabled={isCreatingDs || !(codeChapeau || formData.code_chapeau)}
+                      disabled={isCreatingDs || !(codeChapeau || formData.code_chapeau) || missingRequired.length > 0}
                       className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
@@ -2161,7 +2233,7 @@ export default function CreerDE() {
                     <Button type="button" variant="outline" onClick={() => handleCreateDs('ds_brouillon')} disabled={isCreatingDs}>
                       <Save className="w-4 h-4 mr-2" /> Enregistrer brouillon
                     </Button>
-                    <Button type="button" onClick={() => handleCreateDs('ds_attente_cc')} disabled={isCreatingDs} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Button type="button" onClick={() => handleCreateDs('ds_attente_cc')} disabled={isCreatingDs || missingRequired.length > 0} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       {isCreatingDs ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                       Créer la DS
                     </Button>
@@ -2189,7 +2261,7 @@ export default function CreerDE() {
                   <Button
                     type="submit"
                     className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
-                    disabled={isSubmitting || saveMutation.isPending || (formType === 'de' && !codeChapeau)}
+                    disabled={isSubmitting || saveMutation.isPending || (formType === 'de' && !codeChapeau) || missingRequired.length > 0}
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -2200,6 +2272,7 @@ export default function CreerDE() {
                   </Button>
                 </>
               )}
+              </div>
             </div>
 
             <SapSynthesisDialog
