@@ -6,6 +6,7 @@ import {
   matchVue,
   sapTablePrefix,
   resolveVue,
+  flattenParametre,
   buildChecklist,
   buildCreations,
   computeResultat,
@@ -71,6 +72,56 @@ describe('parseParametre / extractParametre', () => {
   it('tolère un paramètre absent', () => {
     expect(extractParametre(null)).toEqual({});
     expect(extractParametre('{bad')).toEqual({});
+  });
+});
+
+describe('flattenParametre', () => {
+  it('aplatit A_Product : retire entryInput/, déplie descriptions et valorisation', () => {
+    const pairs = flattenParametre(PARAM);
+    const map = Object.fromEntries(pairs.map((p) => [p.key, p.value]));
+    expect(map.entity).toBe('A_Product');
+    expect(map.Product).toBe('000000000000810501');
+    expect(map.ProductType).toBe('PFIN');
+    expect(map['to_Description/results[1].ProductDescription']).toBe('Croissant beurre test');
+    expect(map['to_Valuation/results[0].ValuationArea']).toBe('2823');
+  });
+
+  it('aplatit A_ProductStorage', () => {
+    const raw = JSON.stringify({
+      entity: 'A_ProductStorage',
+      'entryInput/Product': '000000000000810601',
+      'entryInput/StorageConditions': 'SU',
+      'entryInput/MinRemainingShelfLife': 3,
+      'entryInput/TotalShelfLife': 12,
+    });
+    const map = Object.fromEntries(flattenParametre(raw).map((p) => [p.key, p.value]));
+    expect(map.entity).toBe('A_ProductStorage');
+    expect(map.StorageConditions).toBe('SU');
+    expect(map.MinRemainingShelfLife).toBe('3');
+  });
+
+  it('aplatit Z_ProductCharcValueSet (payload imbriqué)', () => {
+    const raw = JSON.stringify({
+      relativePath: '/Z_ProductCharcValueSet',
+      'entryInput/httpMethod': 'POST',
+      bypassMetadata: true,
+      'entryInput/payload': {
+        Charact: 'SDBSASM',
+        Product: '000000000000810601',
+        Objecttable: 'MARA',
+        ValueChar: '1',
+      },
+    });
+    const map = Object.fromEntries(flattenParametre(raw).map((p) => [p.key, p.value]));
+    expect(map['payload.Charact']).toBe('SDBSASM');
+    expect(map['payload.Objecttable']).toBe('MARA');
+    expect(map.httpMethod).toBe('POST');
+    expect(map.bypassMetadata).toBe('true');
+  });
+
+  it('tolère un paramètre vide/illisible', () => {
+    expect(flattenParametre(null)).toEqual([]);
+    expect(flattenParametre('{bad')).toEqual([]);
   });
 });
 
@@ -164,11 +215,16 @@ describe('buildChecklist', () => {
     expect(byKey.emballage).toBe('neutre');
   });
 
-  it('ajoute en fin de liste les vues inconnues (en erreur)', () => {
-    const steps = buildChecklist([{ vue: 'Vue exotique SAP', messageErreur: 'z' }]);
-    const extra = steps.find((s) => s.label === 'Vue exotique SAP');
-    expect(extra).toBeTruthy();
-    expect(extra.status).toBe('erreur');
+  it('regroupe les lignes non rattachées sous une seule étape « Autre »', () => {
+    const steps = buildChecklist([
+      { vue: 'M3', codeErreurSap: 'M3', messageErreur: 'z' },
+      { vue: 'MG', codeErreurSap: 'MG', messageErreur: 'w' },
+    ]);
+    const autres = steps.filter((s) => s.key === 'autre');
+    expect(autres).toHaveLength(1);
+    expect(autres[0].label).toBe('Autre');
+    expect(autres[0].status).toBe('erreur');
+    expect(autres[0].errors).toHaveLength(2);
   });
 
   it('rattache via le préfixe de code erreur même si cr04e_vue = entité', () => {

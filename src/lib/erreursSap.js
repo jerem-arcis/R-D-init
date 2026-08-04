@@ -96,6 +96,36 @@ export function extractParametre(raw) {
   };
 }
 
+// Aplatit le paramètre envoyé (JSON de forme variable selon l'entité : A_Product,
+// A_ProductStorage, Z_ProductCharcValueSet…) en une liste ordonnée de paires
+// { key, value } lisibles. Le préfixe technique « entryInput/ » est retiré, les
+// objets/tableaux imbriqués sont dépliés en notation pointée. Tolérant : [] si vide.
+export function flattenParametre(raw) {
+  const obj = typeof raw === 'string' ? parseParametre(raw) : raw;
+  if (!obj || typeof obj !== 'object') return [];
+
+  const clean = (k) => String(k).replace(/^entryInput\//, '');
+  const out = [];
+  const walk = (value, prefix) => {
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        out.push({ key: prefix, value: '[]' });
+      } else {
+        value.forEach((v, i) => walk(v, `${prefix}[${i}]`));
+      }
+    } else if (value && typeof value === 'object') {
+      for (const [k, v] of Object.entries(value)) {
+        const label = clean(k);
+        walk(v, prefix ? `${prefix}.${label}` : label);
+      }
+    } else {
+      out.push({ key: prefix, value: value === null ? '' : String(value) });
+    }
+  };
+  walk(obj, '');
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Vues SAP canoniques : liste fixe et ordonnée des étapes de création d'un article.
 // Le panneau détail affiche TOUTES ces étapes et marque en rouge celles qui portent
@@ -196,16 +226,11 @@ export function buildChecklist(errors = []) {
     errors: byKey.get(v.key) || [],
   }));
 
-  // Vues non reconnues : regroupées par libellé lisible (code erreur SAP de
-  // préférence, sinon libellé d'action), ajoutées en fin de liste.
-  const extraByLabel = new Map();
-  for (const err of extras) {
-    const label = err.codeErreurSap || err.vue || 'Autre';
-    if (!extraByLabel.has(label)) extraByLabel.set(label, []);
-    extraByLabel.get(label).push(err);
-  }
-  for (const [label, errs] of extraByLabel) {
-    steps.push({ key: `extra:${label}`, label, status: 'erreur', errors: errs });
+  // Lignes non rattachées à une vue canonique : regroupées sous une seule étape
+  // « Autre » (évite de créer de fausses vues à partir de codes/libellés parasites
+  // comme « M3 » / « MG »).
+  if (extras.length) {
+    steps.push({ key: 'autre', label: 'Autre', status: 'erreur', errors: extras });
   }
 
   return steps;
@@ -249,6 +274,8 @@ export function buildCreations(rows = []) {
       codeErreurSap: row.codeErreurSap || '',
       messageErreur: row.messageErreur || '',
       statutTraitement: row.statutTraitement || '',
+      entite: row.entite || '',
+      parametre: row.parametre || '',
       createdOn: row.createdOn || null,
       createdBy: row.createdBy || '',
     });

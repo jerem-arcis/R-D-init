@@ -24,6 +24,33 @@ const paramFor = (ref, designation, usine) =>
     'entryInput/to_Valuation/results': [{ ValuationArea: usine }],
   });
 
+// Payload « stockage » (A_ProductStorage).
+const paramStorage = (ref) =>
+  JSON.stringify({
+    entity: 'A_ProductStorage',
+    'entryInput/Product': ref,
+    'entryInput/StorageConditions': 'SU',
+    'entryInput/MinRemainingShelfLife': 3,
+    'entryInput/TotalShelfLife': 12,
+  });
+
+// Payload « caractéristique de classification » (Z_ProductCharcValueSet).
+const paramCharc = (ref) =>
+  JSON.stringify({
+    relativePath: '/Z_ProductCharcValueSet',
+    'entryInput/httpMethod': 'POST',
+    bypassMetadata: true,
+    'entryInput/payload': {
+      Charact: 'SDBSASM',
+      Product: ref,
+      Classnum: 'SDCLBSALOG',
+      Classtype: '001',
+      Objecttable: 'MARA',
+      CharactDescr: 'MBSA type de support',
+      ValueChar: '1',
+    },
+  });
+
 export const demoErreurRows = [
   // 809201 — Cookie protéiné : Vue vente + Classification en erreur -> Échec
   {
@@ -39,8 +66,16 @@ export const demoErreurRows = [
     id: 'seed-e2', reference: '000000000000809201', vue: 'Classification',
     codeErreurSap: 'SDBSAMQ',
     messageErreur: "La caractéristique logistique n'a pas pu être valorisée sur l'article.",
-    statutTraitement: 'Nouvelle', statutCode: 'DE', entite: 'A_Product',
-    parametre: paramFor('000000000000809201', 'Cookie protéiné-PICARD', '2802'),
+    statutTraitement: 'Nouvelle', statutCode: 'DE', entite: 'Z_ProductCharcValueSet',
+    parametre: paramCharc('000000000000809201'),
+    createdOn: iso('2026-08-03T09:14:00'), createdBy: 'stephane.delcroix', codeChapeau: 'C809201',
+  },
+  {
+    id: 'seed-e2b', reference: '000000000000809201', vue: 'Données de base',
+    codeErreurSap: 'M3',
+    messageErreur: "Entrez un type d'article.",
+    statutTraitement: 'Nouvelle', statutCode: 'DE', entite: 'A_ProductStorage',
+    parametre: paramStorage('000000000000809201'),
     createdOn: iso('2026-08-03T09:14:00'), createdBy: 'stephane.delcroix', codeChapeau: 'C809201',
   },
 
