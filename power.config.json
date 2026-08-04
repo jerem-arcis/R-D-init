@@ -51,6 +51,10 @@
         "fluxregistre": {
           "entitySetName": "cr04e_fluxregistres",
           "logicalName": "cr04e_fluxregistre"
+        },
+        "gestiondeserreurs": {
+          "entitySetName": "cr04e_gestiondeserreurses",
+          "logicalName": "cr04e_gestiondeserreurs"
         }
       },
       "environmentVariableName": ""

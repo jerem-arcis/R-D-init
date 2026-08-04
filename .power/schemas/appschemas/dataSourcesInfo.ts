@@ -40,6 +40,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "cr04e_gestiondeserreurses": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_gestiondeserreursid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_groupearticledivisions": {
     "tableId": "",
     "version": "",

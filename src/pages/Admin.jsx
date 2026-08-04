@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Loader2,
   Upload,
+  Activity,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -30,6 +32,8 @@ import {
 } from '@/lib/adminLists';
 import { create, remove, update } from '@/api/optionSet';
 import { parseOptionListFile } from '@/lib/parseOptionList';
+import SuiviCreationsSap from '@/components/admin/SuiviCreationsSap';
+import { useErreursSap } from '@/lib/useErreursSap';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
@@ -119,6 +123,10 @@ export default function Admin() {
   const { data: rows = [], isLoading } = useOptionSetRows();
 
   const [selectedKey, setSelectedKey] = useState('reseaux');
+  // Vue « Créations SAP » : null = éditeur de listes déroulantes, sinon 'suivi' | 'echec'.
+  const [sapView, setSapView] = useState(null);
+  const { creations: sapCreations } = useErreursSap();
+  const sapEchecCount = sapCreations.filter((c) => c.resultat === 'echec').length;
   const [newValue, setNewValue] = useState('');
   const [newDesignation, setNewDesignation] = useState('');
   const [toDelete, setToDelete] = useState(null);
@@ -290,7 +298,7 @@ export default function Admin() {
                 Administration
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Gérer les valeurs des listes déroulantes de l'application
+                Listes déroulantes et suivi des créations SAP
               </p>
             </div>
             {busy && (
@@ -310,30 +318,68 @@ export default function Admin() {
               </h2>
             </div>
             <nav className="p-2 space-y-0.5">
-              {DROPDOWN_KEYS.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setSelectedKey(key)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
-                    selectedKey === key
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <span>{LIST_LABELS[key]}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {countByKey(key)}
+              {DROPDOWN_KEYS.map((key) => {
+                const active = sapView === null && selectedKey === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setSapView(null);
+                      setSelectedKey(key);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
+                      active
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span>{LIST_LABELS[key]}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {countByKey(key)}
+                      </span>
+                      {active && <ChevronRight className="w-3 h-3" />}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* Groupe Créations SAP */}
+              <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Créations SAP
+              </div>
+              {[
+                { key: 'suivi', label: 'Suivi', icon: Activity, count: sapCreations.length },
+                { key: 'echec', label: 'En échec', icon: AlertTriangle, count: sapEchecCount },
+              ].map(({ key, label, icon: Icon, count }) => {
+                const active = sapView === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSapView(key)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
+                      active
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className="w-4 h-4" />
+                      {label}
                     </span>
-                    {selectedKey === key && (
-                      <ChevronRight className="w-3 h-3" />
-                    )}
-                  </div>
-                </button>
-              ))}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{count}</span>
+                      {active && <ChevronRight className="w-3 h-3" />}
+                    </div>
+                  </button>
+                );
+              })}
             </nav>
           </aside>
 
+          {sapView ? (
+            <SuiviCreationsSap filter={sapView} />
+          ) : (
           <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
             <div className="bg-secondary/60 border-b border-border px-6 py-3 flex items-center gap-2">
               <Settings2 className="w-4 h-4 text-primary" />
@@ -476,6 +522,7 @@ export default function Admin() {
               </p>
             </div>
           </section>
+          )}
         </div>
       </main>
 

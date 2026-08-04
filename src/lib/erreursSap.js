@@ -1,0 +1,297 @@
+// Logique pure du suivi des créations SAP (Admin).
+//
+// La table Dataverse `cr04e_gestiondeserreurs` est un JOURNAL D'ÉTAPES EN ERREUR :
+// une ligne = une vue/action SAP qui a échoué pour une référence produit. Une même
+// référence peut cumuler plusieurs erreurs (à des endroits différents). On regroupe
+// donc les lignes PAR RÉFÉRENCE pour reconstituer une « création » et son état.
+//
+// Aucune I/O ici : ce module ne fait que transformer des lignes déjà lues. La lecture
+// Dataverse et le mapping des noms de champs vivent dans `@/api/gestionErreurs`.
+
+// ---------------------------------------------------------------------------
+// Statut de traitement (champ texte `cr04e_statuttraitement`).
+// Valeurs métier connues ; le champ reste libre côté Dataverse donc on tolère
+// les valeurs inconnues (traitées comme « non résolues »).
+// ---------------------------------------------------------------------------
+export const STATUT_TRAITEMENT = {
+  Nouvelle: { key: 'Nouvelle', label: 'Nouvelle', resolved: false },
+  PriseEnCompte: { key: 'PriseEnCompte', label: 'Prise en compte', resolved: false },
+  Corrigee: { key: 'Corrigee', label: 'Corrigée', resolved: true },
+  Ignoree: { key: 'Ignoree', label: 'Ignorée', resolved: true },
+};
+
+// Une étape en erreur est « résolue » quand elle a été corrigée ou volontairement
+// ignorée. Tout le reste (Nouvelle, PriseEnCompte, valeur inconnue) reste ouvert.
+export const isStatutResolu = (statut) =>
+  STATUT_TRAITEMENT[statut]?.resolved === true;
+
+// ---------------------------------------------------------------------------
+// Résultat agrégé d'une création (dérivé des statuts de ses étapes en erreur).
+// ---------------------------------------------------------------------------
+export const RESULTAT = {
+  reussie: { key: 'reussie', label: 'Réussie', tone: 'emerald' },
+  partielle: { key: 'partielle', label: 'Partielle', tone: 'amber' },
+  echec: { key: 'echec', label: 'Échec', tone: 'red' },
+};
+
+// - aucune étape ouverte  -> Réussie (toutes corrigées/ignorées)
+// - toutes ouvertes       -> Échec
+// - mélange               -> Partielle
+export function computeResultat(errors = []) {
+  if (errors.length === 0) return RESULTAT.reussie.key;
+  const resolus = errors.filter((e) => isStatutResolu(e.statutTraitement)).length;
+  if (resolus === 0) return RESULTAT.echec.key;
+  if (resolus === errors.length) return RESULTAT.reussie.key;
+  return RESULTAT.partielle.key;
+}
+
+// ---------------------------------------------------------------------------
+// Référence produit : on retire les zéros de tête (000000000000810501 -> 810501).
+// ---------------------------------------------------------------------------
+export function stripLeadingZeros(ref) {
+  if (ref == null) return '';
+  const s = String(ref).trim();
+  if (!s) return '';
+  const stripped = s.replace(/^0+/, '');
+  return stripped === '' ? '0' : stripped;
+}
+
+// ---------------------------------------------------------------------------
+// Paramètre envoyé : JSON à plat (clés « entryInput/... ») décrivant l'appel OData
+// SAP. On en extrait de quoi enrichir l'affichage (désignation, usine…).
+// Tolérant : renvoie {} si le JSON est absent/illisible.
+// ---------------------------------------------------------------------------
+export function parseParametre(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function extractParametre(raw) {
+  const obj = typeof raw === 'string' ? parseParametre(raw) : raw;
+  if (!obj || typeof obj !== 'object') return {};
+
+  const descriptions = obj['entryInput/to_Description/results'];
+  let designation = '';
+  if (Array.isArray(descriptions) && descriptions.length) {
+    const fr = descriptions.find((d) => (d?.Language || '').toUpperCase() === 'FR');
+    const chosen = fr || descriptions[0];
+    designation = chosen?.ProductDescription || '';
+  }
+
+  const valuations = obj['entryInput/to_Valuation/results'];
+  const usine =
+    (Array.isArray(valuations) && valuations[0]?.ValuationArea) || '';
+
+  return {
+    entity: obj.entity || '',
+    product: obj['entryInput/Product'] || '',
+    productType: obj['entryInput/ProductType'] || '',
+    netWeight: obj['entryInput/NetWeight'] || '',
+    designation,
+    usine: usine || '',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Vues SAP canoniques : liste fixe et ordonnée des étapes de création d'un article.
+// Le panneau détail affiche TOUTES ces étapes et marque en rouge celles qui portent
+// une ligne d'erreur. Les vraies valeurs de `cr04e_vue` étant susceptibles de varier,
+// on matche par mots-clés (insensible casse/accents) ; toute vue non reconnue est
+// ajoutée en fin de liste avec son libellé brut.
+// ---------------------------------------------------------------------------
+export const SAP_VUES = [
+  { key: 'donnees_base', label: 'Données de base', keywords: ['base', 'basic', 'general', 'donnees de base'] },
+  { key: 'division', label: 'Division et planification', keywords: ['division', 'planification', 'mrp', 'plant'] },
+  { key: 'vue_vente', label: 'Vue vente', keywords: ['vente', 'sales'] },
+  { key: 'classification', label: 'Classification', keywords: ['classif'] },
+  { key: 'emballage', label: 'Emballage', keywords: ['emballage', 'packaging', 'unit'] },
+  { key: 'valorisation', label: 'Valorisation / Comptabilité', keywords: ['valorisation', 'valuation', 'costing', 'comptab', 'accounting'] },
+];
+
+const DIACRITICS = new RegExp('[\\u0300-\\u036f]', 'g');
+const normalize = (s) =>
+  (s || '')
+    .toString()
+    .normalize('NFD')
+    .replace(DIACRITICS, '')
+    .toLowerCase()
+    .trim();
+
+// Table SAP (préfixe du code erreur, ex. « MVKE » dans « MVKE-MTPOS ») -> vue
+// canonique. C'est le signal LE PLUS FIABLE : chaque table matériau SAP correspond
+// à une vue précise.
+export const SAP_TABLE_TO_VUE = {
+  MARA: 'donnees_base', // données générales
+  MAKT: 'donnees_base', // désignations
+  MLAN: 'donnees_base', // données fiscales
+  MARC: 'division', // données division / MRP
+  MVKE: 'vue_vente', // données commerciales
+  MBEW: 'valorisation', // valorisation comptable
+  MARM: 'emballage', // unités de mesure
+  MEAN: 'emballage', // codes EAN
+};
+
+// Indices de classification dans le code/message (pas de préfixe de table dédié).
+const CLASSIF_HINTS = ['classification', 'caracteristique', 'classe'];
+
+// Extrait le préfixe de table SAP d'un code erreur : « MVKE-MTPOS » -> « MVKE ».
+// Renvoie '' si le code n'a pas la forme TABLE-CHAMP.
+export function sapTablePrefix(code) {
+  if (!code) return '';
+  const m = String(code).trim().toUpperCase().match(/^([A-Z][A-Z0-9]{2,})[-_]/);
+  return m ? m[1] : '';
+}
+
+// Renvoie la clé de vue canonique correspondant à un libellé `vue`, ou null.
+// (Secours : le champ cr04e_vue étant souvent le nom de l'entité, peu fiable.)
+export function matchVue(vue) {
+  const n = normalize(vue);
+  if (!n) return null;
+  for (const v of SAP_VUES) {
+    if (v.keywords.some((k) => n.includes(normalize(k)))) return v.key;
+  }
+  return null;
+}
+
+// Résout la vue impactée par une ligne d'erreur, par ordre de fiabilité :
+//   1) préfixe de table SAP dans cr04e_codeerreursap (MVKE, MARC, MARA…)
+//   2) classification, détectée via le code/message
+//   3) repli sur le libellé cr04e_vue (mots-clés)
+// Renvoie la clé de vue canonique, ou null si rien ne matche.
+export function resolveVue(err = {}) {
+  const prefix = sapTablePrefix(err.codeErreurSap);
+  if (prefix && SAP_TABLE_TO_VUE[prefix]) return SAP_TABLE_TO_VUE[prefix];
+
+  const hay = normalize(`${err.codeErreurSap || ''} ${err.messageErreur || ''}`);
+  if (CLASSIF_HINTS.some((h) => hay.includes(normalize(h)))) return 'classification';
+
+  return matchVue(err.vue);
+}
+
+// Construit la checklist des étapes d'une création à partir de ses erreurs.
+// Chaque étape canonique reçoit son statut : 'erreur' si au moins une ligne d'erreur
+// la vise, sinon 'neutre' (non traitée / pas d'info positive côté journal d'erreurs).
+// Les vues en erreur non reconnues sont ajoutées en fin de liste.
+export function buildChecklist(errors = []) {
+  const byKey = new Map();
+  const extras = [];
+  for (const err of errors) {
+    const key = resolveVue(err);
+    if (key) {
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(err);
+    } else {
+      extras.push(err);
+    }
+  }
+
+  const steps = SAP_VUES.map((v) => ({
+    key: v.key,
+    label: v.label,
+    status: byKey.has(v.key) ? 'erreur' : 'neutre',
+    errors: byKey.get(v.key) || [],
+  }));
+
+  // Vues non reconnues : regroupées par libellé lisible (code erreur SAP de
+  // préférence, sinon libellé d'action), ajoutées en fin de liste.
+  const extraByLabel = new Map();
+  for (const err of extras) {
+    const label = err.codeErreurSap || err.vue || 'Autre';
+    if (!extraByLabel.has(label)) extraByLabel.set(label, []);
+    extraByLabel.get(label).push(err);
+  }
+  for (const [label, errs] of extraByLabel) {
+    steps.push({ key: `extra:${label}`, label, status: 'erreur', errors: errs });
+  }
+
+  return steps;
+}
+
+// ---------------------------------------------------------------------------
+// Regroupement : lignes normalisées -> créations (une par référence produit).
+//
+// Chaque ligne normalisée attendue :
+//   { id, reference, vue, codeErreurSap, messageErreur, statutTraitement,
+//     entite, parametre, createdOn, createdBy, codeChapeau }
+// ---------------------------------------------------------------------------
+export function buildCreations(rows = []) {
+  const byRef = new Map();
+
+  for (const row of rows) {
+    const reference = stripLeadingZeros(row.reference);
+    const groupKey = reference || row.reference || row.id;
+    if (!byRef.has(groupKey)) {
+      byRef.set(groupKey, {
+        reference,
+        referenceRaw: row.reference || '',
+        entite: row.entite || '',
+        codeChapeau: row.codeChapeau || '',
+        errors: [],
+        _params: [],
+      });
+    }
+    const creation = byRef.get(groupKey);
+
+    // Métadonnées : on garde la première valeur non vide rencontrée.
+    if (!creation.entite && row.entite) creation.entite = row.entite;
+    if (!creation.codeChapeau && row.codeChapeau) creation.codeChapeau = row.codeChapeau;
+
+    const params = extractParametre(row.parametre);
+    creation._params.push(params);
+
+    creation.errors.push({
+      id: row.id,
+      vue: row.vue || '',
+      codeErreurSap: row.codeErreurSap || '',
+      messageErreur: row.messageErreur || '',
+      statutTraitement: row.statutTraitement || '',
+      createdOn: row.createdOn || null,
+      createdBy: row.createdBy || '',
+    });
+  }
+
+  return Array.from(byRef.values()).map((c) => {
+    // Désignation / usine : première valeur non vide extraite du paramètre envoyé.
+    const designation = c._params.map((p) => p.designation).find(Boolean) || '';
+    const usine = c._params.map((p) => p.usine).find(Boolean) || '';
+    const dates = c.errors.map((e) => e.createdOn).filter(Boolean).sort();
+    const demandeur = c.errors.map((e) => e.createdBy).find(Boolean) || '';
+
+    const { _params, ...rest } = c;
+    return {
+      ...rest,
+      designation,
+      usine,
+      demandeur,
+      createdOn: dates.length ? dates[dates.length - 1] : null,
+      resultat: computeResultat(c.errors),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// KPIs : créations sur les N derniers jours (par date de création), par résultat.
+// ---------------------------------------------------------------------------
+export function computeKpis(creations = [], { now = new Date(), days = 7 } = {}) {
+  const since = new Date(now);
+  since.setDate(since.getDate() - days);
+
+  const recentes = creations.filter((c) => {
+    if (!c.createdOn) return false;
+    const d = new Date(c.createdOn);
+    return !Number.isNaN(d.getTime()) && d >= since;
+  });
+
+  const count = (key) => recentes.filter((c) => c.resultat === key).length;
+
+  return {
+    total: recentes.length,
+    reussies: count(RESULTAT.reussie.key),
+    partielle: count(RESULTAT.partielle.key),
+    echec: count(RESULTAT.echec.key),
+  };
+}
