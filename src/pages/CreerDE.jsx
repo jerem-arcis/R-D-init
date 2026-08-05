@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE, updateProjetFromDE, getProjetById, PROJET_STATUT } from '@/api/projet';
+import { createProjetFromDE, updateProjetFromDE, getProjetById, createDivisionProjet, PROJET_STATUT } from '@/api/projet';
 import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, FLUX } from '@/api/flux';
@@ -44,9 +44,16 @@ import {
   computeCentreProfitDE,
   computeGroupeArticleDE,
   computeGroupeArticleLockedDE,
+  computeProfilFabricRepetDE,
+  computeGroupeAutorisationDE,
+  computeGroupeFraisGenerauxDE,
   needsSurgeleWarningDE,
   computeSecteurFromReseau,
   AXES_STRATEGIQUES_DE,
+  familleGroupeArticle,
+  hierarchiePrefix,
+  centresProfitAutorises,
+  classesValoAutorisees,
 } from '@/lib/deRules';
 
 import { usePowerPlatform } from '@/PowerProvider';
@@ -1008,10 +1015,11 @@ export default function CreerDE() {
       DivisionUsine: dsDivisionFab || '',
       ClasseValorisation: dsClasseValo || '',
       CentreProfit: dsCentreProfit || '',
-      GroupeAutorisation: '',
-      GroupeFraisGeneraux: '',
+      GroupeAutorisation: 'NEGO', // DS : toujours NEGO
+      GroupeFraisGeneraux: 'NEGO', // DS : toujours NEGO
       GroupeArticleDivision: '',
       TypeProduit: 'NEGO',
+      'ProfilFabricRépét': computeProfilFabricRepetDE(dsDivisionFab),
     };
     await postFlow(FLUX.SAP_SEND, body);
   };
@@ -1204,6 +1212,7 @@ export default function CreerDE() {
       GroupeFraisGeneraux: formData.groupe_frais_generaux || '',
       GroupeArticleDivision: formData.groupe_article || '',
       TypeProduit: 'PFIN',
+      'ProfilFabricRépét': computeProfilFabricRepetDE(formData.division),
     };
     try {
       await postFlow(FLUX.SAP_SEND, body);
@@ -1279,6 +1288,17 @@ export default function CreerDE() {
   const deSecteur = computeSecteurFromReseau(formData.reseau);
   const deAgenWarning = needsSurgeleWarningDE(formData.division);
 
+  // Filtre centre profit / classe valo aux valeurs autorisées par F (groupe article
+  // division) et J (préfixe hiérarchie). [] = aucune contrainte → liste complète.
+  const deFamilleGA = familleGroupeArticle(formData.groupe_article || deGroupeArticleLocked);
+  const deJ = hierarchiePrefix(deHierarchie);
+  const filtrerParCodes = (options, codes) =>
+    !codes || codes.length === 0
+      ? options
+      : (options || []).filter((o) => codes.includes(String(o.value)));
+  const centresProfitOptions = filtrerParCodes(sapOptions.centres_profit, centresProfitAutorises(deFamilleGA, deJ));
+  const classesValoOptions = filtrerParCodes(sapOptions.classes_valorisation, classesValoAutorisees(deFamilleGA, deJ));
+
   // Champs obligatoires encore vides pour le formulaire courant : bloque l'envoi
   // et alimente la liste affichée sous les boutons.
   const missingRequired = computeMissingRequired(formType, formData, { deGroupeArticleLocked });
@@ -1309,6 +1329,8 @@ export default function CreerDE() {
       force('classe_valorisation', deClasseValo);
       force('centre_profit', deCentreProfitAuto); // Aire/Bonloc/Rivesaltes
       force('marque', deSecteur);
+      force('groupe_autorisation', computeGroupeAutorisationDE(formData.division)); // Aire→NEGO, sinon PFIN
+      force('groupe_frais_generaux', computeGroupeFraisGenerauxDE(formData.division)); // Aire→NEGO, sinon FG
       force('groupe_article', deGroupeArticleLocked); // Bonloc/Rivesaltes
       // Agen : PF-AS par défaut (modifiable car « vérifier surgelé »).
       if (deAgenWarning) setDefault('groupe_article', computeGroupeArticleDE(formData.division));
@@ -1426,6 +1448,20 @@ export default function CreerDE() {
           variant: 'destructive',
         });
         return;
+      }
+      // Ligne cr04e_divisionprojet rattachée au projet (relation lookup cr04e_Projet),
+      // écrite JUSTE APRÈS la table Projet (le lookup a besoin du GUID). Non bloquant :
+      // le projet est déjà enregistré, un échec ici ne stoppe pas l'envoi SAP.
+      if (projetId) {
+        try {
+          await createDivisionProjet({ projetId, division: formData.division, type: 'PROD' });
+        } catch (err) {
+          toast({
+            title: 'Division-projet non enregistrée',
+            description: `Le projet est enregistré, mais l'écriture cr04e_divisionprojet a échoué : ${err?.message || 'erreur inconnue'}.`,
+            variant: 'destructive',
+          });
+        }
       }
     }
     // Déclenche les flux (non bloquant : on attend l'envoi avant de naviguer,
@@ -1678,7 +1714,7 @@ export default function CreerDE() {
                       label="Classe de valorisation"
                       value={formData.classe_valorisation || deClasseValo}
                       onChange={(v) => handleChange('classe_valorisation', v)}
-                      options={sapOptions.classes_valorisation}
+                      options={classesValoOptions}
                       hint="Production → 7012, Aire → 2038"
                     />
                     {deCentreProfitAuto ? (
@@ -1686,7 +1722,7 @@ export default function CreerDE() {
                         label="Centre de profit"
                         value={formData.centre_profit || deCentreProfitAuto}
                         onChange={(v) => handleChange('centre_profit', v)}
-                        options={sapOptions.centres_profit}
+                        options={centresProfitOptions}
                         hint="Selon la division"
                       />
                     ) : (
@@ -1694,7 +1730,7 @@ export default function CreerDE() {
                         <SearchableSelect
                           value={formData.centre_profit}
                           onChange={(v) => handleChange('centre_profit', v)}
-                          options={buildOptions(sapOptions.centres_profit, formData.centre_profit)}
+                          options={buildOptions(centresProfitOptions, formData.centre_profit)}
                           placeholder="Sélectionner un centre"
                         />
                       </Field>

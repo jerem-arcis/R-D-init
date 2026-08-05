@@ -9,7 +9,6 @@ import { fr } from 'date-fns/locale';
 
 const VISAS = [
   { key: 'supply_chain', label: 'Supply Chain', short: 'SC' },
-  { key: 'gestion_besoin', label: 'Gestion Besoin', short: 'GB' },
   { key: 'industriel', label: 'Industriel', short: 'IND' },
   { key: 'commerce', label: 'Commerce', short: 'COM' },
 ];

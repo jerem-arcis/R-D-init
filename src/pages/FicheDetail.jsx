@@ -4,12 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, FileDown } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { generateFichePdf } from '@/lib/generateFichePdf';
 
 import IdentificationBanner from '@/components/fiche/IdentificationBanner';
 import VisaToolbar from '@/components/fiche/VisaToolbar';
 import SupplyChainSection from '@/components/fiche/SupplyChainSection';
-import GestionBesoinSection from '@/components/fiche/GestionBesoinSection';
 import IndustrielSection from '@/components/fiche/IndustrielSection';
 import CommerceSection from '@/components/fiche/CommerceSection';
 import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
@@ -38,6 +39,8 @@ export default function FicheDetail() {
 
   const [localFiche, setLocalFiche] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   const queryClient = useQueryClient();
 
@@ -73,6 +76,18 @@ export default function FicheDetail() {
     setIsSaving(false);
   };
 
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      await generateFichePdf(localFiche, de);
+    } catch (err) {
+      console.error('[export PDF]', err);
+      toast({ variant: 'destructive', title: 'Échec de la génération du PDF' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading || !localFiche) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -95,13 +110,11 @@ export default function FicheDetail() {
   // simultanée, pas de cheminement.
   const visaHandlers = {
     supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
-    gestion_besoin: () => handleUpdate(visaPatch('visa_gestion_besoin', 'refus_gestion_besoin')),
     industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
     commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
   };
   const refusHandlers = {
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
-    gestion_besoin: (m) => handleUpdate(refusPatch('visa_gestion_besoin', 'refus_gestion_besoin', m)),
     industriel: (m) => handleUpdate(refusPatch('visa_industriel', 'refus_industriel', m)),
     commerce: (m) => handleUpdate(refusPatch('visa_commerce', 'refus_commerce', m)),
   };
@@ -135,6 +148,16 @@ export default function FicheDetail() {
                   Enregistrement...
                 </div>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                {isExporting ? 'Génération…' : 'Exporter PDF'}
+              </Button>
               <ViewSwitch active="service" ficheId={ficheId} />
             </div>
           </div>
@@ -155,11 +178,6 @@ export default function FicheDetail() {
           fiche={localFiche}
           de={de}
           {...sectionHandlers('supply_chain', 'visa_supply_chain', 'refus_supply_chain')}
-        />
-        <GestionBesoinSection
-          fiche={localFiche}
-          de={de}
-          {...sectionHandlers('gestion_besoin', 'visa_gestion_besoin', 'refus_gestion_besoin')}
         />
         <IndustrielSection
           fiche={localFiche}

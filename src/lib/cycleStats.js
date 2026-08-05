@@ -1,17 +1,16 @@
 // Calculs statistiques pour le cycle de vie d'une Fiche de Lancement (FL).
-// Mesure les temps de transition entre les 7 étapes du workflow.
+// Mesure les temps de transition entre les 6 étapes du workflow.
 
 export const STEPS = [
   { key: 'creation', label: 'Création', shortLabel: 'Création', dateField: 'created_date', color: 'slate' },
   { key: 'cg', label: 'Contrôle de Gestion', shortLabel: 'CG', dateField: 'visa_controle_gestion_date', color: 'violet' },
   { key: 'sc', label: 'Supply Chain', shortLabel: 'SC', dateField: 'visa_supply_chain_date', color: 'sky' },
-  { key: 'gb', label: 'Gestion du Besoin', shortLabel: 'GB', dateField: 'visa_gestion_besoin_date', color: 'emerald' },
   { key: 'ind', label: 'Industriel', shortLabel: 'Ind', dateField: 'visa_industriel_date', color: 'amber' },
   { key: 'com', label: 'Commerce', shortLabel: 'Com', dateField: 'visa_commerce_date', color: 'rose' },
   { key: 'sap', label: 'Création SAP', shortLabel: 'SAP', dateField: 'date_creation_sap', color: 'indigo' },
 ];
 
-// 6 transitions: création→cg, cg→sc, sc→gb, gb→ind, ind→com, com→sap
+// 5 transitions: création→cg, cg→sc, sc→ind, ind→com, com→sap
 export const TRANSITIONS = STEPS.slice(0, -1).map((from, i) => ({
   key: `${from.key}_to_${STEPS[i + 1].key}`,
   from,

@@ -26,6 +26,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "cr04e_divisionprojets": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_divisionprojetid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_divisionusines": {
     "tableId": "",
     "version": "",

@@ -6,30 +6,18 @@ import TextField from './fields/TextField';
 import SelectField from './fields/SelectField';
 import MultiSelectField from './fields/MultiSelectField';
 import LibelleParPaysTable from './fields/LibelleParPaysTable';
+import EmballagesTable from './fields/EmballagesTable';
 import {
-  STATUTS_LANCEMENT,
-  FABRICATION_NEGOCE,
   ORIGINES_FABRICATION,
   CANAUX_DISTRIBUTION,
   SECTEURS_ACTIVITE,
   MARQUES,
   NOMENCLATURES_DOUANIERES,
-  MENTIONS_PRODUIT,
-  UNITES_DUREE_VIE,
-  SPECIFICITES_PRODUIT,
-  SITES_STOCKAGE,
 } from '@/lib/ficheSchema';
 
 export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
-
-  // Construire les EANs liés depuis les blocs UVC + EANs Supply Chain
-  const eanList = [
-    { emballage: 'Colis', code: Array.isArray(fiche.ean_carton) ? fiche.ean_carton.join(', ') : fiche.ean_carton },
-    { emballage: 'Couche', code: Array.isArray(fiche.ean_couche) ? fiche.ean_couche.join(', ') : fiche.ean_couche },
-    { emballage: 'Palette', code: Array.isArray(fiche.ean_palette) ? fiche.ean_palette.join(', ') : fiche.ean_palette },
-  ];
 
   return (
     <SectionShell
@@ -49,14 +37,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
       onRefus={onRefus}
       visaLabel="Visa Commerce"
     >
-      <FieldGrid title="Statut & libellés" cols={2}>
-        <SelectField
-          label="Statut de lancement"
-          value={fiche.statut_lancement}
-          onChange={set('statut_lancement')}
-          disabled={disabled}
-          options={STATUTS_LANCEMENT}
-        />
+      <FieldGrid title="Libellés" cols={2}>
         <TextField
           label="Libellé long 40 caractères"
           value={fiche.libelle_long_40}
@@ -66,17 +47,10 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           placeholder="Libellé français"
         />
         <TextField
-          label="Libellé caisse"
+          label="Libellé article caisse"
           value={fiche.libelle_caisse}
           onChange={set('libelle_caisse')}
           disabled={disabled}
-        />
-        <TextField
-          label="Libellé client"
-          value={fiche.libelle_client}
-          onChange={set('libelle_client')}
-          disabled={disabled}
-          colSpan={2}
         />
       </FieldGrid>
 
@@ -87,13 +61,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
       />
 
       <FieldGrid title="Origine & distribution" cols={2}>
-        <SelectField
-          label="Fabrication ou négoce"
-          value={fiche.fabrication_negoce}
-          onChange={set('fabrication_negoce')}
-          disabled={disabled}
-          options={FABRICATION_NEGOCE}
-        />
         <SelectField
           label="Origine de fabrication"
           value={fiche.origine_fabrication}
@@ -123,44 +90,11 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           options={MARQUES}
           fromSAP
         />
-        <SelectField
-          label="Mention produit"
-          value={fiche.mention_produit}
-          onChange={set('mention_produit')}
-          disabled={disabled}
-          options={MENTIONS_PRODUIT}
-        />
-        <SelectField
-          label="Spécificité produits"
-          value={fiche.specificite_produit}
-          onChange={set('specificite_produit')}
-          disabled={disabled}
-          options={SPECIFICITES_PRODUIT}
-        />
         <TextField
           label="Hiérarchie produit"
           value={fiche.hierarchie_produit}
           onChange={set('hierarchie_produit')}
           disabled={disabled}
-        />
-      </FieldGrid>
-
-      <FieldGrid title="Durée de vie & douanes" cols={2}>
-        <TextField
-          label="Durée de vie"
-          type="number"
-          value={fiche.duree_vie}
-          onChange={set('duree_vie')}
-          disabled={disabled}
-          crossRef="vu en Industriel"
-        />
-        <SelectField
-          label="Unité durée de vie"
-          value={fiche.unite_duree_vie}
-          onChange={set('unite_duree_vie')}
-          disabled={disabled}
-          options={UNITES_DUREE_VIE}
-          crossRef="vu en Industriel"
         />
         <SelectField
           label="Nomenclature douanière"
@@ -172,43 +106,19 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
         />
       </FieldGrid>
 
-      <FieldGrid title="Stockage" cols={1}>
-        <MultiSelectField
-          label="Sites de stockage"
-          required
-          value={fiche.sites_stockage}
-          onChange={set('sites_stockage')}
-          disabled={disabled}
-          options={SITES_STOCKAGE}
-          fromSAP
-        />
-      </FieldGrid>
-
-      <div className="space-y-2">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-1">
-          GTIN = EAN (1 ligne par emballage)
-        </h3>
+      <div className="space-y-1">
         <p className="text-xs text-slate-500">
-          Lié aux blocs d'emballages côté <span className="font-semibold">Industriel</span> et aux EAN côté <span className="font-semibold">Supply Chain</span>.
+          Saisie des GTIN — 1 code par emballage. Les dimensions sont renseignées côté{' '}
+          <span className="font-semibold">Industriel</span> (lecture seule ici).
         </p>
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 w-32">Emballage</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Code GTIN / EAN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {eanList.map((row) => (
-                <tr key={row.emballage} className="border-t border-slate-100">
-                  <td className="px-3 py-1.5 text-xs font-medium text-slate-700">{row.emballage}</td>
-                  <td className="px-3 py-1.5 text-xs font-mono text-slate-900">{row.code || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EmballagesTable
+          label="Saisie des GTIN (par emballage)"
+          fiche={fiche}
+          onUpdate={onUpdate}
+          isEditable={() => false}
+          showGtin
+          gtinEditable={isEditable}
+        />
       </div>
     </SectionShell>
   );

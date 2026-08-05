@@ -2,15 +2,12 @@ import React from 'react';
 import { Truck } from 'lucide-react';
 import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
-import TextField from './fields/TextField';
 import SelectField from './fields/SelectField';
-import EANField from './fields/EANField';
 import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
   GROUPES_STATISTIQUE,
-  GESTION_PAR_LOTS,
 } from '@/lib/ficheSchema';
 
 export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
@@ -35,78 +32,17 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
       onRefus={onRefus}
       visaLabel="Visa Supply Chain"
     >
-      <FieldGrid title="Identification logistique" cols={4}>
-        <TextField
-          label="VL"
-          value={fiche.vl}
-          onChange={set('vl')}
+      <FieldGrid title="Groupements OC2" cols={2}>
+        <SelectField
+          label="OC2 — Groupe statistique article"
+          value={fiche.groupe_statistique_article}
+          onChange={set('groupe_statistique_article')}
           disabled={disabled}
-          maxLength={2}
-          placeholder="2 digits"
-        />
-        <TextField
-          label="Article prix"
-          value={fiche.article_prix}
-          onChange={set('article_prix')}
-          disabled={disabled}
-          placeholder="Code article + 0..."
-        />
-        <TextField
-          label="Groupement d'articles"
-          value={fiche.groupement_articles}
-          onChange={set('groupement_articles')}
-          disabled={disabled}
-          placeholder="Toujours 1"
-        />
-        <TextField
-          label="DLC/DLUO critique"
-          type="number"
-          value={fiche.dluc_dluo_critique}
-          onChange={set('dluc_dluo_critique')}
-          disabled={disabled}
-          placeholder="Durée min. restante (j)"
+          options={GROUPES_STATISTIQUE}
+          fromSAP
         />
         <SelectField
-          label="Gestion par lots"
-          value={fiche.gestion_par_lots}
-          onChange={set('gestion_par_lots')}
-          disabled={disabled}
-          options={GESTION_PAR_LOTS}
-        />
-      </FieldGrid>
-
-      <FieldGrid title="Compteur GTIN" cols={3}>
-        <EANField
-          label="EAN carton"
-          value={fiche.ean_carton}
-          onChange={set('ean_carton')}
-          disabled={disabled}
-        />
-        <EANField
-          label="EAN couche"
-          value={fiche.ean_couche}
-          onChange={set('ean_couche')}
-          disabled={disabled}
-        />
-        <EANField
-          label="EAN palette"
-          value={fiche.ean_palette}
-          onChange={set('ean_palette')}
-          disabled={disabled}
-        />
-        <TextField
-          label="EAN manuel"
-          value={fiche.ean_manuel}
-          onChange={set('ean_manuel')}
-          disabled={disabled}
-          maxLength={14}
-          placeholder="Saisie manuelle (14 chiffres)"
-        />
-      </FieldGrid>
-
-      <FieldGrid title="Groupements SAP" cols={2}>
-        <SelectField
-          label="Groupe article"
+          label="OC2 — Groupe d'article"
           value={fiche.groupe_article}
           onChange={set('groupe_article')}
           disabled={disabled}
@@ -114,7 +50,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           fromSAP
         />
         <SelectField
-          label="Groupe de ristourne"
+          label="OC2 — Groupe de ristournes"
           value={fiche.groupe_ristourne}
           onChange={set('groupe_ristourne')}
           disabled={disabled}
@@ -122,19 +58,11 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           fromSAP
         />
         <SelectField
-          label="Groupe d'imputation"
+          label="OC2 — Groupe imputation article"
           value={fiche.groupe_imputation}
           onChange={set('groupe_imputation')}
           disabled={disabled}
           options={GROUPES_IMPUTATION}
-          fromSAP
-        />
-        <SelectField
-          label="Groupe statistique article"
-          value={fiche.groupe_statistique_article}
-          onChange={set('groupe_statistique_article')}
-          disabled={disabled}
-          options={GROUPES_STATISTIQUE}
           fromSAP
         />
       </FieldGrid>

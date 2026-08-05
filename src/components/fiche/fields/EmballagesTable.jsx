@@ -27,16 +27,24 @@ const parseValue = (raw, type) => {
   return type === 'int' ? parseInt(raw, 10) : Number(raw);
 };
 
-// Tableau unique : 1 ligne par type d'emballage, 7 colonnes (dimensions/poids/volume)
+// Tableau unique : 1 ligne par type d'emballage, 7 colonnes (dimensions/poids/volume),
+// + colonne GTIN/EAN optionnelle (saisie Commerce, stockée dans `block.gtin`).
 export default function EmballagesTable({
   label = 'Emballages (unité / volume / poids / dimensions)',
   fiche,
   onUpdate,
-  isEditable, // (fieldName) => bool
+  isEditable,        // (fieldName) => bool — éditabilité des cellules dimensions
+  showGtin = false,  // affiche la colonne GTIN / EAN
+  gtinEditable = false, // éditabilité des cellules GTIN
 }) {
   const setCell = (rowKey, sub, type, raw) => {
     const block = fiche[rowKey] || {};
     onUpdate?.({ [rowKey]: { ...block, [sub]: parseValue(raw, type) } });
+  };
+
+  const setGtin = (rowKey, raw) => {
+    const block = fiche[rowKey] || {};
+    onUpdate?.({ [rowKey]: { ...block, gtin: raw === '' ? null : raw } });
   };
 
   return (
@@ -55,6 +63,11 @@ export default function EmballagesTable({
                   {c.suffix && <span className="text-[10px] text-slate-500 font-normal ml-1">({c.suffix})</span>}
                 </th>
               ))}
+              {showGtin && (
+                <th className="px-2 py-2 text-center text-[11px] font-semibold text-slate-700 min-w-[150px]">
+                  GTIN / EAN
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -79,6 +92,20 @@ export default function EmballagesTable({
                       />
                     </td>
                   ))}
+                  {showGtin && (
+                    <td className="px-1.5 py-1.5">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={14}
+                        placeholder="EAN"
+                        value={block.gtin ?? ''}
+                        onChange={(e) => setGtin(row.key, e.target.value)}
+                        disabled={!gtinEditable}
+                        className={`h-8 text-xs font-mono ${!gtinEditable ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                      />
+                    </td>
+                  )}
                 </tr>
               );
             })}

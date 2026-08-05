@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle, FileCheck2, Truck, Package, Factory, ShoppingCart, FileText } from 'lucide-react';
+import { CheckCircle2, AlertCircle, FileCheck2, Truck, Factory, ShoppingCart, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -54,7 +54,6 @@ export default function FLSynthesisSection({ fiche }) {
   const sapDone = fiche.statut_sap === 'Création SAP effectuée';
   const allVisaDone =
     fiche.visa_supply_chain &&
-    fiche.visa_gestion_besoin &&
     fiche.visa_industriel &&
     fiche.visa_commerce;
 
@@ -116,21 +115,10 @@ export default function FLSynthesisSection({ fiche }) {
         </SubSection>
 
         <SubSection title="Supply Chain" icon={Truck} visa={fiche.visa_supply_chain}>
-          <Field label="VL" value={fiche.vl} />
-          <Field label="Article prix" value={fiche.article_prix} />
-          <Field label="Sites de stockage" value={Array.isArray(fiche.sites_stockage) ? fiche.sites_stockage.join(' / ') : fiche.sites_stockage} />
-          <Field label="DLC/DLUO critique" value={fiche.dluc_dluo_critique && `${fiche.dluc_dluo_critique} j`} />
-          <Field label="EAN carton" value={Array.isArray(fiche.ean_carton) ? fiche.ean_carton.join(', ') : fiche.ean_carton} />
-          <Field label="EAN palette" value={Array.isArray(fiche.ean_palette) ? fiche.ean_palette.join(', ') : fiche.ean_palette} />
-        </SubSection>
-
-        <SubSection title="Gestion du besoin" icon={Package} visa={fiche.visa_gestion_besoin}>
-          <Field label="Clé calcul lot usine" value={fiche.cle_calcul_lot_usine} />
-          <Field label="Clé calcul lot stockiste" value={fiche.cle_calcul_lot_stockiste} />
-          <Field label="Profil couverture usine" value={fiche.profil_couverture_usine} />
-          <Field label="Délai sécurité usine" value={fiche.delai_securite_usine && `${fiche.delai_securite_usine} j`} />
-          <Field label="Type appro usine" value={fiche.type_approvisionnement_usine} />
-          <Field label="Délai prévisionnel livraison" value={fiche.delai_previsionnel_livraison} />
+          <Field label="OC2 — Groupe statistique article" value={fiche.groupe_statistique_article} />
+          <Field label="OC2 — Groupe d'article" value={fiche.groupe_article} />
+          <Field label="OC2 — Groupe de ristournes" value={fiche.groupe_ristourne} />
+          <Field label="OC2 — Groupe imputation article" value={fiche.groupe_imputation} />
         </SubSection>
 
         <SubSection title="Industriel" icon={Factory} visa={fiche.visa_industriel}>
@@ -143,14 +131,15 @@ export default function FLSynthesisSection({ fiche }) {
         </SubSection>
 
         <SubSection title="Commerce" icon={ShoppingCart} visa={fiche.visa_commerce}>
-          <Field label="Statut lancement" value={fiche.statut_lancement} />
           <Field label="Libellé long 40" value={fiche.libelle_long_40} />
-          <Field label="Fabrication / négoce" value={fiche.fabrication_negoce} />
+          <Field label="Libellé article caisse" value={fiche.libelle_caisse} />
           <Field label="Marque" value={fiche.marque} />
           <Field label="Secteur" value={fiche.secteur_activite} />
+          <Field label="Hiérarchie produit" value={fiche.hierarchie_produit} />
+          <Field label="Origine fabrication" value={fiche.origine_fabrication} />
           <Field label="Canaux" value={Array.isArray(fiche.canaux_distribution) ? fiche.canaux_distribution.join(', ') : fiche.canaux_distribution} />
           <Field label="Nomenclature douanière" value={fiche.nomenclature_douaniere} />
-          <Field label="Mention produit" value={fiche.mention_produit} />
+          <Field label="GTIN colis" value={fiche.colis_block?.gtin} />
         </SubSection>
       </div>
     </section>

@@ -11,6 +11,13 @@ import {
   needsSurgeleWarningDE,
   computeSecteurFromReseau,
   normalizeAxeStrategique,
+  computeProfilFabricRepetDE,
+  computeGroupeAutorisationDE,
+  computeGroupeFraisGenerauxDE,
+  familleGroupeArticle,
+  hierarchiePrefix,
+  centresProfitAutorises,
+  classesValoAutorisees,
 } from './deRules';
 
 describe('DE_DIVISION_CODES', () => {
@@ -138,5 +145,97 @@ describe('normalizeAxeStrategique', () => {
     expect(normalizeAxeStrategique('')).toBe('');
     expect(normalizeAxeStrategique(undefined)).toBe(undefined);
     expect(normalizeAxeStrategique(null)).toBe(null);
+  });
+});
+
+describe('computeProfilFabricRepetDE', () => {
+  it('mappe la division vers le profil de fabrication répétitive', () => {
+    expect(computeProfilFabricRepetDE('2847')).toBe('Z006'); // Agen
+    expect(computeProfilFabricRepetDE('2823')).toBe('Z006'); // Agen FF STEF
+    expect(computeProfilFabricRepetDE('2886')).toBe('Z008'); // Bonloc
+    expect(computeProfilFabricRepetDE('2866')).toBe('Z010'); // Rivesaltes
+  });
+  it('vide pour Aire, négoce ou inconnu', () => {
+    expect(computeProfilFabricRepetDE('2859')).toBe(''); // Aire
+    expect(computeProfilFabricRepetDE('2820')).toBe(''); // négoce
+    expect(computeProfilFabricRepetDE('')).toBe('');
+  });
+});
+
+describe('computeGroupeAutorisationDE', () => {
+  it('Aire (2859) → NEGO, sinon PFIN', () => {
+    expect(computeGroupeAutorisationDE('2859')).toBe('NEGO');
+    expect(computeGroupeAutorisationDE('2847')).toBe('PFIN');
+    expect(computeGroupeAutorisationDE('2886')).toBe('PFIN');
+    expect(computeGroupeAutorisationDE('')).toBe('PFIN');
+  });
+});
+
+describe('computeGroupeFraisGenerauxDE', () => {
+  it('Aire (2859) → NEGO, sinon FG', () => {
+    expect(computeGroupeFraisGenerauxDE('2859')).toBe('NEGO');
+    expect(computeGroupeFraisGenerauxDE('2847')).toBe('FG');
+    expect(computeGroupeFraisGenerauxDE('2866')).toBe('FG');
+    expect(computeGroupeFraisGenerauxDE('')).toBe('FG');
+  });
+});
+
+describe('familleGroupeArticle', () => {
+  it('extrait la famille PF-xx du code complet', () => {
+    expect(familleGroupeArticle('PF-AS-MBSA- PFinis Agen Surgel')).toBe('PF-AS');
+    expect(familleGroupeArticle('PF-AF-...')).toBe('PF-AF');
+    expect(familleGroupeArticle('PF-B')).toBe('PF-B');
+    expect(familleGroupeArticle('PF-F')).toBe('PF-F');
+    expect(familleGroupeArticle('PF-E - Négoce')).toBe('PF-E');
+    expect(familleGroupeArticle('pf-h')).toBe('PF-H');
+  });
+  it('vide si valeur non PF ou absente', () => {
+    expect(familleGroupeArticle('AY - MB INTERMARCHE')).toBe('');
+    expect(familleGroupeArticle('')).toBe('');
+    expect(familleGroupeArticle(null)).toBe('');
+  });
+});
+
+describe('hierarchiePrefix', () => {
+  it('extrait le préfixe à 2 chiffres', () => {
+    expect(hierarchiePrefix('22\tDE\tDE')).toBe('22');
+    expect(hierarchiePrefix('27 DE DE')).toBe('27');
+    expect(hierarchiePrefix('21')).toBe('21');
+    expect(hierarchiePrefix('')).toBe('');
+  });
+});
+
+describe('centresProfitAutorises', () => {
+  it('valeur unique selon F + J', () => {
+    expect(centresProfitAutorises('PF-E', '22')).toEqual(['22HA']);
+    expect(centresProfitAutorises('PF-E', '27')).toEqual(['27HA']);
+    expect(centresProfitAutorises('PF-H', '21')).toEqual(['21PF']);
+    expect(centresProfitAutorises('PF-H', '27')).toEqual(['27TDL']);
+    expect(centresProfitAutorises('PF-B', '22')).toEqual(['22PF']);
+  });
+  it('plusieurs choix pour Agen (PF-AF/PF-AS + J27) et PF-F', () => {
+    expect(centresProfitAutorises('PF-AF', '27')).toEqual(['27CA', '27PL', '27PS']);
+    expect(centresProfitAutorises('PF-AS', '27')).toEqual(['27CA', '27PL', '27PS']);
+    expect(centresProfitAutorises('PF-F', '22')).toEqual(['22PF', '22HA']);
+  });
+  it('aucune contrainte si combinaison inconnue', () => {
+    expect(centresProfitAutorises('PF-B', '27')).toEqual([]);
+    expect(centresProfitAutorises('', '22')).toEqual([]);
+  });
+});
+
+describe('classesValoAutorisees', () => {
+  it('applique les règles F + J', () => {
+    expect(classesValoAutorisees('PF-E', '22')).toEqual(['2030']);
+    expect(classesValoAutorisees('PF-E', '27')).toEqual(['2038']);
+    expect(classesValoAutorisees('PF-H', '21')).toEqual(['2038']);
+    expect(classesValoAutorisees('PF-H', '27')).toEqual(['2038']);
+    expect(classesValoAutorisees('PF-B', '22')).toEqual(['7012']);
+    expect(classesValoAutorisees('PF-AF', '27')).toEqual(['7012']);
+    expect(classesValoAutorisees('PF-AS', '27')).toEqual(['7012']);
+  });
+  it('aucune contrainte pour PF-F ou inconnu', () => {
+    expect(classesValoAutorisees('PF-F', '22')).toEqual([]);
+    expect(classesValoAutorisees('', '22')).toEqual([]);
   });
 });

@@ -57,6 +57,26 @@ export const computeCentreProfitDE = (code) => {
   return '';
 };
 
+// Profil de fabrication répétitive (SAP) selon la division (usine) :
+// Agen -> Z006, Bonloc -> Z008, Rivesaltes -> Z010. 2823 = Agen Faux Frais STEF
+// (traité comme Agen). Aire, négoce et inconnu -> '' (pas de profil).
+export const computeProfilFabricRepetDE = (code) => {
+  const c = String(code ?? '').trim();
+  if (c === '2847' || c === '2823') return 'Z006';
+  if (c === '2886') return 'Z008';
+  if (c === '2866') return 'Z010';
+  return '';
+};
+
+// Groupe d'autorisation (MARA-BEGRU) selon la division : Aire (2859) → NEGO, sinon PFIN.
+export const computeGroupeAutorisationDE = (code) =>
+  String(code ?? '').trim() === '2859' ? 'NEGO' : 'PFIN';
+
+// Groupe de frais généraux selon la division : Aire (2859) → NEGO, sinon FG.
+// (Côté DS, le groupe de frais généraux est toujours « NEGO » — géré dans CreerDE.)
+export const computeGroupeFraisGenerauxDE = (code) =>
+  String(code ?? '').trim() === '2859' ? 'NEGO' : 'FG';
+
 // Groupe article (division) selon l'usine :
 // Agen -> PF-AS (défaut MODIFIABLE + avertissement surgelé), Bonloc -> PF-B,
 // Rivesaltes -> PF-F (verrouillés). Aire (et inconnu) -> '' : choix libre.
@@ -108,4 +128,50 @@ export const normalizeAxeStrategique = (value) => {
   if (!s) return value;
   const match = AXES_STRATEGIQUES_DE.find((a) => a.toLowerCase() === s.toLowerCase());
   return match || value;
+};
+
+// ---- Centre de profit & classe de valorisation pilotés par F et J ----
+// F = famille du « Groupe article (division) » (PF-E, PF-H, PF-B, PF-AF, PF-AS, PF-F).
+// J = préfixe de la hiérarchie produit (21, 22, 27).
+// Ces règles restreignent les listes déroulantes aux valeurs autorisées :
+// une seule valeur → figée ; plusieurs → seuls ces choix sont proposés ;
+// [] → aucune contrainte (liste complète).
+
+// « PF-AS-MBSA- PFinis Agen Surgel » → « PF-AS » ; « PF-B » → « PF-B ». '' si non PF.
+export const familleGroupeArticle = (value) => {
+  const parts = String(value ?? '').toUpperCase().split('-').map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2 || parts[0] !== 'PF') return '';
+  return `PF-${parts[1]}`;
+};
+
+// « 22\tDE\tDE » → « 22 ». Renvoie '' si aucun préfixe à 2 chiffres.
+export const hierarchiePrefix = (hierarchie) => {
+  const m = String(hierarchie ?? '').match(/\d{2}/);
+  return m ? m[0] : '';
+};
+
+// Centres de profit autorisés selon F et J.
+//  PF-E : J22→22HA · J27→27HA        | PF-H : J21→21PF · J27→27TDL
+//  PF-B : J22→22PF                   | PF-AF/PF-AS : J27→27CA/27PL/27PS (selon gamme)
+//  PF-F : J22→22PF ou 22HA (étape 5)
+const CENTRES_PROFIT_TABLE = {
+  'PF-E|22': ['22HA'],
+  'PF-E|27': ['27HA'],
+  'PF-H|21': ['21PF'],
+  'PF-H|27': ['27TDL'],
+  'PF-B|22': ['22PF'],
+  'PF-AF|27': ['27CA', '27PL', '27PS'],
+  'PF-AS|27': ['27CA', '27PL', '27PS'],
+  'PF-F|22': ['22PF', '22HA'],
+};
+export const centresProfitAutorises = (F, J) => CENTRES_PROFIT_TABLE[`${F}|${J}`] || [];
+
+// Classes de valorisation autorisées selon F et J.
+//  PF-E & J22→2030 · PF-E & J27→2038 | PF-H (J21 ou J27)→2038
+//  PF-B / PF-AF / PF-AS → 7012        | PF-F : non spécifié → aucune contrainte
+export const classesValoAutorisees = (F, J) => {
+  if (F === 'PF-E') return J === '22' ? ['2030'] : J === '27' ? ['2038'] : [];
+  if (F === 'PF-H') return (J === '21' || J === '27') ? ['2038'] : [];
+  if (F === 'PF-B' || F === 'PF-AF' || F === 'PF-AS') return ['7012'];
+  return [];
 };

@@ -1,4 +1,4 @@
-import { Cr04e_projetsService } from '@/generated';
+import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
 import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
@@ -86,6 +86,23 @@ export async function createProjetFromDE(formData, ctx) {
   const payload = buildProjetPayload(formData, ctx);
   const result = await Cr04e_projetsService.create(payload);
   return unwrap(result, 'Création');
+}
+
+// Crée une ligne cr04e_divisionprojet rattachée au projet via la relation lookup
+// cr04e_Projet. `division` = code Division (Usine) ; `type` = rôle de la ligne
+// (ex. « PROD »). À écrire APRÈS la création du projet (le lookup a besoin du GUID).
+// Les champs vides sont omis. Lève en cas d'échec (l'appelant décide si bloquant).
+export async function createDivisionProjet({ projetId, division, type } = {}) {
+  if (!projetId) return null;
+  const payload = {
+    'cr04e_Projet@odata.bind': `/cr04e_projets(${projetId})`,
+  };
+  const div = trimOrUndef(division);
+  const t = trimOrUndef(type);
+  if (div !== undefined) payload.cr04e_division = div;
+  if (t !== undefined) payload.cr04e_type = t;
+  const result = await Cr04e_divisionprojetsService.create(payload);
+  return unwrap(result, 'Création division-projet');
 }
 
 // Mappe une ligne cr04e_projet (Dataverse) vers la forme formData attendue par le

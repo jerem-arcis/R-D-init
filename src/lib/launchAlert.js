@@ -4,7 +4,6 @@
 export const VISA_KEYS = [
   'visa_controle_gestion',
   'visa_supply_chain',
-  'visa_gestion_besoin',
   'visa_industriel',
   'visa_commerce',
 ];
@@ -12,7 +11,6 @@ export const VISA_KEYS = [
 export const STEP_LABELS = {
   visa_controle_gestion: 'Contrôle de Gestion',
   visa_supply_chain: 'Supply Chain',
-  visa_gestion_besoin: 'Gestion du besoin',
   visa_industriel: 'Industriel',
   visa_commerce: 'Commerce',
   statut_sap: 'Création SAP',
@@ -99,7 +97,7 @@ export const BUCKET_CONFIG = {
 };
 
 export const bucketFor = ({ joursAvant, visasValides }) => {
-  if (visasValides >= 7) return BUCKET_CONFIG.lancee;
+  if (visasValides >= 6) return BUCKET_CONFIG.lancee;
   if (joursAvant == null) return BUCKET_CONFIG.venir;
   if (joursAvant < 0) return BUCKET_CONFIG.retard;
   if (joursAvant <= 3) return BUCKET_CONFIG.critique;

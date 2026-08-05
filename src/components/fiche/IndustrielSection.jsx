@@ -86,14 +86,6 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           options={ECLATEMENTS_GROUPE_MARCHANDISE}
           fromSAP
         />
-        <TextField
-          label="Groupe de marchandises"
-          value={fiche.groupe_marchandises}
-          onChange={set('groupe_marchandises')}
-          disabled={disabled}
-          fromSAP
-          placeholder="À récupérer de SAP"
-        />
         <SelectField
           label="Type d'usine"
           value={fiche.type_usine}
@@ -133,21 +125,6 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           onChange={set('unite_duree_vie')}
           disabled={disabled}
           options={UNITES_DUREE_VIE}
-        />
-      </FieldGrid>
-
-      <FieldGrid title="Références article" cols={2}>
-        <TextField
-          label="BIV (ancien n° article déjà vu)"
-          value={fiche.biv}
-          onChange={set('biv')}
-          disabled={disabled}
-        />
-        <TextField
-          label="Ancien numéro article"
-          value={fiche.ancien_numero_article}
-          onChange={set('ancien_numero_article')}
-          disabled={disabled}
         />
       </FieldGrid>
 

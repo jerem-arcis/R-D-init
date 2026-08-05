@@ -31,7 +31,6 @@ import {
   AlertCircle,
   Search,
   X,
-  Layers,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -103,7 +102,6 @@ export default function Accueil() {
     let count = 0;
     if (fiche.visa_controle_gestion) count++;
     if (fiche.visa_supply_chain) count++;
-    if (fiche.visa_gestion_besoin) count++;
     if (fiche.visa_industriel) count++;
     if (fiche.visa_commerce) count++;
     if (fiche.statut_sap === 'Création SAP effectuée') count++;
@@ -116,7 +114,7 @@ export default function Accueil() {
     const visasValides = getVisasValides(fiche);
 
     if (filter === 'en_attente' && visasValides !== 0) return false;
-    if (filter === 'en_cours' && !(visasValides > 0 && visasValides < 7)) return false;
+    if (filter === 'en_cours' && !(visasValides > 0 && visasValides < 6)) return false;
     if (filter === 'terminees' && visasValides !== 7) return false;
 
     if (usineFilter !== 'toutes' && usineByFicheId.get(fiche.id) !== usineFilter) return false;
@@ -151,7 +149,7 @@ export default function Accueil() {
 
   const getEtatBadge = (fiche) => {
     const visasValides = getVisasValides(fiche);
-    if (visasValides === 7) {
+    if (visasValides === 6) {
       return (
         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
           <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -181,7 +179,7 @@ export default function Accueil() {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
           <span className="text-lg font-bold text-slate-900">{validees}</span>
-          <span className="text-sm text-slate-500">/ 7</span>
+          <span className="text-sm text-slate-500">/ 6</span>
         </div>
         <span className="text-xs text-slate-500">validées</span>
       </div>
@@ -207,12 +205,6 @@ export default function Accueil() {
                 <p className="text-sm text-muted-foreground mt-0.5">Gestion des fiches de lancement produit</p>
               </div>
             </div>
-            <Link to={createPageUrl('FicheComplete')}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Layers className="w-4 h-4" />
-                Aperçu FL → SAP
-              </Button>
-            </Link>
           </div>
         </div>
       </header>
@@ -276,7 +268,7 @@ export default function Accueil() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 7).length}
+                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 6).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En cours</p>
               </div>
@@ -289,7 +281,7 @@ export default function Accueil() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) === 7).length}
+                  {fiches.filter(f => getVisasValides(f) === 6).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Terminées</p>
               </div>

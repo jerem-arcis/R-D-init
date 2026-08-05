@@ -33,7 +33,7 @@ describe("STATUTS", () => {
   });
   it("chaque statut a un libellé", () => {
     expect(STATUTS.de_attente_cc.label).toBe("En attente de code chapeau");
-    expect(STATUTS.dl_attente_validation_cdg.label).toBe("En attente de validation CDG");
+    expect(STATUTS.dl_attente_validation_cdg.label).toBe("Projet qualifié et en cours d'étude");
     expect(STATUTS.dl_validee.label).toBe("Validée");
   });
   it("getStatutMeta retombe sur de_brouillon si clé inconnue", () => {

@@ -23,7 +23,7 @@ export const STATUTS = {
   },
   dl_attente_validation_cdg: {
     key: "dl_attente_validation_cdg",
-    label: "En attente de validation CDG",
+    label: "Projet qualifié et en cours d'étude",
     tone: "indigo",
     order: 3,
   },

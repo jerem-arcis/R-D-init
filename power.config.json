@@ -55,6 +55,10 @@
         "gestiondeserreurs": {
           "entitySetName": "cr04e_gestiondeserreurses",
           "logicalName": "cr04e_gestiondeserreurs"
+        },
+        "divisionprojet": {
+          "entitySetName": "cr04e_divisionprojets",
+          "logicalName": "cr04e_divisionprojet"
         }
       },
       "environmentVariableName": ""

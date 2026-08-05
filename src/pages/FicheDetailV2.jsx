@@ -4,7 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, FileDown } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { generateFichePdf } from '@/lib/generateFichePdf';
 
 import VisaToolbar from '@/components/fiche/VisaToolbar';
 import ViewSwitch from '@/components/fiche/ViewSwitch';
@@ -36,6 +38,24 @@ const GROUPS = [
   { id: 'groupements_sap', title: 'Groupements SAP & douanes' },
   { id: 'appro_stock', title: 'Approvisionnement & stock' },
 ];
+
+// Champs retirés de la FL (réduction Commerce/Industriel/Supply Chain + suppression
+// de la section Gestion du besoin). Les GTIN se saisissent désormais dans le tableau
+// Emballages (colonne GTIN/EAN), plus dans des champs EAN dédiés.
+const REMOVED_FIELDS = new Set([
+  'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
+  'specificite_produit', 'sites_stockage', 'groupe_marchandises', 'groupement_articles',
+  'vl', 'article_prix', 'biv', 'ancien_numero_article', 'dluc_dluo_critique', 'gestion_par_lots',
+  'ean_carton', 'ean_couche', 'ean_palette', 'ean_manuel',
+  'cle_calcul_lot_usine', 'cle_calcul_lot_stockiste',
+  'profil_couverture_usine', 'profil_couverture_stockiste',
+  'delai_securite_usine', 'delai_securite_stockiste',
+  'delai_securite_couv_reelle_usine', 'delai_securite_couv_reelle_stockiste',
+  'type_approvisionnement_usine', 'type_approvisionnement_stockiste',
+  'appro_special', 'delai_previsionnel_livraison', 'temps_reception_stockiste',
+]);
+// Groupes entièrement vidés par la réduction → masqués.
+const HIDDEN_GROUPS = new Set(['statut', 'codes_barres']);
 
 // Composants définis au niveau module — sinon React démonte/remonte les inputs à chaque frappe
 const Group = ({ visible, id, title, children }) =>
@@ -69,7 +89,9 @@ export default function FicheDetailV2() {
   const ficheId = searchParams.get('id');
   const [localFiche, setLocalFiche] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: fiche, isLoading } = useQuery({
     queryKey: ['fiche', ficheId],
@@ -103,6 +125,18 @@ export default function FicheDetailV2() {
     setIsSaving(false);
   };
 
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    try {
+      await generateFichePdf(localFiche, de);
+    } catch (err) {
+      console.error('[export PDF]', err);
+      toast({ variant: 'destructive', title: 'Échec de la génération du PDF' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading || !localFiche) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -129,22 +163,22 @@ export default function FicheDetailV2() {
 
   const visaHandlers = {
     supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
-    gestion_besoin: () => handleUpdate(visaPatch('visa_gestion_besoin', 'refus_gestion_besoin')),
     industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
     commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
   };
   const refusHandlers = {
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
-    gestion_besoin: (m) => handleUpdate(refusPatch('visa_gestion_besoin', 'refus_gestion_besoin', m)),
     industriel: (m) => handleUpdate(refusPatch('visa_industriel', 'refus_industriel', m)),
     commerce: (m) => handleUpdate(refusPatch('visa_commerce', 'refus_commerce', m)),
   };
 
   const isLocked = localFiche.statut_sap === 'Création SAP effectuée';
 
-  // Écriture simultanée : toutes les sections/champs sont visibles en permanence.
-  const showGroup = () => true;
-  const showField = () => true;
+  // Écriture simultanée : les champs restants sont visibles en permanence.
+  // Les champs retirés de la FL (REMOVED_FIELDS) et les groupes vidés (HIDDEN_GROUPS)
+  // sont masqués.
+  const showGroup = (id) => !HIDDEN_GROUPS.has(id);
+  const showField = (name) => !REMOVED_FIELDS.has(name);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -175,6 +209,16 @@ export default function FicheDetailV2() {
                   Enregistrement…
                 </div>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                {isExporting ? 'Génération…' : 'Exporter PDF'}
+              </Button>
               <ViewSwitch active="complete" ficheId={ficheId} />
             </div>
           </div>
@@ -251,6 +295,8 @@ export default function FicheDetailV2() {
               fiche={localFiche}
               onUpdate={handleUpdate}
               isEditable={(name) => isFieldEditable(name, localFiche)}
+              showGtin
+              gtinEditable={!isLocked && !localFiche.visa_commerce}
             />
           </Fld>
         </Group>
