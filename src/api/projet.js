@@ -25,6 +25,9 @@ export const PROJET_STATUT = {
   dl_attente_validation_cdg: 'dl_attente_validation_cdg',
   dl_validee: 'dl_validee',
   dl_refusee: 'dl_refusee',
+  // Phase FL : article créé dans SAP (porte l'ancien statut_sap « Création SAP
+  // effectuée » de la FL, désormais unifiée avec le projet).
+  fl_sap_cree: 'fl_sap_cree',
   ds_brouillon: 'ds_brouillon',
   ds_attente_cc: 'ds_attente_cc',
   ds_validee: 'ds_validee',
