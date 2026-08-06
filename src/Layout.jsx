@@ -1,8 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { createPageUrl } from '@/utils';
-import { listFiches } from '@/api/fiche';
 import {
   FileText,
   ClipboardList,
@@ -13,10 +11,9 @@ import {
   Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getStaleWaitingTransitions } from '@/lib/cycleStats';
 
 const NAV_ITEMS = [
-  { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"], badgeKey: "delays" },
+  { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"] },
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
   { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail"] },
   { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"] },
@@ -24,18 +21,6 @@ const NAV_ITEMS = [
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const { data: fiches = [] } = useQuery({
-    queryKey: ['fiches'],
-    queryFn: listFiches,
-  });
-
-  const delaysCount = useMemo(
-    () => getStaleWaitingTransitions(fiches).length,
-    [fiches],
-  );
-
-  const badges = { delays: delaysCount };
 
   const isActive = (item) => item.match.includes(currentPageName);
 
@@ -94,7 +79,6 @@ export default function Layout({ children, currentPageName }) {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isActive(item);
-            const badge = item.badgeKey ? badges[item.badgeKey] : 0;
             return (
               <Link
                 key={item.label}
@@ -111,17 +95,7 @@ export default function Layout({ children, currentPageName }) {
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="truncate">{item.label}</span>
-                {badge > 0 && (
-                  <span
-                    className={`ml-auto px-1.5 min-w-[20px] h-[20px] rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm ${
-                      active ? 'bg-rose-600 text-white' : 'bg-rose-500 text-white'
-                    }`}
-                    title={`${badge} fiche${badge > 1 ? 's' : ''} en retard (> 3j)`}
-                  >
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-                {active && badge === 0 && <ChevronRight className="w-3 h-3 ml-auto opacity-80" />}
+                {active && <ChevronRight className="w-3 h-3 ml-auto opacity-80" />}
               </Link>
             );
           })}
