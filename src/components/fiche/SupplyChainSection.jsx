@@ -32,9 +32,9 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
       onRefus={onRefus}
       visaLabel="Visa Supply Chain"
     >
-      <FieldGrid title="Groupements OC2" cols={2}>
+      <FieldGrid title="Groupements" cols={2}>
         <SelectField
-          label="OC2 — Groupe statistique article"
+          label="Groupe statistique article"
           value={fiche.groupe_statistique_article}
           onChange={set('groupe_statistique_article')}
           disabled={disabled}
@@ -42,7 +42,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           fromSAP
         />
         <SelectField
-          label="OC2 — Groupe d'article"
+          label="Groupe d'article"
           value={fiche.groupe_article}
           onChange={set('groupe_article')}
           disabled={disabled}
@@ -50,7 +50,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           fromSAP
         />
         <SelectField
-          label="OC2 — Groupe de ristournes"
+          label="Groupe de ristournes"
           value={fiche.groupe_ristourne}
           onChange={set('groupe_ristourne')}
           disabled={disabled}
@@ -58,7 +58,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           fromSAP
         />
         <SelectField
-          label="OC2 — Groupe imputation article"
+          label="Groupe imputation article"
           value={fiche.groupe_imputation}
           onChange={set('groupe_imputation')}
           disabled={disabled}

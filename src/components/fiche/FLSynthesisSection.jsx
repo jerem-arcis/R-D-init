@@ -110,10 +110,10 @@ export default function FLSynthesisSection({ fiche }) {
         </SubSection>
 
         <SubSection title="Supply Chain" icon={Truck} visa={fiche.visa_supply_chain}>
-          <Field label="OC2 — Groupe statistique article" value={fiche.groupe_statistique_article} />
-          <Field label="OC2 — Groupe d'article" value={fiche.groupe_article} />
-          <Field label="OC2 — Groupe de ristournes" value={fiche.groupe_ristourne} />
-          <Field label="OC2 — Groupe imputation article" value={fiche.groupe_imputation} />
+          <Field label="Groupe statistique article" value={fiche.groupe_statistique_article} />
+          <Field label="Groupe d'article" value={fiche.groupe_article} />
+          <Field label="Groupe de ristournes" value={fiche.groupe_ristourne} />
+          <Field label="Groupe imputation article" value={fiche.groupe_imputation} />
         </SubSection>
 
         <SubSection title="Industriel" icon={Factory} visa={fiche.visa_industriel}>
