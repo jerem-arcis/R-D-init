@@ -274,7 +274,7 @@ export default function FicheDetailV2() {
             <Fld visible={showField('masque_etiquette_colis')}><SelectField label="Masque de l'étiquette colis" {...fld('masque_etiquette_colis')} options={MASQUES_ETIQUETTE_COLIS} /></Fld>
             <Fld visible={showField('format_date_etiquette_colis')}><TextField label="Format date étiquette" {...fld('format_date_etiquette_colis')} /></Fld>
             <Fld visible={showField('format_dluo_etiquette_colis')}><TextField label="Format DLUO étiquette" {...fld('format_dluo_etiquette_colis')} /></Fld>
-            <Fld visible={showField('type_magasin')}><TextField label="Type de magasin" {...fld('type_magasin')} /></Fld>
+            <Fld visible={showField('type_magasin')}><TextField label="Type de magasin EM" {...fld('type_magasin')} /></Fld>
           </div>
           <Fld visible={showField('libelle_par_pays')}>
             <LibelleParPaysTable

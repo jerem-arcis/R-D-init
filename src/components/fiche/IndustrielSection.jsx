@@ -71,7 +71,7 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           placeholder="ex: MM AAAA"
         />
         <TextField
-          label="Type de magasin"
+          label="Type de magasin EM"
           value={fiche.type_magasin}
           onChange={set('type_magasin')}
           disabled={disabled}
