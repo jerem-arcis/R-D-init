@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { getFicheById, updateFiche } from '@/api/fiche';
+import { useSapOptions } from '@/lib/sapLists';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -16,7 +17,6 @@ import CommerceSection from '@/components/fiche/CommerceSection';
 import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import ViewSwitch from '@/components/fiche/ViewSwitch';
 import { isSectionLocked, isSectionEditable } from '@/lib/ficheSchema';
-import { useInheritedProjetFields } from '@/lib/useInheritedProjetFields';
 
 // Pose un visa et nettoie le refus correspondant
 const visaPatch = (visaField, refusField) => ({
@@ -47,23 +47,19 @@ export default function FicheDetail() {
 
   const { data: fiche, isLoading } = useQuery({
     queryKey: ['fiche', ficheId],
-    queryFn: () => base44.entities.FicheLancement.filter({ id: ficheId }),
+    queryFn: () => getFicheById(ficheId),
     enabled: !!ficheId,
-    select: (data) => data[0] || null,
   });
 
-  const { data: de } = useQuery({
-    queryKey: ['de-for-fiche', fiche?.demande_etude_id],
-    queryFn: () => base44.entities.DemandeEtude.get(fiche.demande_etude_id),
-    enabled: !!fiche?.demande_etude_id,
-  });
+  // Référentiels SAP : résolution des lookups (centre profit, hiérarchie) à l'écriture.
+  const sap = useSapOptions();
 
   useEffect(() => {
     if (fiche) setLocalFiche(fiche);
   }, [fiche]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.FicheLancement.update(ficheId, data),
+    mutationFn: (data) => updateFiche(ficheId, data, { sapOptions: sap }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] });
       queryClient.invalidateQueries({ queryKey: ['fiches'] });
@@ -77,14 +73,10 @@ export default function FicheDetail() {
     setIsSaving(false);
   };
 
-  // Re-remonte les champs hérités du projet Dataverse (centre de profit, hiérarchie
-  // produit, date de la demande) sur cette FL. Partagé avec la Vue complète.
-  useInheritedProjetFields(fiche, handleUpdate);
-
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      await generateFichePdf(localFiche, de);
+      await generateFichePdf(localFiche, null);
     } catch (err) {
       console.error('[export PDF]', err);
       toast({ variant: 'destructive', title: 'Échec de la génération du PDF' });
@@ -142,7 +134,7 @@ export default function FicheDetail() {
                 </h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   ID: {ficheId?.slice(0, 8)}...
-                  {de && <span className="ml-3">DE: {de.code_projet || de.id?.slice(0, 8)}</span>}
+                  {localFiche.code_etude_rd && <span className="ml-3">DE: {localFiche.code_etude_rd}</span>}
                 </p>
               </div>
             </div>
@@ -178,20 +170,20 @@ export default function FicheDetail() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <IdentificationBanner fiche={localFiche} de={de} onUpdate={handleUpdate} disabled={isLocked} />
+        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked} />
         <SupplyChainSection
           fiche={localFiche}
-          de={de}
+          de={null}
           {...sectionHandlers('supply_chain', 'visa_supply_chain', 'refus_supply_chain')}
         />
         <IndustrielSection
           fiche={localFiche}
-          de={de}
+          de={null}
           {...sectionHandlers('industriel', 'visa_industriel', 'refus_industriel')}
         />
         <CommerceSection
           fiche={localFiche}
-          de={de}
+          de={null}
           {...sectionHandlers('commerce', 'visa_commerce', 'refus_commerce')}
         />
         <FLSynthesisSection fiche={localFiche} />
