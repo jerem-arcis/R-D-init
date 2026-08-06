@@ -14,6 +14,11 @@ const PROJET_LOOKUPS = [
   ['classes_valorisation', 'classe_valorisation', 'cr04e_Classedevalorisation@odata.bind'],
   ['groupes_article', 'groupe_article', 'cr04e_Groupearticledivision@odata.bind'],
   ['familles_produit', 'famille_produit', 'cr04e_Hierarchieproduitfamille@odata.bind'],
+  // Centre de profit : lookup vers la table CEPCT. formData.centre_profit porte le
+  // CODE brut (ex. « 22PF », cf. computeCentreProfitDE) qui matche la valeur du
+  // référentiel — comme les autres lookups. Était absent : le centre n'était jamais
+  // poussé dans cr04e_Centredeprofit.
+  ['centres_profit', 'centre_profit', 'cr04e_Centredeprofit@odata.bind'],
 ];
 
 // Statuts portés par cr04e_statut_en_cours (convention parlante par phase).

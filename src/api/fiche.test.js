@@ -53,6 +53,12 @@ describe('buildFichePayload', () => {
     expect(p.cr04e_codechapeau).toBeUndefined();
   });
 
+  it('extrait le code de tête d’une valeur « CODE — LABEL » pour résoudre le lookup', () => {
+    const opts = { centres_profit: [{ id: 'cep22', value: '22PF' }] };
+    const p = buildFichePayload({ centre_profit: '22PF — PAT : Produits finis' }, { sapOptions: opts });
+    expect(p['cr04e_Centredeprofit@odata.bind']).toBe('/cr04e_centredeprofitcepcts(cep22)');
+  });
+
   it('omet le lookup hiérarchie quand le référentiel est vide (best-effort)', () => {
     const p = buildFichePayload({ hierarchie_produit: '22 DE Pât' }, { sapOptions });
     expect(p['cr04e_Hierarchieproduitfamille@odata.bind']).toBeUndefined();

@@ -91,6 +91,14 @@ export function toFicheShape(p) {
   return f;
 }
 
+// Extrait le code de tête d'une valeur « CODE — LABEL » / « CODE - LABEL » /
+// « CODE : LABEL » (séparateur entouré d'espaces). Sans séparateur, renvoie la
+// valeur telle quelle. '' -> undefined.
+function leadingCode(v) {
+  const s = (v ?? '').toString().trim();
+  return s ? s.split(/\s+[—:-]\s+/)[0].trim() : undefined;
+}
+
 // Objet FL partiel -> payload cr04e_projet (seuls les champs présents dans `patch`).
 // Les lookups sont poussés par leur code, résolus en @odata.bind via le référentiel.
 export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
@@ -106,7 +114,9 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
   }
   for (const [ff, [key, bindProp]] of Object.entries(LOOKUP_MAP)) {
     if (ff in patch) {
-      const bind = lookupBind(key, trimOrUndef(patch[ff]), sapOptions[key]);
+      // Le lookup matche sur le CODE seul (ex. « 22PF »). La valeur FL peut arriver
+      // en « CODE — LABEL » (libellé formaté) : on extrait le code de tête.
+      const bind = lookupBind(key, leadingCode(patch[ff]), sapOptions[key]);
       if (bind) payload[bindProp] = bind;
     }
   }
