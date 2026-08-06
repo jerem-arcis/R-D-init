@@ -59,6 +59,14 @@
         "divisionprojet": {
           "entitySetName": "cr04e_divisionprojets",
           "logicalName": "cr04e_divisionprojet"
+        },
+        "libell_pays": {
+          "entitySetName": "new_libellepayses",
+          "logicalName": "new_libellepays"
+        },
+        "unitofmeasure": {
+          "entitySetName": "cr04e_unitofmeasures",
+          "logicalName": "cr04e_unitofmeasure"
         }
       },
       "environmentVariableName": ""

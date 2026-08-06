@@ -98,6 +98,20 @@
           "x-ms-dataverse-type": "DateTimeType",
           "x-ms-schema-name": "cr04e_Datedelademande"
         },
+        "cr04e_dateenvoidelafiche": {
+          "type": "string",
+          "title": "Date envoi de la fiche",
+          "x-ms-dataverse-attribute": "cr04e_dateenvoidelafiche",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "cr04e_Dateenvoidelafiche"
+        },
+        "cr04e_datelimitedecreationsouhaitee": {
+          "type": "string",
+          "title": "Date limite de création souhaitée",
+          "x-ms-dataverse-attribute": "cr04e_datelimitedecreationsouhaitee",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "cr04e_Datelimitedecreationsouhaitee"
+        },
         "cr04e_demandeur": {
           "type": "string",
           "title": "Demandeur",
@@ -113,6 +127,14 @@
           "x-ms-dataverse-type": "MemoType",
           "x-ms-schema-name": "cr04e_Descriptiondubesoin",
           "maxLength": 2000
+        },
+        "cr04e_designationclientsurcolis": {
+          "type": "string",
+          "title": "Désignation client sur colis",
+          "x-ms-dataverse-attribute": "cr04e_designationclientsurcolis",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Designationclientsurcolis",
+          "maxLength": 100
         },
         "cr04e_divisionimport": {
           "type": "string",
@@ -137,6 +159,37 @@
           "x-ms-schema-name": "cr04e_DivisionUsineName",
           "x-ms-read-only": true,
           "maxLength": 850
+        },
+        "cr04e_dureedevie": {
+          "type": "string",
+          "title": "Durée de vie",
+          "x-ms-dataverse-attribute": "cr04e_dureedevie",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Dureedevie",
+          "maxLength": 100
+        },
+        "cr04e_eclatementgroupedemarchandise": {
+          "type": "string",
+          "title": "Éclatement groupe de marchandise",
+          "x-ms-dataverse-attribute": "cr04e_eclatementgroupedemarchandise",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Eclatementgroupedemarchandise",
+          "maxLength": 100
+        },
+        "cr04e_formatdateetiquettecolis": {
+          "type": "string",
+          "title": "Format date étiquette colis",
+          "x-ms-dataverse-attribute": "cr04e_formatdateetiquettecolis",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "cr04e_Formatdateetiquettecolis"
+        },
+        "cr04e_formatdluoetiquettecolis": {
+          "type": "string",
+          "title": "Format DLUO étiquette colis",
+          "x-ms-dataverse-attribute": "cr04e_formatdluoetiquettecolis",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_FormatDLUOetiquettecolis",
+          "maxLength": 100
         },
         "cr04e_groupearticledivision": {
           "type": "string",
@@ -194,12 +247,100 @@
           "x-ms-read-only": true,
           "maxLength": 850
         },
+        "cr04e_libellearticlecaisse": {
+          "type": "string",
+          "title": "Libellé article caisse",
+          "x-ms-dataverse-attribute": "cr04e_libellearticlecaisse",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Libellearticlecaisse",
+          "maxLength": 100
+        },
+        "cr04e_libellelong40caracteres": {
+          "type": "string",
+          "title": "Libellé long 40 caractères",
+          "x-ms-dataverse-attribute": "cr04e_libellelong40caracteres",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Libellelong40caracteres",
+          "maxLength": 100
+        },
+        "cr04e_libelleproduitsuretiquettecolis": {
+          "type": "string",
+          "title": "Libellé produit sur étiquette colis",
+          "x-ms-dataverse-attribute": "cr04e_libelleproduitsuretiquettecolis",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Libelleproduitsuretiquettecolis",
+          "maxLength": 100
+        },
+        "cr04e_marque": {
+          "type": "string",
+          "title": "Marque",
+          "x-ms-dataverse-attribute": "cr04e_marque",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Marque",
+          "maxLength": 100
+        },
+        "cr04e_masquedeletiquettecolis": {
+          "type": "string",
+          "title": "Masque de l'étiquette colis",
+          "x-ms-dataverse-attribute": "cr04e_masquedeletiquettecolis",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Masquedeletiquettecolis",
+          "maxLength": 100
+        },
         "cr04e_nomduproduitdesignation": {
           "type": "string",
           "title": "Nom du produit / Désignation",
           "x-ms-dataverse-attribute": "cr04e_nomduproduitdesignation",
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_NomduproduitDesignation",
+          "maxLength": 100
+        },
+        "cr04e_nomenclaturedouaniere": {
+          "type": "string",
+          "title": "Nomenclature douanière",
+          "x-ms-dataverse-attribute": "cr04e_nomenclaturedouaniere",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Nomenclaturedouaniere",
+          "maxLength": 100
+        },
+        "cr04e_oc2groupedarticle": {
+          "type": "string",
+          "title": "OC2 — Groupe d'article",
+          "x-ms-dataverse-attribute": "cr04e_oc2groupedarticle",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_OC2Groupedarticle",
+          "maxLength": 100
+        },
+        "cr04e_oc2groupederistournes": {
+          "type": "string",
+          "title": "OC2 — Groupe de ristournes",
+          "x-ms-dataverse-attribute": "cr04e_oc2groupederistournes",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_OC2Groupederistournes",
+          "maxLength": 100
+        },
+        "cr04e_oc2groupeimputationarticle": {
+          "type": "string",
+          "title": "OC2 — Groupe imputation article",
+          "x-ms-dataverse-attribute": "cr04e_oc2groupeimputationarticle",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_OC2Groupeimputationarticle",
+          "maxLength": 100
+        },
+        "cr04e_oc2groupestatistiquearticle": {
+          "type": "string",
+          "title": "OC2 — Groupe statistique article",
+          "x-ms-dataverse-attribute": "cr04e_oc2groupestatistiquearticle",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_OC2Groupestatistiquearticle",
+          "maxLength": 100
+        },
+        "cr04e_originedefabrication": {
+          "type": "string",
+          "title": "Origine de fabrication",
+          "x-ms-dataverse-attribute": "cr04e_originedefabrication",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Originedefabrication",
           "maxLength": 100
         },
         "cr04e_poidsnet": {
@@ -258,6 +399,14 @@
           "x-ms-schema-name": "cr04e_Statut_en_cours",
           "maxLength": 100
         },
+        "cr04e_tempsdereceptionusinej": {
+          "type": "string",
+          "title": "Temps de réception (usine, j)",
+          "x-ms-dataverse-attribute": "cr04e_tempsdereceptionusinej",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Tempsdereceptionusinej",
+          "maxLength": 100
+        },
         "cr04e_typedelademande": {
           "type": "string",
           "title": "Type de la demande",
@@ -265,6 +414,131 @@
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_Typedelademande",
           "maxLength": 100
+        },
+        "cr04e_typedemagasinem": {
+          "type": "string",
+          "title": "Type de magasin EM",
+          "x-ms-dataverse-attribute": "cr04e_typedemagasinem",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_TypedemagasinEM",
+          "maxLength": 100
+        },
+        "cr04e_typedesupportpalette": {
+          "type": "string",
+          "title": "Type de support / palette",
+          "x-ms-dataverse-attribute": "cr04e_typedesupportpalette",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Typedesupportpalette",
+          "maxLength": 100
+        },
+        "cr04e_typedusine": {
+          "type": "string",
+          "title": "Type d'usine",
+          "x-ms-dataverse-attribute": "cr04e_typedusine",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Typedusine",
+          "maxLength": 100
+        },
+        "cr04e_unitedureedevie": {
+          "type": "string",
+          "title": "Unité durée de vie",
+          "x-ms-dataverse-attribute": "cr04e_unitedureedevie",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Unitedureedevie",
+          "maxLength": 100
+        },
+        "cr04e_visacommerce": {
+          "type": "string",
+          "title": "Visa Commerce",
+          "x-ms-dataverse-attribute": "cr04e_visacommerce",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "cr04e_VisaCommerce",
+          "enum": [
+            "Non",
+            "Oui"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "054816f7-7691-f111-8076-70a8a5a71788",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Visa Commerce",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "cr04e_visacommercename": {
+          "type": "string",
+          "title": "cr04e_visacommercename",
+          "x-ms-dataverse-attribute": "cr04e_visacommercename",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "cr04e_visacommerceName",
+          "x-ms-read-only": true
+        },
+        "cr04e_visaindustriel": {
+          "type": "string",
+          "title": "Visa Industriel",
+          "x-ms-dataverse-attribute": "cr04e_visaindustriel",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "cr04e_VisaIndustriel",
+          "enum": [
+            "Non",
+            "Oui"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "0563fe91-7691-f111-8076-70a8a5a71788",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Visa Industriel",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "cr04e_visaindustrielname": {
+          "type": "string",
+          "title": "cr04e_visaindustrielname",
+          "x-ms-dataverse-attribute": "cr04e_visaindustrielname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "cr04e_visaindustrielName",
+          "x-ms-read-only": true
+        },
+        "cr04e_visasupplychain": {
+          "type": "string",
+          "title": "Visa Supply chain",
+          "x-ms-dataverse-attribute": "cr04e_visasupplychain",
+          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-schema-name": "cr04e_VisaSupplychain",
+          "enum": [
+            "Non",
+            "Oui"
+          ],
+          "x-ms-enum-values": [
+            0,
+            1
+          ],
+          "Color": [
+            null,
+            null
+          ],
+          "x-ms-optionsetmetadataid": "1aaf8a84-7691-f111-8076-70a8a5a71788",
+          "x-ms-isGlobal": false,
+          "x-ms-optionsetdisplayname": "Visa Supply chain",
+          "x-ms-optionSetType": "Boolean"
+        },
+        "cr04e_visasupplychainname": {
+          "type": "string",
+          "title": "cr04e_visasupplychainname",
+          "x-ms-dataverse-attribute": "cr04e_visasupplychainname",
+          "x-ms-dataverse-type": "VirtualType",
+          "x-ms-schema-name": "cr04e_visasupplychainName",
+          "x-ms-read-only": true
         },
         "cr04e_zug": {
           "type": "string",

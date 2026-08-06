@@ -75,6 +75,13 @@ export const dataSourcesInfo = {
     "dataSourceType": "Dataverse",
     "apis": {}
   },
+  "new_libellepayses": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "new_libellepaysid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_optionsetcodeappses": {
     "tableId": "",
     "version": "",
@@ -86,6 +93,13 @@ export const dataSourcesInfo = {
     "tableId": "",
     "version": "",
     "primaryKey": "cr04e_projetid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
+  "cr04e_unitofmeasures": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_unitofmeasureid",
     "dataSourceType": "Dataverse",
     "apis": {}
   }

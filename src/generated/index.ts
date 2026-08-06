@@ -17,6 +17,8 @@ export * as Cr04e_groupedefraisgenerauxesModel from './models/Cr04e_groupedefrai
 export * as Cr04e_hierarchieproduitfamillesModel from './models/Cr04e_hierarchieproduitfamillesModel';
 export * as Cr04e_optionsetcodeappsesModel from './models/Cr04e_optionsetcodeappsesModel';
 export * as Cr04e_projetsModel from './models/Cr04e_projetsModel';
+export * as Cr04e_unitofmeasuresModel from './models/Cr04e_unitofmeasuresModel';
+export * as New_libellepaysesModel from './models/New_libellepaysesModel';
 
 // Services
 export * from './services/Cr04e_centredeprofitcepctsService';
@@ -31,3 +33,5 @@ export * from './services/Cr04e_groupedefraisgenerauxesService';
 export * from './services/Cr04e_hierarchieproduitfamillesService';
 export * from './services/Cr04e_optionsetcodeappsesService';
 export * from './services/Cr04e_projetsService';
+export * from './services/Cr04e_unitofmeasuresService';
+export * from './services/New_libellepaysesService';
