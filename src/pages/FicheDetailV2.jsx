@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { useInheritedProjetFields } from '@/lib/useInheritedProjetFields';
+import { getFicheById, updateFiche } from '@/api/fiche';
+import { useSapOptions } from '@/lib/sapLists';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -96,23 +96,20 @@ export default function FicheDetailV2() {
 
   const { data: fiche, isLoading } = useQuery({
     queryKey: ['fiche', ficheId],
-    queryFn: () => base44.entities.FicheLancement.filter({ id: ficheId }),
+    queryFn: () => getFicheById(ficheId),
     enabled: !!ficheId,
-    select: (data) => data[0] || null,
   });
 
-  const { data: de } = useQuery({
-    queryKey: ['de-for-fiche', fiche?.demande_etude_id],
-    queryFn: () => base44.entities.DemandeEtude.get(fiche.demande_etude_id),
-    enabled: !!fiche?.demande_etude_id,
-  });
+  // Référentiels SAP : nécessaires pour résoudre les lookups (centre de profit,
+  // hiérarchie) à l'écriture — poussés par leur code.
+  const sap = useSapOptions();
 
   useEffect(() => {
     if (fiche) setLocalFiche(fiche);
   }, [fiche]);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.FicheLancement.update(ficheId, data),
+    mutationFn: (data) => updateFiche(ficheId, data, { sapOptions: sap }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] });
       queryClient.invalidateQueries({ queryKey: ['fiches'] });
@@ -126,14 +123,10 @@ export default function FicheDetailV2() {
     setIsSaving(false);
   };
 
-  // Re-remonte les champs hérités du projet Dataverse (centre de profit, hiérarchie
-  // produit, date de la demande) sur cette FL. Partagé avec la Vue par service.
-  useInheritedProjetFields(fiche, handleUpdate);
-
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      await generateFichePdf(localFiche, de);
+      await generateFichePdf(localFiche, null);
     } catch (err) {
       console.error('[export PDF]', err);
       toast({ variant: 'destructive', title: 'Échec de la génération du PDF' });
@@ -203,7 +196,7 @@ export default function FicheDetailV2() {
                 </h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   ID: {ficheId?.slice(0, 8)}…
-                  {de && <span className="ml-3">DE: {de.code_projet}</span>}
+                  {localFiche.code_etude_rd && <span className="ml-3">DE: {localFiche.code_etude_rd}</span>}
                 </p>
               </div>
             </div>
@@ -240,7 +233,7 @@ export default function FicheDetailV2() {
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-4">
         {/* ----- Identification (bandeau, hors visa) ----- */}
-        <IdentificationBanner fiche={localFiche} de={de} onUpdate={handleUpdate} disabled={isLocked} />
+        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked} />
 
         {/* ----- 1. Statut ----- */}
         <Group visible={showGroup('statut')} id="statut" title="Statut & dates clés">
