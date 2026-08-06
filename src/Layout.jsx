@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
+import { listFiches } from '@/api/fiche';
 import {
   FileText,
   ClipboardList,
@@ -27,7 +27,7 @@ export default function Layout({ children, currentPageName }) {
 
   const { data: fiches = [] } = useQuery({
     queryKey: ['fiches'],
-    queryFn: () => base44.entities.FicheLancement.list('-created_date'),
+    queryFn: listFiches,
   });
 
   const delaysCount = useMemo(

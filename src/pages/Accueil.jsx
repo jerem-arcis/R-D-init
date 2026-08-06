@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState } from 'react';
+import { listFiches } from '@/api/fiche';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -46,16 +46,6 @@ const TYPES_DEMANDE_OPTIONS = [
 
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
 
-const getDeType = (de) => de?.type_de || 'de';
-const getDeTypeDemande = (de) => {
-  if (!de) return null;
-  return getDeType(de) === 'autre'
-    ? de.autre_type_demande
-      ? `Autre — type ${de.autre_type_demande}`
-      : null
-    : de.type_demande_de;
-};
-
 export default function Accueil() {
   const [filter, setFilter] = useState('toutes');
   const [search, setSearch] = useState('');
@@ -64,63 +54,24 @@ export default function Accueil() {
 
   const { data: fiches = [], isLoading } = useQuery({
     queryKey: ['fiches'],
-    queryFn: () => base44.entities.FicheLancement.list('-created_date'),
+    queryFn: listFiches,
   });
 
-  const { data: des = [] } = useQuery({
-    queryKey: ['demandes_etude'],
-    queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
-  });
-
-  const deByFicheId = useMemo(() => {
-    const deById = new Map(des.map((d) => [d.id, d]));
-    const map = new Map();
-    for (const f of fiches) {
-      map.set(f.id, f.demande_etude_id ? deById.get(f.demande_etude_id) : null);
-    }
-    return map;
-  }, [fiches, des]);
-
-  const usineByFicheId = useMemo(() => {
-    const map = new Map();
-    for (const f of fiches) {
-      const de = deByFicheId.get(f.id);
-      map.set(f.id, de?.usine_validee || de?.usine_fab || null);
-    }
-    return map;
-  }, [fiches, deByFicheId]);
-
-  const typeDemandeByFicheId = useMemo(() => {
-    const map = new Map();
-    for (const f of fiches) {
-      map.set(f.id, getDeTypeDemande(deByFicheId.get(f.id)));
-    }
-    return map;
-  }, [fiches, deByFicheId]);
-
-  const getVisasValides = (fiche) => {
-    let count = 0;
-    if (fiche.visa_controle_gestion) count++;
-    if (fiche.visa_supply_chain) count++;
-    if (fiche.visa_industriel) count++;
-    if (fiche.visa_commerce) count++;
-    if (fiche.statut_sap === 'Création SAP effectuée') count++;
-    if (fiche.fl_exportee) count++;
-    return count;
-  };
+  // Avancement = nombre de visas posés (0–3), fourni par listFiches.
+  const getVisasValides = (fiche) => fiche.visas_valides ?? 0;
 
   const searchTerm = normalize(search.trim());
   const filteredFiches = fiches.filter(fiche => {
     const visasValides = getVisasValides(fiche);
 
     if (filter === 'en_attente' && visasValides !== 0) return false;
-    if (filter === 'en_cours' && !(visasValides > 0 && visasValides < 6)) return false;
-    if (filter === 'terminees' && visasValides !== 7) return false;
+    if (filter === 'en_cours' && !(visasValides > 0 && visasValides < 3)) return false;
+    if (filter === 'terminees' && visasValides !== 3) return false;
 
-    if (usineFilter !== 'toutes' && usineByFicheId.get(fiche.id) !== usineFilter) return false;
+    if (usineFilter !== 'toutes' && fiche.usine !== usineFilter) return false;
 
     if (typeDemandeFilter !== 'tous') {
-      const td = typeDemandeByFicheId.get(fiche.id);
+      const td = fiche.type_demande;
       if (!td || !td.toLowerCase().includes(typeDemandeFilter.toLowerCase())) return false;
     }
 
@@ -129,8 +80,8 @@ export default function Accueil() {
         fiche.code_article,
         fiche.libelle_article,
         fiche.id,
-        usineByFicheId.get(fiche.id),
-        typeDemandeByFicheId.get(fiche.id),
+        fiche.usine,
+        fiche.type_demande,
       ]
         .map(normalize)
         .join(' ');
@@ -149,7 +100,7 @@ export default function Accueil() {
 
   const getEtatBadge = (fiche) => {
     const visasValides = getVisasValides(fiche);
-    if (visasValides === 6) {
+    if (visasValides === 3) {
       return (
         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
           <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -179,7 +130,7 @@ export default function Accueil() {
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1">
           <span className="text-lg font-bold text-slate-900">{validees}</span>
-          <span className="text-sm text-slate-500">/ 6</span>
+          <span className="text-sm text-slate-500">/ 3</span>
         </div>
         <span className="text-xs text-slate-500">validées</span>
       </div>
@@ -268,7 +219,7 @@ export default function Accueil() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 6).length}
+                  {fiches.filter(f => getVisasValides(f) > 0 && getVisasValides(f) < 3).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">En cours</p>
               </div>
@@ -281,7 +232,7 @@ export default function Accueil() {
               </div>
               <div>
                 <p className="text-3xl font-bold text-foreground">
-                  {fiches.filter(f => getVisasValides(f) === 6).length}
+                  {fiches.filter(f => getVisasValides(f) === 3).length}
                 </p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Terminées</p>
               </div>
@@ -406,7 +357,7 @@ export default function Accueil() {
                       {getEtatBadge(fiche)}
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
-                      {usineByFicheId.get(fiche.id) || <span className="text-muted-foreground/60">—</span>}
+                      {fiche.usine || <span className="text-muted-foreground/60">—</span>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {fiche.created_date
