@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { listProjets } from '@/api/projet';
-import { ficheFromProjet } from '@/lib/flFromProjet';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { normalizeText as normalize } from '@/lib/utils';
@@ -106,7 +105,6 @@ const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce
 
 export default function DemandesEtude() {
   const [searchParams] = useSearchParams();
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('toutes');
   const [typeFilter, setTypeFilter] = useState('tous');
   // Recherche pré-remplie par le deep-link e-mail (?code_chapeau) — remplace
@@ -130,80 +128,8 @@ export default function DemandesEtude() {
     queryKey: ['demandes_etude'],
     queryFn: () => base44.entities.DemandeEtude.list('-created_date'),
   });
-  // Fiches de Lancement existantes : sert à l'idempotence de l'auto-création.
-  const { data: fiches = [] } = useQuery({
-    queryKey: ['fiches'],
-    queryFn: () => base44.entities.FicheLancement.list('-created_date'),
-  });
-
-  // Auto-création de la FL — relocalisée ici depuis l'ancienne vue DL (supprimée).
-  // Dès qu'un projet Dataverse passe `dl_validee` (écrit par Power Automate), on
-  // matérialise SA Fiche de Lancement — SANS exiger de DE locale dans ce navigateur
-  // (la DE locale reste facultative, uniquement pour relier un brouillon éditable).
-  // Idempotent : une FL par code chapeau (clé stable projet ↔ FL), plus les gardes
-  // héritées (fiche_lancement_id / demande_etude_id) et un Set anti-double-exécution.
-  const createFL = useMutation({ mutationFn: (data) => base44.entities.FicheLancement.create(data) });
-  const updateDE = useMutation({ mutationFn: ({ id, data }) => base44.entities.DemandeEtude.update(id, data) });
-  const processing = useRef(new Set());
-
-  useEffect(() => {
-    if (isLoading) return;
-    // DE locales éventuelles (localStorage, propre à ce navigateur) : servent
-    // uniquement à relier/enrichir un brouillon si présent — PLUS obligatoires.
-    const localByProjetId = new Map();
-    const localByChapeau = new Map();
-    localDEs.forEach((d) => {
-      if (d.projet_id) localByProjetId.set(d.projet_id, d);
-      if (d.code_chapeau) localByChapeau.set(d.code_chapeau, d);
-    });
-    // Idempotence : une FL par code chapeau (clé présente sur le projet ET la FL).
-    const flByChapeau = new Set(fiches.map((f) => f.code_chapeau).filter(Boolean));
-    const flByDe = new Set(fiches.map((f) => f.demande_etude_id).filter(Boolean));
-    (async () => {
-      let created = false;
-      for (const p of demandes) {
-        if (p.statut !== 'dl_validee') continue;
-        const chapeau = p.code_chapeau;
-        if (!chapeau) continue;                 // sans code chapeau : pas de clé d'idempotence fiable
-        if (flByChapeau.has(chapeau)) continue; // FL déjà matérialisée pour ce projet
-        if (processing.current.has(chapeau)) continue;
-        // DE locale si elle existe dans CE navigateur (facultative).
-        const de = localByProjetId.get(p.id) || localByChapeau.get(chapeau) || null;
-        if (de && (de.fiche_lancement_id || flByDe.has(de.id))) continue;
-        processing.current.add(chapeau);
-        try {
-          // Préremplissage depuis le projet Dataverse (identité + code projet + EAN
-          // générés par la règle GS1 existante). Voir src/lib/flFromProjet.js.
-          const fl = await createFL.mutateAsync({
-            ...ficheFromProjet(p, de),
-            declinaison_logistique_id: null,
-            etat_global: 'en_attente',
-            etape_courante: 1,
-          });
-          // Relie la DE locale si présente (pour l'édition du brouillon).
-          if (de) {
-            await updateDE.mutateAsync({
-              id: de.id,
-              data: {
-                statut: 'dl_validee',
-                date_validation: new Date().toISOString(),
-                fiche_lancement_id: fl.id,
-              },
-            });
-          }
-          created = true;
-        } catch {
-          processing.current.delete(chapeau); // on réessaiera au prochain chargement
-        }
-      }
-      if (created) {
-        queryClient.invalidateQueries({ queryKey: ['fiches'] });
-        queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
-      }
-    })();
-    // createFL / updateDE / queryClient sont stables ; on ne dépend que des données.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demandes, localDEs, fiches, isLoading]);
+  // La FL n'est plus matérialisée : la ligne cr04e_projet EST la FL dès `dl_validee`.
+  // Elle apparaît directement dans « Accueil » (liste FL sur Dataverse).
 
   // Clé de jointure principale : projet_id (stocké sur la DE locale au moment de
   // l'écriture du projet). Robuste même quand code_projet/code_chapeau sont vides

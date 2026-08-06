@@ -5,7 +5,6 @@ import FicheDetailV2 from './pages/FicheDetailV2';
 import DemandesEtude from './pages/DemandesEtude';
 import CreerDE from './pages/CreerDE';
 import TraiterDE from './pages/TraiterDE';
-import CreerFL from './pages/CreerFL';
 import Admin from './pages/Admin';
 import __Layout from './Layout.jsx';
 
@@ -18,7 +17,6 @@ export const PAGES = {
     "DemandesEtude": DemandesEtude,
     "CreerDE": CreerDE,
     "TraiterDE": TraiterDE,
-    "CreerFL": CreerFL,
     "Admin": Admin,
 }
 

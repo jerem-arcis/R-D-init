@@ -18,7 +18,7 @@ import { getStaleWaitingTransitions } from '@/lib/cycleStats';
 const NAV_ITEMS = [
   { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"], badgeKey: "delays" },
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
-  { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail", "CreerFL"] },
+  { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail"] },
   { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"] },
 ];
 

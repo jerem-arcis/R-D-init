@@ -77,7 +77,6 @@ const noop = async () => {};
 
 export const base44 = {
   entities: {
-    FicheLancement: createEntity('FicheLancement'),
     DemandeEtude: createEntity('DemandeEtude'),
     CodeEAN: createEntity('CodeEAN'),
     Query: createEntity('Query'),
