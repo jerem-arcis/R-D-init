@@ -8,6 +8,10 @@ import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { trimOrUndef } from '@/api/_odata';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
+import { listForProjet as listEmballages, syncForProjet as syncEmballages, blocsFromRows } from '@/api/ficheEmballages';
+
+// Clés des 5 blocs emballage (tables filles) : jamais envoyées au payload parent.
+const BLOC_KEYS = ['uvc_block', 'element_block', 'couche_block', 'colis_block', 'palette_block'];
 
 const FMT = '@OData.Community.Display.V1.FormattedValue';
 
@@ -152,6 +156,7 @@ export async function getFicheById(id) {
   if (!p) return null;
   const fiche = toFicheShape(p);
   fiche.libelle_par_pays = await listLibellePays(id);
+  Object.assign(fiche, blocsFromRows(await listEmballages(id)));
   return fiche;
 }
 
@@ -166,6 +171,14 @@ export async function updateFiche(id, patch, { sapOptions = {} } = {}) {
   }
   if (Array.isArray(patch?.libelle_par_pays)) {
     await syncLibellePays(id, patch.libelle_par_pays);
+  }
+  // Emballages : EmballagesTable n'envoie qu'un bloc à la fois. On fusionne le(s)
+  // bloc(s) du patch avec les blocs existants (relus) avant de synchroniser, sinon
+  // les blocs absents du patch seraient supprimés à tort.
+  if (BLOC_KEYS.some((k) => k in (patch || {}))) {
+    const current = blocsFromRows(await listEmballages(id));
+    for (const k of BLOC_KEYS) if (k in patch) current[k] = patch[k];
+    await syncEmballages(id, current);
   }
 }
 
