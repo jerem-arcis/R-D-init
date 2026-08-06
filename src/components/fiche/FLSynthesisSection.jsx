@@ -1,5 +1,6 @@
 import React from 'react';
-import { base44 } from '@/api/base44Client';
+import { updateFiche } from '@/api/fiche';
+import { useSapOptions } from '@/lib/sapLists';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,15 +31,9 @@ const SubSection = ({ title, icon: Icon, visa, children }) => (
 export default function FLSynthesisSection({ fiche }) {
   const queryClient = useQueryClient();
 
+  const sap = useSapOptions();
   const createSAPMutation = useMutation({
-    mutationFn: async () => {
-      const user = await base44.auth.me();
-      return base44.entities.FicheLancement.update(fiche.id, {
-        statut_sap: 'Création SAP effectuée',
-        cree_sap_par: user.email,
-        date_creation_sap: new Date().toISOString(),
-      });
-    },
+    mutationFn: () => updateFiche(fiche.id, { statut_sap: 'Création SAP effectuée' }, { sapOptions: sap }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fiche', fiche.id] });
       queryClient.invalidateQueries({ queryKey: ['fiches'] });
