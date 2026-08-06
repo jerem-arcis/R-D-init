@@ -7,6 +7,7 @@
 import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { trimOrUndef } from '@/api/_odata';
+import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
 
 const FMT = '@OData.Community.Display.V1.FormattedValue';
 
@@ -143,22 +144,28 @@ function unwrap(result, action) {
   return result?.data ?? null;
 }
 
-// Lit une FL (projet) par GUID -> objet FL. null si introuvable.
+// Lit une FL (projet) par GUID -> objet FL, tables filles incluses. null si introuvable.
 export async function getFicheById(id) {
   if (!id) return null;
   const result = await Cr04e_projetsService.get(id);
   const p = unwrap(result, 'Lecture FL');
-  return p ? toFicheShape(p) : null;
+  if (!p) return null;
+  const fiche = toFicheShape(p);
+  fiche.libelle_par_pays = await listLibellePays(id);
+  return fiche;
 }
 
-// Met à jour une FL (projet). `patch` = objet FL partiel. Écrit uniquement si le
-// payload résultant n'est pas vide. `sapOptions` sert à résoudre les lookups.
+// Met à jour une FL (projet + tables filles). `patch` = objet FL partiel. Le parent
+// n'est écrit que si son payload n'est pas vide. `sapOptions` résout les lookups.
 export async function updateFiche(id, patch, { sapOptions = {} } = {}) {
   if (!id) return;
   const payload = buildFichePayload(patch, { sapOptions });
   if (Object.keys(payload).length) {
     const result = await Cr04e_projetsService.update(id, payload);
     unwrap(result, 'Mise à jour FL');
+  }
+  if (Array.isArray(patch?.libelle_par_pays)) {
+    await syncLibellePays(id, patch.libelle_par_pays);
   }
 }
 
