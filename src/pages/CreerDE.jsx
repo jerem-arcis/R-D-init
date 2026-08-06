@@ -1173,21 +1173,6 @@ export default function CreerDE() {
     return code;
   };
 
-  // Déclenche le flux Power Automate de validation avec le code chapeau dans le
-  // corps { "Numéro": <code> }. Non bloquant : un échec n'empêche pas la
-  // validation de la DE, il affiche seulement un avertissement.
-  const triggerValidationFlow = async (numero) => {
-    try {
-      await postFlow(FLUX.VALIDATION, { 'Numéro': numero });
-    } catch (err) {
-      toast({
-        title: 'Flux non déclenché',
-        description: `La DE est validée, mais l'appel au flux a échoué : ${err?.message || 'erreur inconnue'}.`,
-        variant: 'destructive',
-      });
-    }
-  };
-
   // Envoi vers SAP : POST l'ensemble des champs de la DE au flux dédié. On envoie
   // les CODES bruts (formData.<champ> = code, pas le libellé « code — désignation »).
   // Format aligné sur ce que SAP accepte (cf. test Postman) :
@@ -1464,12 +1449,10 @@ export default function CreerDE() {
         }
       }
     }
-    // Déclenche les flux (non bloquant : on attend l'envoi avant de naviguer,
-    // mais un échec ne stoppe pas la DE) :
-    //  - notification « en attente de DL » (code chapeau seul) ;
-    //  - envoi vers SAP (ensemble des champs).
+    // Envoi vers SAP (ensemble des champs) — non bloquant : on attend l'envoi
+    // avant de naviguer, mais un échec ne stoppe pas la DE. Le mail de
+    // notification « en attente de DL » (flux VALIDATION) n'est plus déclenché.
     if (formType === 'de') await triggerSapSend(effectiveCode);
-    if (effectiveCode) await triggerValidationFlow(effectiveCode);
     // La DE passe direct en phase DL.
     saveMutation.mutate({
       ...formData,
