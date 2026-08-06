@@ -907,10 +907,13 @@ export default function CreerDE() {
   // Ouverture depuis Dataverse (lien du mail « en attente de code chapeau », ou
   // reprise sur un autre poste) : on charge la ligne cr04e_projet et on préremplit
   // le formulaire DE. Ignoré si on est déjà en édition d'un brouillon local.
+  // On attend que sapOptions.divisions soit chargé pour que getProjetById puisse
+  // résoudre les lookups (division, classe valo, groupe article, hiérarchie, centre
+  // profit) — sinon les champs pilotés reviennent vides à la réouverture.
   const { data: projetDV } = useQuery({
     queryKey: ['projet-dataverse', projetIdParam],
-    queryFn: () => getProjetById(projetIdParam),
-    enabled: !!projetIdParam && !editId,
+    queryFn: () => getProjetById(projetIdParam, sapOptions),
+    enabled: !!projetIdParam && !editId && !!(sapOptions.divisions && sapOptions.divisions.length),
   });
 
   useEffect(() => {

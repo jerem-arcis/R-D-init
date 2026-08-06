@@ -1,5 +1,5 @@
 import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated';
-import { lookupBind } from '@/api/sapLists';
+import { lookupBind, codeFromLookupValue } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
 import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
 import { toNumber, trimOrUndef } from '@/api/_odata';
@@ -119,45 +119,52 @@ export async function createDivisionProjet({ projetId, division, type } = {}) {
 
 // Mappe une ligne cr04e_projet (Dataverse) vers la forme formData attendue par le
 // formulaire DE. Sert à rouvrir une DE préremplie depuis Dataverse (redirection
-// mail « en attente de code chapeau », ou reprise sur un autre poste). On ne
-// remappe que les champs scalaires (issus de beCPG) ; les champs SAP pilotés par
-// règle (hiérarchie, classe valo, centre, groupe article) sont recalculés à
-// l'ouverture à partir de la division/réseau. La division est reconstituée à
-// partir de la colonne d'import `cr04e_divisionimport` (code division).
-const toFormData = (p) => ({
-  projet_id: p.cr04e_projetid,
-  type_de: 'de',
-  code_projet: p.cr04e_codeprojet ?? '',
-  axe_strategique: normalizeAxeStrategique(p.cr04e_axestrategique) ?? '',
-  date_demande: (p.cr04e_datedelademande ?? '').slice(0, 10),
-  reseau: p.cr04e_reseau ?? '',
-  type_demande_de: p.cr04e_typedelademande ?? '',
-  demandeur: p.cr04e_demandeur ?? '',
-  designation_article: p.cr04e_nomduproduitdesignation ?? '',
-  marque: p.cr04e_secteurdactivite ?? '',
-  client: p.cr04e_client ?? '',
-  groupe_autorisation: p.cr04e_groupedautorisation ?? '',
-  groupe_frais_generaux: p.cr04e_groupedefraisgeneraux ?? '',
-  poids_net: p.cr04e_poidsnet ?? '',
-  qte_previsionnelle_annuelle: p.cr04e_qteprevisionnelleannuelle ?? '',
-  code_chapeau: p.cr04e_codechapeau ?? '',
-  // Division reconstituée depuis la colonne d'import : pose la division à
-  // l'ouverture pour que les règles deRules cascadent (hiérarchie, classe valo,
-  // centre de profit, groupe article). `cr04e_divisionimport` peut contenir le
-  // NOM du site (ex. « RIVESALTES ») -> converti en code (2866) via
-  // divisionCodeFromPlant, comme le fait l'import beCPG. Si c'est déjà un code,
-  // on le garde tel quel.
-  division: divisionCodeFromPlant(p.cr04e_divisionimport) || (p.cr04e_divisionimport ?? ''),
-  statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_attente_cc,
-});
+// mail « en attente de code chapeau », ou reprise sur un autre poste).
+// Les lookups SAP (division, classe valo, groupe article, hiérarchie, centre de
+// profit) sont résolus par leur GUID via le référentiel chargé (`codeFromLookupValue`,
+// comme getDsById) — les DE créées par l'app n'alimentent PAS la colonne texte
+// `cr04e_divisionimport`, donc la division doit venir du lookup, sinon les règles
+// deRules ne cascadent pas et tous les champs pilotés restent vides à la réouverture.
+// La division garde un repli sur `cr04e_divisionimport` (imports beCPG).
+const toFormData = (p, sapOptions = {}) => {
+  const divisionLookup = codeFromLookupValue('divisions', p._cr04e_divisionusine_value, sapOptions.divisions);
+  return {
+    projet_id: p.cr04e_projetid,
+    type_de: 'de',
+    code_projet: p.cr04e_codeprojet ?? '',
+    axe_strategique: normalizeAxeStrategique(p.cr04e_axestrategique) ?? '',
+    date_demande: (p.cr04e_datedelademande ?? '').slice(0, 10),
+    reseau: p.cr04e_reseau ?? '',
+    type_demande_de: p.cr04e_typedelademande ?? '',
+    demandeur: p.cr04e_demandeur ?? '',
+    designation_article: p.cr04e_nomduproduitdesignation ?? '',
+    marque: p.cr04e_secteurdactivite ?? '',
+    client: p.cr04e_client ?? '',
+    groupe_autorisation: p.cr04e_groupedautorisation ?? '',
+    groupe_frais_generaux: p.cr04e_groupedefraisgeneraux ?? '',
+    poids_net: p.cr04e_poidsnet ?? '',
+    qte_previsionnelle_annuelle: p.cr04e_qteprevisionnelleannuelle ?? '',
+    code_chapeau: p.cr04e_codechapeau ?? '',
+    // Division : lookup en priorité, repli sur la colonne d'import (nom -> code).
+    division: divisionLookup || divisionCodeFromPlant(p.cr04e_divisionimport) || (p.cr04e_divisionimport ?? ''),
+    // Champs pilotés : repris du lookup stocké. La cascade deRules les réécrit
+    // depuis la division pour les usines à règle ; les choix libres (Agen centre
+    // profit, Aire groupe article) survivent car `force()` n'écrase pas avec ''.
+    classe_valorisation: codeFromLookupValue('classes_valorisation', p._cr04e_classedevalorisation_value, sapOptions.classes_valorisation),
+    groupe_article: codeFromLookupValue('groupes_article', p._cr04e_groupearticledivision_value, sapOptions.groupes_article),
+    famille_produit: codeFromLookupValue('familles_produit', p._cr04e_hierarchieproduitfamille_value, sapOptions.familles_produit),
+    centre_profit: codeFromLookupValue('centres_profit', p._cr04e_centredeprofit_value, sapOptions.centres_profit),
+    statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_attente_cc,
+  };
+};
 
 // Lit une ligne cr04e_projet par son GUID et la renvoie au format formData DE.
-// Renvoie null si introuvable.
-export async function getProjetById(id) {
+// `sapOptions` sert à résoudre les lookups (à charger avant l'appel). null si introuvable.
+export async function getProjetById(id, sapOptions = {}) {
   if (!id) return null;
   const result = await Cr04e_projetsService.get(id);
   const p = unwrap(result, 'Lecture');
-  return p ? toFormData(p) : null;
+  return p ? toFormData(p, sapOptions) : null;
 }
 
 // Met à jour une ligne cr04e_projet existante.
@@ -208,6 +215,7 @@ const toListShape = (p) => ({
 
 // Alias d'export pour les tests (la fonction reste interne par ailleurs).
 export const listShapeForTest = toListShape;
+export const formDataForTest = toFormData;
 
 // Liste tous les projets (Dataverse, paginé) pour la liste des demandes d'étude.
 export async function listProjets() {
