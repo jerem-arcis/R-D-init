@@ -65,10 +65,18 @@ export function ficheFromProjet(projet, deLocale = null) {
   const secteur = secteurLabelFromCode(computeSecteurFromReseau(projet?.reseau));
   if (secteur) fields.secteur_activite = secteur;
 
-  // Hiérarchie produit : usine → libellé (même 22/27 que computeHierarchieDE).
+  // Hiérarchie produit : libellé formaté du lookup Dataverse du projet. Repli sur la
+  // règle usine (22/27, même découpage que computeHierarchieDE) si le projet n'en
+  // porte pas. (Resynchronisée aussi à l'ouverture — cf. useInheritedProjetFields.)
   const usine = usineFromDivision(divisionCodeFromPlant(projet?.usine_validee));
-  const hierarchie = HIERARCHIE_PAR_USINE[usine] || '';
+  const hierarchie = projet?.hierarchie_produit_famille || HIERARCHIE_PAR_USINE[usine] || '';
   if (hierarchie) fields.hierarchie_produit = hierarchie;
+
+  // Centre de profit : libellé formaté du lookup Dataverse du projet.
+  if (projet?.centre_profit) fields.centre_profit = projet.centre_profit;
+
+  // Date de la demande : héritée du projet (renseignée à la création de la DE).
+  if (projet?.date_demande) fields.date_demande = projet.date_demande;
 
   return fields;
 }

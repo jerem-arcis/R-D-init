@@ -4,6 +4,10 @@ import { DS_STATUTS } from '@/api/ds';
 import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
+// Suffixe d'annotation OData portant le libellé lisible d'un lookup (ex.
+// "_cr04e_centredeprofit_value@OData...FormattedValue" = "12043").
+const FMT_VALUE = '@OData.Community.Display.V1.FormattedValue';
+
 // Lookups cr04e_projet : [clé liste SAP, champ formulaire, propriété @odata.bind].
 const PROJET_LOOKUPS = [
   ['divisions', 'division', 'cr04e_DivisionUsine@odata.bind'],
@@ -180,6 +184,15 @@ const toListShape = (p) => ({
   // Réseau : sert à dériver le secteur d'activité pour le préremplissage FL
   // (computeSecteurFromReseau), même règle que la DE.
   reseau: p.cr04e_reseau ?? '',
+  // Lookups SAP portés par le projet : on lit le LIBELLÉ FORMATÉ fourni par
+  // Dataverse (annotation @OData...FormattedValue). C'est la seule source fiable :
+  // les champs `...name` reviennent null, et résoudre le GUID via la table de
+  // référence échoue quand celle-ci n'est pas importée (ex. hiérarchie famille vide).
+  // La valeur formatée, elle, est toujours présente dès que le lookup est renseigné.
+  centre_profit: p[`_cr04e_centredeprofit_value${FMT_VALUE}`] ?? '',
+  hierarchie_produit_famille: p[`_cr04e_hierarchieproduitfamille_value${FMT_VALUE}`] ?? '',
+  // Date de la demande (champ scalaire, revient tel quel).
+  date_demande: (p.cr04e_datedelademande ?? '').slice(0, 10),
   statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_brouillon,
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,

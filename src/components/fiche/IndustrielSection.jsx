@@ -11,6 +11,7 @@ import {
   TYPES_USINE,
   TYPES_PALETTE,
   UNITES_DUREE_VIE,
+  DUREES_VIE,
 } from '@/lib/ficheSchema';
 
 export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
@@ -111,12 +112,12 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
       </FieldGrid>
 
       <FieldGrid title="Durée de vie" cols={2}>
-        <TextField
+        <SelectField
           label="Durée de vie"
-          type="number"
           value={fiche.duree_vie}
           onChange={set('duree_vie')}
           disabled={disabled}
+          options={DUREES_VIE}
           crossRef="vu en Commerce"
         />
         <SelectField

@@ -107,10 +107,10 @@ export default function FLSynthesisSection({ fiche }) {
       <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SubSection title="Identification du produit" icon={FileText}>
           <Field label="Code article" value={fiche.code_article} />
-          <Field label="Code chapeau" value={fiche.code_chapeau} />
           <Field label="Libellé article" value={fiche.libelle_article} />
           <Field label="Code étude R&D" value={fiche.code_etude_rd} />
           <Field label="Centre de profit" value={fiche.centre_profit} />
+          <Field label="Date de la demande" value={fiche.date_demande} />
           <Field label="Date envoi fiche" value={fiche.date_envoi_ficher} />
         </SubSection>
 

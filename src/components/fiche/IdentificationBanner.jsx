@@ -27,7 +27,6 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           disabled={disabled}
           placeholder="ex: 648900000"
         />
-        <TextField label="Code chapeau" value={fiche.code_chapeau} onChange={set('code_chapeau')} disabled={disabled} />
         <TextField
           label="Code étude R&D"
           value={fiche.code_etude_rd || getValueFromDE(de, 'code_etude_rd')}
@@ -52,6 +51,14 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           disabled={disabled}
           fromDE
           placeholder="Désignation produit"
+        />
+        <TextField
+          label="Date de la demande"
+          type="date"
+          value={fiche.date_demande}
+          onChange={set('date_demande')}
+          disabled={disabled}
+          fromDE
         />
         <TextField
           label="Date limite de création souhaitée"

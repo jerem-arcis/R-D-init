@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useInheritedProjetFields } from '@/lib/useInheritedProjetFields';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -124,6 +125,10 @@ export default function FicheDetailV2() {
     await updateMutation.mutateAsync(updates);
     setIsSaving(false);
   };
+
+  // Re-remonte les champs hérités du projet Dataverse (centre de profit, hiérarchie
+  // produit, date de la demande) sur cette FL. Partagé avec la Vue par service.
+  useInheritedProjetFields(fiche, handleUpdate);
 
   const handleExportPdf = async () => {
     setIsExporting(true);

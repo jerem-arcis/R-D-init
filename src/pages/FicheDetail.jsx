@@ -16,6 +16,7 @@ import CommerceSection from '@/components/fiche/CommerceSection';
 import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import ViewSwitch from '@/components/fiche/ViewSwitch';
 import { isSectionLocked, isSectionEditable } from '@/lib/ficheSchema';
+import { useInheritedProjetFields } from '@/lib/useInheritedProjetFields';
 
 // Pose un visa et nettoie le refus correspondant
 const visaPatch = (visaField, refusField) => ({
@@ -75,6 +76,10 @@ export default function FicheDetail() {
     await updateMutation.mutateAsync(updates);
     setIsSaving(false);
   };
+
+  // Re-remonte les champs hérités du projet Dataverse (centre de profit, hiérarchie
+  // produit, date de la demande) sur cette FL. Partagé avec la Vue complète.
+  useInheritedProjetFields(fiche, handleUpdate);
 
   const handleExportPdf = async () => {
     setIsExporting(true);

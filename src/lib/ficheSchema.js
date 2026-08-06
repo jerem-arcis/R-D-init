@@ -81,18 +81,20 @@ export const ECLATEMENTS_GROUPE_MARCHANDISE = [
 ];
 
 export const TYPES_USINE = [
-  '2847 - Agen',
-  '2859 - Aire',
-  '2866 - Rivesaltes',
-  '2886 - Bonloc',
-  '2820 - Négoce',
+  'Z004 - Carcassonne',
+  'Z006 - Agen-St Médard',
+  'Z008 - Bonloc',
+  'Z010 - Rivesaltes',
+  'Z011 - Montblanc',
 ];
 
 export const TYPES_PALETTE = [
   'SME80 - Palette 80 x 120 Europe',
-  'SME100 - Palette 100 x 120',
-  'SMD80 - Demi-palette 80 x 60',
-  'PND - Palette perdue',
+  'SMN80 - Palette 80 x 120 NIMP 15',
+  'SMC80 - Palette 80 x 120 CHEP',
+  'SM100 - Palette 100 x 120',
+  'SMC10 - Palette 100 x 120 CHEP',
+  'SMN10 - Palette 100 x 120 NIMP 15',
 ];
 
 export const MASQUES_ETIQUETTE_COLIS = [
@@ -107,6 +109,24 @@ export const UNITES_DUREE_VIE = [
   'S - Semaines',
   'M - Mois',
   'A - Années',
+];
+
+// Durées de vie standard (valeurs du référentiel SAP). « Autres : à définir ici »
+// pour un cas non listé.
+export const DUREES_VIE = [
+  '6',
+  '9',
+  '12',
+  '15',
+  '18',
+  '21',
+  '24',
+  '35',
+  '36',
+  '270',
+  '365',
+  '456',
+  'Autres : à définir ici',
 ];
 
 export const STATUTS_LANCEMENT = [
@@ -230,6 +250,7 @@ export const IDENTIFICATION_FIELDS = [
   'code_chapeau',
   'code_etude_rd',
   'centre_profit',
+  'date_demande',
   'date_limite_creation_mm01',
   'date_envoi_ficher',
 ];
