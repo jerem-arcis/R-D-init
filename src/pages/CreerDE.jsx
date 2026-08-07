@@ -1014,6 +1014,7 @@ export default function CreerDE() {
     const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
+      CodePJ: formData.code_projet || '',
       NomProduit: formData.autre_designation || '',
       HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
       SecteurActivite: dsSecteur || '',
@@ -1199,6 +1200,7 @@ export default function CreerDE() {
     const eans = buildEANSet(codeChapeau);
     const body = {
       CodeChapeau: codeChapeau || '',
+      CodePJ: formData.code_projet || '',
       NomProduit: formData.designation_article || '',
       HierarchieProduitFamille: hierarchieToSpaces(formData.famille_produit),
       SecteurActivite: formData.marque || '',
