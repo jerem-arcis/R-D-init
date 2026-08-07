@@ -1023,6 +1023,11 @@ export default function CreerDE() {
       GroupeArticleDivision: '',
       TypeProduit: 'NEGO',
       'ProfilFabricRépét': computeProfilFabricRepetDE(dsDivisionFab),
+      // Codes EAN (bloc « Besoin des codes EAN ») : CAR = carton, ZCO = couche,
+      // PAL = palette. Vides si le bloc n'est pas activé.
+      EANCAR: formData.ean_carton || '',
+      EANZCO: formData.ean_couche || '',
+      EANPAL: formData.ean_palette || '',
     };
     await postFlow(FLUX.SAP_SEND, body);
   };
