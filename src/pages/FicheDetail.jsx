@@ -17,6 +17,7 @@ import CommerceSection from '@/components/fiche/CommerceSection';
 import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import ViewSwitch from '@/components/fiche/ViewSwitch';
 import { isSectionLocked, isSectionEditable } from '@/lib/ficheSchema';
+import { FL_SECTIONS } from '@/lib/deepLinkRoutes';
 
 // Pose un visa et nettoie le refus correspondant
 const visaPatch = (visaField, refusField) => ({
@@ -37,6 +38,7 @@ const refusPatch = (visaField, refusField, motif) => ({
 export default function FicheDetail() {
   const [searchParams] = useSearchParams();
   const ficheId = searchParams.get('id');
+  const section = searchParams.get('section');
 
   const [localFiche, setLocalFiche] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,6 +59,19 @@ export default function FicheDetail() {
   useEffect(() => {
     if (fiche) setLocalFiche(fiche);
   }, [fiche]);
+
+  // Lien profond ?section= : scrolle sur la bonne section une fois la fiche chargée.
+  useEffect(() => {
+    if (!localFiche || !FL_SECTIONS.includes(section)) return;
+    const el = document.getElementById(`section-${section}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('ring-2', 'ring-primary', 'rounded-lg');
+    const t = setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-primary', 'rounded-lg');
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [localFiche, section]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => updateFiche(ficheId, data, { sapOptions: sap }),
@@ -171,22 +186,30 @@ export default function FicheDetail() {
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked} />
-        <SupplyChainSection
-          fiche={localFiche}
-          de={null}
-          {...sectionHandlers('supply_chain', 'visa_supply_chain', 'refus_supply_chain')}
-        />
-        <IndustrielSection
-          fiche={localFiche}
-          de={null}
-          {...sectionHandlers('industriel', 'visa_industriel', 'refus_industriel')}
-        />
-        <CommerceSection
-          fiche={localFiche}
-          de={null}
-          {...sectionHandlers('commerce', 'visa_commerce', 'refus_commerce')}
-        />
-        <FLSynthesisSection fiche={localFiche} />
+        <div id="section-supply_chain" className="scroll-mt-28">
+          <SupplyChainSection
+            fiche={localFiche}
+            de={null}
+            {...sectionHandlers('supply_chain', 'visa_supply_chain', 'refus_supply_chain')}
+          />
+        </div>
+        <div id="section-industriel" className="scroll-mt-28">
+          <IndustrielSection
+            fiche={localFiche}
+            de={null}
+            {...sectionHandlers('industriel', 'visa_industriel', 'refus_industriel')}
+          />
+        </div>
+        <div id="section-commerce" className="scroll-mt-28">
+          <CommerceSection
+            fiche={localFiche}
+            de={null}
+            {...sectionHandlers('commerce', 'visa_commerce', 'refus_commerce')}
+          />
+        </div>
+        <div id="section-synthese" className="scroll-mt-28">
+          <FLSynthesisSection fiche={localFiche} />
+        </div>
       </main>
     </div>
   );
