@@ -18,7 +18,7 @@ import { useSapOptions } from '@/lib/sapLists';
 import { createProjetFromDE, updateProjetFromDE, getProjetById, createDivisionProjet, PROJET_STATUT } from '@/api/projet';
 import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
-import { postFlow, FLUX } from '@/api/flux';
+import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
 
 // Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
@@ -1213,13 +1213,33 @@ export default function CreerDE() {
       EANPAL: formData.ean_palette || '',
     };
     try {
-      await postFlow(FLUX.SAP_SEND, body);
+      const res = await postFlowRaw(FLUX.SAP_SEND, body);
+      if (res.status === 200) {
+        toast({ title: 'Envoyé vers SAP', description: 'Tout est bon.' });
+        return 'ok';
+      }
+      if (res.status === 400) {
+        toast({
+          title: 'Erreur(s) SAP — contactez l\'admin',
+          description: `Une ou plusieurs erreurs sur SAP. Article ${codeChapeau || '—'} · PJ ${formData.code_projet || '—'}.`,
+          variant: 'destructive',
+        });
+        return 'erreur';
+      }
+      const text = await res.text().catch(() => '');
+      toast({
+        title: 'Envoi SAP échoué',
+        description: `HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
+        variant: 'destructive',
+      });
+      return 'erreur';
     } catch (err) {
       toast({
         title: 'Envoi SAP non déclenché',
-        description: `La DE est validée, mais l'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
+        description: `L'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
         variant: 'destructive',
       });
+      return 'erreur';
     }
   };
 
@@ -1418,6 +1438,37 @@ export default function CreerDE() {
     // Le code chapeau est déjà résolu en amont (bouton « Demander mon code » en VL,
     // ou flux « nouveau code »). On l'utilise directement pour le process classique.
     const effectiveCode = codeChapeau;
+    // VERIF_DE : le code chapeau ne doit pas déjà exister dans SAP. Bloquant :
+    // 400 => on stoppe (rien n'est écrit), l'ADV doit demander un nouveau code.
+    if (formType === 'de') {
+      try {
+        const res = await postFlowRaw(FLUX.VERIF_DE, { 'Numéro': effectiveCode });
+        if (res.status === 400) {
+          toast({
+            title: 'Code chapeau déjà existant',
+            description: 'Ce code existe déjà dans SAP — demandez un nouveau code chapeau.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        if (res.status !== 200) {
+          const text = await res.text().catch(() => '');
+          toast({
+            title: 'Vérification impossible',
+            description: `VERIF_DE a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      } catch (err) {
+        toast({
+          title: 'Vérification impossible',
+          description: `Impossible de vérifier le code auprès de SAP : ${err?.message || 'erreur inconnue'}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
     // Écriture de la ligne cr04e_projet (BLOQUANT : on n'avance pas si ça échoue,
     // la table Projet est la sortie principale de l'envoi vers SAP). Statut
     // « en attente de validation CDG » => la partie DE est terminée ; la décision
@@ -1462,11 +1513,13 @@ export default function CreerDE() {
         }
       }
     }
-    // Envoi vers SAP (ensemble des champs) — non bloquant : on attend l'envoi
-    // avant de naviguer, mais un échec ne stoppe pas la DE. Le mail de
-    // notification « en attente de DL » (flux VALIDATION) n'est plus déclenché.
-    if (formType === 'de') await triggerSapSend(effectiveCode);
-    // La DE passe direct en phase DL.
+    // Envoi vers SAP : on lit la réponse. 400 => on reste sur le formulaire (pas
+    // de navigation) pour que l'utilisateur voie l'erreur et prévienne l'admin.
+    if (formType === 'de') {
+      const outcome = await triggerSapSend(effectiveCode);
+      if (outcome !== 'ok') return; // finally remet isSubmitting=false
+    }
+    // Succès (ou DS) : la DE passe direct en phase DL.
     saveMutation.mutate({
       ...formData,
       projet_id: projetId,
