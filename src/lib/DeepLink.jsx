@@ -1,34 +1,26 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getContext } from '@microsoft/power-apps/app';
+import { matchDeepLink } from './deepLinkRoutes';
+import { getProjetIdByCodePJ } from '@/api/fiche';
+import { useToast } from '@/components/ui/use-toast';
 
-// Lien profond depuis l'e-mail Power Automate.
-// Le bouton de l'e-mail ouvre l'app via le player Power Apps avec un paramètre :
-//   - ?projet_id=<guid>   -> ouvre le formulaire DE prérempli (mail « en attente
-//                            de code chapeau », l'ADV doit obtenir le code) ;
-//   - ?code_chapeau=<code> -> ouvre le board DE avec la recherche pré-remplie (suivi).
-// Le player ne propage PAS la query string jusqu'à window.location de l'app
-// (iframe) : on lit le paramètre via le SDK Power Apps. IMPORTANT : getContext()
-// est ASYNCHRONE (Promise<IContext>), il faut l'await — sinon ctx.app.queryParams
-// est undefined. On redirige une seule fois par valeur. Repli sur
-// window.location.search pour le dev local.
-
-// Paramètres pris en charge, par priorité. Le 1er présent gagne.
-const ROUTES = [
-  {
-    param: 'projet_id',
-    ssKey: 'deeplink:projet_id',
-    to: (v) => `/CreerDE?projet_id=${encodeURIComponent(v)}`,
-  },
-  {
-    param: 'code_chapeau',
-    ssKey: 'deeplink:code_chapeau',
-    to: (v) => `/DemandesEtude?code_chapeau=${encodeURIComponent(v)}`,
-  },
-];
+// Lien profond depuis l'e-mail Power Automate. Le player ne propage PAS la query
+// string jusqu'à l'iframe : on lit les paramètres via getContext().app.queryParams
+// (ASYNCHRONE). Repli window.location.search pour le dev local.
+//
+// Deux liens par code PJ (résolu ici en GUID) :
+//   ?code_pj=<code>&vue=de                 -> /CreerDE?projet_id=<guid>
+//   ?code_pj=<code>&vue=fl&section=<sec>   -> /FicheDetail?id=<guid>&section=<sec>
+// Repli legacy : ?projet_id=<guid>, ?code_chapeau=<code>.
+//
+// On ne redirige qu'une fois par valeur (sessionStorage) : sinon chaque F5 relit
+// queryParams (toujours présent côté player) et renverrait l'utilisateur sur la
+// cible. Une nouvelle valeur (code/vue/section) re-déclenche la redirection.
 
 export default function DeepLink() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const handled = useRef(false);
 
   useEffect(() => {
@@ -36,47 +28,59 @@ export default function DeepLink() {
     handled.current = true;
     let cancelled = false;
 
-    // On ne redirige qu'une fois par session de navigateur et par valeur : sinon
-    // chaque F5 relit queryParams (toujours présent côté player) et renverrait
-    // l'utilisateur sur la cible, l'empêchant de rester ailleurs après un refresh.
-    // Une nouvelle valeur re-déclenche bien la redirection.
-    const go = (route, value) => {
-      if (!value || cancelled) return;
-      let alreadyHandled = false;
+    const alreadyDone = (ssKey, value) => {
       try {
-        alreadyHandled = sessionStorage.getItem(route.ssKey) === value;
-        if (!alreadyHandled) sessionStorage.setItem(route.ssKey, value);
+        if (sessionStorage.getItem(ssKey) === value) return true;
+        sessionStorage.setItem(ssKey, value);
       } catch {
         // sessionStorage indisponible : on redirige quand même.
-      }
-      if (!alreadyHandled) navigate(route.to(value), { replace: true });
-    };
-
-    // Cherche le 1er paramètre présent (URL réelle d'abord, puis SDK player).
-    const dispatch = (read) => {
-      for (const route of ROUTES) {
-        const value = read(route.param);
-        if (value) {
-          go(route, value);
-          return true;
-        }
       }
       return false;
     };
 
+    const run = async (route) => {
+      if (!route || cancelled) return;
+      if (alreadyDone(route.ssKey, route.value)) return;
+
+      let resolved = route.value;
+      if (route.resolveNeeded) {
+        try {
+          resolved = await getProjetIdByCodePJ(route.value);
+        } catch (err) {
+          console.error('DeepLink: résolution code PJ a échoué', err);
+          toast({ variant: 'destructive', title: 'Échec de l’ouverture du lien' });
+          return;
+        }
+        if (!resolved) {
+          toast({
+            variant: 'destructive',
+            title: `Code PJ « ${route.value} » introuvable`,
+          });
+          if (!cancelled) navigate('/Accueil', { replace: true });
+          return;
+        }
+      }
+      if (!cancelled) navigate(route.buildUrl(resolved), { replace: true });
+    };
+
     // Repli dev local : query string réelle du navigateur.
     const urlParams = new URLSearchParams(window.location.search);
-    if (dispatch((p) => urlParams.get(p))) return;
+    const localRoute = matchDeepLink((p) => urlParams.get(p) ?? undefined);
+    if (localRoute) {
+      run(localRoute);
+      return;
+    }
 
     // Player Power Apps : getContext() est asynchrone.
     Promise.resolve(getContext())
-      .then((ctx) => dispatch((p) => ctx?.app?.queryParams?.[p]))
+      .then((ctx) => matchDeepLink((p) => ctx?.app?.queryParams?.[p]))
+      .then((route) => run(route))
       .catch((err) => console.error('DeepLink: getContext a échoué', err));
 
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   return null;
 }
