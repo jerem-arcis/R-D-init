@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import SapSendModal from '@/components/SapSendModal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -1065,6 +1066,21 @@ export default function CreerDE() {
   // flux). Désactive le bouton pour éviter un double-envoi (double création projet).
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sapPreviewOpen, setSapPreviewOpen] = useState(false); // aperçu "vue SAP"
+  // Pop-up centrale de l'envoi vers SAP : null | { status, title, message }.
+  // Sur succès, on diffère l'enregistrement + navigation au clic du bouton
+  // (l'utilisateur voit le message vert). Le payload en attente est mémorisé ici.
+  const [sapModal, setSapModal] = useState(null);
+  const pendingSaveRef = useRef(null);
+
+  const handleSapModalClose = () => {
+    const wasSuccess = sapModal?.status === 'success';
+    setSapModal(null);
+    if (wasSuccess && pendingSaveRef.current) {
+      const payload = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      saveMutation.mutate(payload); // invalide + navigue vers la liste
+    }
+  };
 
   // Bloc « Article d'origine » (DE) : VL et nouveau code sont mutuellement exclusifs.
   // origine_mode pilote l'affichage / l'activation ('vl' | 'nouveau_code' | null).
@@ -1220,34 +1236,36 @@ export default function CreerDE() {
       EANZCO: eans.ean_couche || formData.ean_couche || '',
       EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
+    // Renvoie { ok, title, message } — le pilotage de la pop-up (loading/vert/
+    // rouge) est fait par handleSubmit, pas ici.
     try {
       const res = await postFlowRaw(FLUX.SAP_SEND, body);
       if (res.status === 200) {
-        toast({ title: 'Envoyé vers SAP', description: 'Tout est bon.' });
-        return 'ok';
+        return {
+          ok: true,
+          title: 'Envoyé vers SAP',
+          message: 'La création a bien été transmise à SAP.',
+        };
       }
       if (res.status === 400) {
-        toast({
-          title: 'Erreur(s) SAP — contactez l\'admin',
-          description: `Une ou plusieurs erreurs sur SAP. Article ${codeChapeau || '—'} · PJ ${formData.code_projet || '—'}.`,
-          variant: 'destructive',
-        });
-        return 'erreur';
+        return {
+          ok: false,
+          title: 'Une ou plusieurs erreurs sur SAP',
+          message: `Contactez l'administrateur.\nArticle ${codeChapeau || '—'} · PJ ${formData.code_projet || '—'}.`,
+        };
       }
       const text = await res.text().catch(() => '');
-      toast({
+      return {
+        ok: false,
         title: 'Envoi SAP échoué',
-        description: `HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
-        variant: 'destructive',
-      });
-      return 'erreur';
+        message: `Le flux a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
+      };
     } catch (err) {
-      toast({
+      return {
+        ok: false,
         title: 'Envoi SAP non déclenché',
-        description: `L'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
-        variant: 'destructive',
-      });
-      return 'erreur';
+        message: `L'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
+      };
     }
   };
 
@@ -1446,33 +1464,35 @@ export default function CreerDE() {
     // Le code chapeau est déjà résolu en amont (bouton « Demander mon code » en VL,
     // ou flux « nouveau code »). On l'utilise directement pour le process classique.
     const effectiveCode = codeChapeau;
+    // Pop-up centrale « Envoi vers SAP » (DE) : spinner pendant toute l'opération.
+    if (formType === 'de') setSapModal({ status: 'loading' });
     // VERIF_DE : le code chapeau ne doit pas déjà exister dans SAP. Bloquant :
     // 400 => on stoppe (rien n'est écrit), l'ADV doit demander un nouveau code.
     if (formType === 'de') {
       try {
         const res = await postFlowRaw(FLUX.VERIF_DE, { 'Numéro': effectiveCode });
         if (res.status === 400) {
-          toast({
+          setSapModal({
+            status: 'error',
             title: 'Code chapeau déjà existant',
-            description: 'Ce code existe déjà dans SAP — demandez un nouveau code chapeau.',
-            variant: 'destructive',
+            message: 'Ce code existe déjà dans SAP — demandez un nouveau code chapeau.',
           });
           return;
         }
         if (res.status !== 200) {
           const text = await res.text().catch(() => '');
-          toast({
+          setSapModal({
+            status: 'error',
             title: 'Vérification impossible',
-            description: `VERIF_DE a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
-            variant: 'destructive',
+            message: `VERIF_DE a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
           });
           return;
         }
       } catch (err) {
-        toast({
+        setSapModal({
+          status: 'error',
           title: 'Vérification impossible',
-          description: `Impossible de vérifier le code auprès de SAP : ${err?.message || 'erreur inconnue'}.`,
-          variant: 'destructive',
+          message: `Impossible de vérifier le code auprès de SAP : ${err?.message || 'erreur inconnue'}.`,
         });
         return;
       }
@@ -1499,10 +1519,10 @@ export default function CreerDE() {
         // l'envoi SAP, qui vient après) : typiquement un 403 « privilège manquant »
         // quand l'utilisateur n'a pas le rôle de sécurité sur la table. On affiche
         // le message serveur tel quel pour un diagnostic immédiat.
-        toast({
+        setSapModal({
+          status: 'error',
           title: 'Enregistrement Dataverse échoué',
-          description: `La DE n'a PAS été enregistrée : ${err?.message || 'erreur inconnue'}. Vérifie les droits Dataverse de l'utilisateur sur la table cr04e_projet.`,
-          variant: 'destructive',
+          message: `La DE n'a PAS été enregistrée : ${err?.message || 'erreur inconnue'}.\nVérifiez les droits sur la table cr04e_projet.`,
         });
         return;
       }
@@ -1521,13 +1541,29 @@ export default function CreerDE() {
         }
       }
     }
-    // Envoi vers SAP : on lit la réponse. Erreur (400…) => l'article n'a pas été
+    // Payload d'enregistrement de la DE (phase DL). Pour une DE réussie, on le
+    // diffère au clic « Voir mes DE » de la pop-up (l'utilisateur voit le vert).
+    const savePayload = {
+      ...formData,
+      projet_id: projetId,
+      zug,
+      type_de: formType,
+      code_division_calc: dsDivisionFab,
+      classe_valorisation_calc: dsClasseValo,
+      centre_profit_calc: dsCentreProfit,
+      secteur_activite_calc: dsSecteur,
+      code_chapeau: effectiveCode,
+      date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
+      statut: 'dl_attente_validation_cdg',
+    };
+
+    // Envoi vers SAP (DE) : pop-up centrale. Erreur (400…) => l'article n'a pas été
     // créé : le projet vient d'être écrit en « attente validation CDG », on le
-    // REPASSE EN BROUILLON et on garde le projet_id (une nouvelle tentative met à
-    // jour la même ligne, pas de doublon). On reste sur le formulaire.
+    // REPASSE EN BROUILLON et on garde le projet_id (retry = même ligne). Pop-up
+    // rouge, on reste sur le formulaire. Succès => pop-up verte + save différé.
     if (formType === 'de') {
-      const outcome = await triggerSapSend(effectiveCode);
-      if (outcome !== 'ok') {
+      const result = await triggerSapSend(effectiveCode);
+      if (!result.ok) {
         if (projetId) {
           try {
             await updateProjetFromDE(projetId, formData, {
@@ -1545,23 +1581,15 @@ export default function CreerDE() {
           }
           setFormData((prev) => ({ ...prev, projet_id: projetId, statut: 'de_brouillon' }));
         }
+        setSapModal({ status: 'error', title: result.title, message: result.message });
         return; // finally remet isSubmitting=false
       }
+      pendingSaveRef.current = savePayload;
+      setSapModal({ status: 'success', title: result.title, message: result.message });
+      return; // enregistrement + navigation au clic du bouton de la pop-up
     }
-    // Succès (ou DS) : la DE passe direct en phase DL.
-    saveMutation.mutate({
-      ...formData,
-      projet_id: projetId,
-      zug,
-      type_de: formType,
-      code_division_calc: dsDivisionFab,
-      classe_valorisation_calc: dsClasseValo,
-      centre_profit_calc: dsCentreProfit,
-      secteur_activite_calc: dsSecteur,
-      code_chapeau: effectiveCode,
-      date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
-      statut: 'dl_attente_validation_cdg',
-    });
+    // DS : enregistrement direct (pas de pop-up SAP ici).
+    saveMutation.mutate(savePayload);
     } finally {
       setIsSubmitting(false);
     }
@@ -2395,6 +2423,8 @@ export default function CreerDE() {
               data={formData}
               zug={zug}
             />
+
+            <SapSendModal state={sapModal} onClose={handleSapModalClose} />
           </form>
         )}
       </main>
