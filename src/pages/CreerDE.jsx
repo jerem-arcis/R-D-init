@@ -103,6 +103,7 @@ const REQUIRED_FIELDS_DE = [
   { key: 'demandeur', label: 'Demandeur' },
   { key: 'division', label: 'Division (Usine)' },
   { key: 'designation_article', label: 'Nom du produit / Désignation' },
+  { key: 'poids_net', label: 'Poids net' },
   {
     key: 'groupe_article',
     label: 'Groupe article (division)',
@@ -1518,11 +1519,32 @@ export default function CreerDE() {
         }
       }
     }
-    // Envoi vers SAP : on lit la réponse. 400 => on reste sur le formulaire (pas
-    // de navigation) pour que l'utilisateur voie l'erreur et prévienne l'admin.
+    // Envoi vers SAP : on lit la réponse. Erreur (400…) => l'article n'a pas été
+    // créé : le projet vient d'être écrit en « attente validation CDG », on le
+    // REPASSE EN BROUILLON et on garde le projet_id (une nouvelle tentative met à
+    // jour la même ligne, pas de doublon). On reste sur le formulaire.
     if (formType === 'de') {
       const outcome = await triggerSapSend(effectiveCode);
-      if (outcome !== 'ok') return; // finally remet isSubmitting=false
+      if (outcome !== 'ok') {
+        if (projetId) {
+          try {
+            await updateProjetFromDE(projetId, formData, {
+              codeChapeau: effectiveCode,
+              zug,
+              sapOptions,
+              statut: PROJET_STATUT.de_brouillon,
+            });
+          } catch (err) {
+            toast({
+              title: 'Retour en brouillon échoué',
+              description: `Le statut n'a pas pu être remis en brouillon : ${err?.message || 'erreur inconnue'}.`,
+              variant: 'destructive',
+            });
+          }
+          setFormData((prev) => ({ ...prev, projet_id: projetId, statut: 'de_brouillon' }));
+        }
+        return; // finally remet isSubmitting=false
+      }
     }
     // Succès (ou DS) : la DE passe direct en phase DL.
     saveMutation.mutate({
