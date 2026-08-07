@@ -1009,6 +1009,8 @@ export default function CreerDE() {
   };
 
   const triggerSapSendDs = async (effectiveCode) => {
+    // EAN calculés à l'envoi (idem DE) : toujours transmis, bloc masqué ou non.
+    const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       NomProduit: formData.autre_designation || '',
@@ -1023,11 +1025,11 @@ export default function CreerDE() {
       GroupeArticleDivision: '',
       TypeProduit: 'NEGO',
       'ProfilFabricRépét': computeProfilFabricRepetDE(dsDivisionFab),
-      // Codes EAN (bloc « Besoin des codes EAN ») : CAR = carton, ZCO = couche,
-      // PAL = palette. Vides si le bloc n'est pas activé.
-      EANCAR: formData.ean_carton || '',
-      EANZCO: formData.ean_couche || '',
-      EANPAL: formData.ean_palette || '',
+      // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
+      // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
+      EANCAR: eans.ean_carton || formData.ean_carton || '',
+      EANZCO: eans.ean_couche || formData.ean_couche || '',
+      EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
     await postFlow(FLUX.SAP_SEND, body);
   };
@@ -1191,6 +1193,9 @@ export default function CreerDE() {
   //  - ZUG : entier (poids × 1000) sans bruit flottant.
   // Non bloquant : un échec n'annule pas la validation.
   const triggerSapSend = async (codeChapeau) => {
+    // EAN calculés à l'envoi (325151 + 4 chiffres du code chapeau) : toujours
+    // transmis, même si le bloc « Besoin des codes EAN » est masqué/inactif.
+    const eans = buildEANSet(codeChapeau);
     const body = {
       CodeChapeau: codeChapeau || '',
       NomProduit: formData.designation_article || '',
@@ -1206,11 +1211,11 @@ export default function CreerDE() {
       GroupeArticleDivision: formData.groupe_article || '',
       TypeProduit: 'PFIN',
       'ProfilFabricRépét': computeProfilFabricRepetDE(formData.division),
-      // Codes EAN (bloc « Besoin des codes EAN ») : CAR = carton, ZCO = couche,
-      // PAL = palette. Vides si le bloc n'est pas activé.
-      EANCAR: formData.ean_carton || '',
-      EANZCO: formData.ean_couche || '',
-      EANPAL: formData.ean_palette || '',
+      // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
+      // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
+      EANCAR: eans.ean_carton || formData.ean_carton || '',
+      EANZCO: eans.ean_couche || formData.ean_couche || '',
+      EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
     try {
       const res = await postFlowRaw(FLUX.SAP_SEND, body);
