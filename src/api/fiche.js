@@ -170,6 +170,22 @@ export async function getFicheById(id) {
   return fiche;
 }
 
+// Résout un code PJ (cr04e_codeprojet, humain) vers le GUID de la ligne
+// cr04e_projet, pour les liens profonds des mails. Renvoie null si introuvable.
+// Le code PJ est supposé unique (top:1). Les apostrophes sont échappées (OData).
+export async function getProjetIdByCodePJ(code) {
+  const c = (code ?? '').trim();
+  if (!c) return null;
+  const safe = c.replace(/'/g, "''");
+  const result = await Cr04e_projetsService.getAll({
+    filter: `cr04e_codeprojet eq '${safe}'`,
+    select: ['cr04e_projetid'],
+    top: 1,
+  });
+  const rows = unwrap(result, 'Résolution code PJ') ?? [];
+  return rows[0]?.cr04e_projetid ?? null;
+}
+
 // Met à jour une FL (projet + tables filles). `patch` = objet FL partiel. Le parent
 // n'est écrit que si son payload n'est pas vide. `sapOptions` résout les lookups.
 export async function updateFiche(id, patch, { sapOptions = {} } = {}) {
