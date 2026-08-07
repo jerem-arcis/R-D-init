@@ -14,6 +14,7 @@ export const FLUX = {
   SAP_SEND: 'SAP_SEND',
   VL_CODE: 'VL_CODE',
   DOCUMENT: 'DOCUMENT',
+  VERIF_DE: 'VERIF_DE',
 };
 
 // Cache mémoire : la première demande déclenche un seul appel Dataverse dont la
@@ -63,13 +64,14 @@ export async function getFluxUrl(cle) {
   return url;
 }
 
-// POST JSON vers un flux Power Automate, désigné par sa CLÉ (résolue via le
-// registre). Lève une Error lisible si la réponse n'est pas OK, sinon renvoie la
-// Response (à lire selon le besoin : .text() / .arrayBuffer()). `body` omis =>
+// POST JSON vers un flux Power Automate (désigné par sa CLÉ), renvoyant la
+// Response BRUTE sans lever sur !res.ok : l'appelant inspecte res.status (utile
+// quand 400 est une réponse métier, ex. VERIF_DE « déjà existant »). Lève tout de
+// même si le registre ne résout pas la clé ou si le réseau échoue. `body` omis =>
 // POST sans corps.
-export async function postFlow(cle, body) {
+export async function postFlowRaw(cle, body) {
   const url = await getFluxUrl(cle);
-  const res = await fetch(url, {
+  return fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -81,6 +83,14 @@ export async function postFlow(cle, body) {
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
+}
+
+// POST JSON vers un flux Power Automate, désigné par sa CLÉ (résolue via le
+// registre). Lève une Error lisible si la réponse n'est pas OK, sinon renvoie la
+// Response (à lire selon le besoin : .text() / .arrayBuffer()). `body` omis =>
+// POST sans corps.
+export async function postFlow(cle, body) {
+  const res = await postFlowRaw(cle, body);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
