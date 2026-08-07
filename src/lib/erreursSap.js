@@ -322,3 +322,29 @@ export function computeKpis(creations = [], { now = new Date(), days = 7 } = {})
     echec: count(RESULTAT.echec.key),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Jointure Admin : enrichit chaque création avec les infos de son projet.
+// Clé de liaison : l'ARTICLE du journal (referenceproduit) == le code chapeau du
+// projet, aux zéros de tête près (le journal préfixe parfois « 00000 », pas la
+// table projet). Repli sur les valeurs déjà extraites quand le projet manque.
+// ---------------------------------------------------------------------------
+export function joinCodeProjet(creations = [], projets = []) {
+  const byChapeau = new Map();
+  for (const p of projets) {
+    const key = stripLeadingZeros(p.code_chapeau);
+    if (key) byChapeau.set(key, p);
+  }
+
+  return creations.map((c) => {
+    const key = stripLeadingZeros(c.referenceRaw || c.reference);
+    const projet = key ? byChapeau.get(key) : undefined;
+    return {
+      ...c,
+      codeProjet: projet?.code_projet || '',
+      designation: projet?.designation_article || c.designation || '',
+      usine: projet?.usine_validee || c.usine || '',
+      demandeur: projet?.demandeur || c.demandeur || '',
+    };
+  });
+}

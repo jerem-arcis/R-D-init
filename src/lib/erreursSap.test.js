@@ -12,7 +12,38 @@ import {
   computeResultat,
   computeKpis,
   isStatutResolu,
+  joinCodeProjet,
 } from './erreursSap';
+
+const projetsFixture = [
+  { code_chapeau: '810501', code_projet: 'PJ4987', designation_article: 'Tarte', usine_validee: 'AGEN', demandeur: 'Alice' },
+];
+
+describe('joinCodeProjet', () => {
+  it('associe le code projet par référence article (match direct)', () => {
+    const out = joinCodeProjet([{ reference: '810501', referenceRaw: '810501' }], projetsFixture);
+    expect(out[0].codeProjet).toBe('PJ4987');
+    expect(out[0].designation).toBe('Tarte');
+    expect(out[0].usine).toBe('AGEN');
+    expect(out[0].demandeur).toBe('Alice');
+  });
+
+  it('normalise les zéros de tête du journal (000000810501 -> 810501)', () => {
+    const out = joinCodeProjet([{ reference: '810501', referenceRaw: '000000810501' }], projetsFixture);
+    expect(out[0].codeProjet).toBe('PJ4987');
+  });
+
+  it('projet introuvable -> codeProjet vide, repli sur valeurs existantes', () => {
+    const out = joinCodeProjet(
+      [{ reference: '999', referenceRaw: '999', designation: 'Extrait', usine: 'X', demandeur: 'Bob' }],
+      projetsFixture,
+    );
+    expect(out[0].codeProjet).toBe('');
+    expect(out[0].designation).toBe('Extrait');
+    expect(out[0].usine).toBe('X');
+    expect(out[0].demandeur).toBe('Bob');
+  });
+});
 
 // Paramètre envoyé réel (extrait de la demande) : JSON à plat, clés « entryInput/... ».
 const PARAM = JSON.stringify({
