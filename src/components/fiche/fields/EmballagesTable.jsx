@@ -1,6 +1,6 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import BufferedInput from './BufferedInput';
 
 // Lignes : chaque ligne = un type d'emballage avec sa clé de stockage dans la fiche
 const ROWS = [
@@ -82,11 +82,11 @@ export default function EmballagesTable({
                   </td>
                   {COLS.map((c) => (
                     <td key={c.sub} className="px-1.5 py-1.5">
-                      <Input
+                      <BufferedInput
                         type="number"
                         step={c.type === 'int' ? '1' : '0.001'}
                         value={block[c.sub] ?? ''}
-                        onChange={(e) => setCell(row.key, c.sub, c.type, e.target.value)}
+                        onCommit={(raw) => setCell(row.key, c.sub, c.type, raw)}
                         disabled={!editable}
                         className={`h-8 text-xs text-right ${!editable ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
                       />
@@ -94,13 +94,13 @@ export default function EmballagesTable({
                   ))}
                   {showGtin && (
                     <td className="px-1.5 py-1.5">
-                      <Input
+                      <BufferedInput
                         type="text"
                         inputMode="numeric"
                         maxLength={14}
                         placeholder="EAN"
                         value={block.gtin ?? ''}
-                        onChange={(e) => setGtin(row.key, e.target.value)}
+                        onCommit={(raw) => setGtin(row.key, raw)}
                         disabled={!gtinEditable}
                         className={`h-8 text-xs font-mono ${!gtinEditable ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
                       />

@@ -1,6 +1,9 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
+import BufferedInput from './BufferedInput';
 import FieldShell from './FieldShell';
+
+// Nombre : '' → null, sinon Number. Appliqué au commit (blur/Entrée) uniquement.
+const numberParse = (raw) => (raw === '' ? null : Number(raw));
 
 export default function TextField({
   label,
@@ -16,14 +19,12 @@ export default function TextField({
   const id = label?.replace(/\s+/g, '_').toLowerCase();
   return (
     <FieldShell label={label} htmlFor={id} {...shellProps}>
-      <Input
+      <BufferedInput
         id={id}
         type={type}
-        value={value ?? ''}
-        onChange={(e) => {
-          const v = type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value;
-          onChange?.(v);
-        }}
+        value={value}
+        onCommit={onChange}
+        parse={type === 'number' ? numberParse : undefined}
         disabled={disabled}
         placeholder={placeholder}
         maxLength={maxLength}

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import BufferedInput from './BufferedInput';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2 } from 'lucide-react';
@@ -97,9 +97,9 @@ export default function LibelleParPaysTable({
                     </Select>
                   </td>
                   <td className="px-3 py-1.5">
-                    <Input
+                    <BufferedInput
                       value={row.libelle ?? ''}
-                      onChange={(e) => setRow(idx, { libelle: e.target.value })}
+                      onCommit={(v) => setRow(idx, { libelle: v })}
                       disabled={disabled || !row.code}
                       placeholder={row.code ? 'Libellé…' : 'Choisir un pays d\'abord'}
                       className={`h-8 text-xs ${disabled || !row.code ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}

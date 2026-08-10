@@ -1,8 +1,8 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import FieldShell from './FieldShell';
+import BufferedInput from './BufferedInput';
 
 // Champ EAN avec support pour plusieurs valeurs + warning de calcul
 export default function EANField({
@@ -33,10 +33,10 @@ export default function EANField({
       <div className="space-y-1.5">
         {(list.length === 0 ? [''] : list).map((ean, idx) => (
           <div key={idx} className="flex items-center gap-1.5">
-            <Input
+            <BufferedInput
               type="text"
               value={ean}
-              onChange={(e) => updateAt(idx, e.target.value)}
+              onCommit={(v) => updateAt(idx, v)}
               disabled={disabled}
               maxLength={14}
               placeholder="14 chiffres"
