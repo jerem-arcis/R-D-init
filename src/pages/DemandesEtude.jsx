@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { listProjets } from '@/api/projet';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { normalizeText as normalize } from '@/lib/utils';
-import { 
+import {
+  getType,
+  getDesignation,
+  getDemandeur,
+  getUsine,
+  getCodeProjet,
+  isDEValidated,
+  isEnAttenteCC,
+  isValideeCount,
+  listDemandeurs,
+  filterDemandes,
+  sortDemandes,
+} from '@/lib/demandesFilter';
+import {
   Table, 
   TableBody, 
   TableCell, 
@@ -28,6 +40,9 @@ import {
   Plus,
   Search,
   X,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -43,37 +58,20 @@ const TONE_BADGE = {
   red: 'bg-red-100 text-red-700 border-red-200',
 };
 
-// Côté DE, une DE est « Validée » lorsque la validation CDG est acquise
-// (dl_validee). « En attente de validation CDG » (dl_attente_validation_cdg) est
-// désormais un statut à part entière du board DE, avec son propre onglet et son
-// badge indigo. Le refus (dl_refusee) reste affiché « Refusée ».
-const isDEValidated = (statut) => statut === 'dl_validee';
-
-// « En attente de code chapeau » couvre la DE (de_attente_cc) ET la DS
-// (ds_attente_cc) : même libellé, clés techniques distinctes.
-const isEnAttenteCC = (statut) =>
-  statut === 'de_attente_cc' || statut === 'ds_attente_cc';
-
-// « Validée » côté compteur : DE validée/phase DL + DS validée (ds_validee).
-const isValideeCount = (statut) => isDEValidated(statut) || statut === 'ds_validee';
-
 // Onglets de la liste DE. Depuis la suppression de la vue DL dédiée, le statut
 // « En attente de validation CDG » est exposé ici comme un onglet à part entière.
-// Clés = statuts ; les libellés viennent de STATUTS.
+// Clés = statuts ; les libellés viennent de STATUTS. Les helpers "type-aware"
+// (getType, getDesignation, …) et les prédicats de statut sont dans
+// '@/lib/demandesFilter' (module pur testé).
 const DE_TABS = ['de_brouillon', 'de_attente_cc', 'dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
 
-// Helpers : extraction "type-aware" des champs (DE/DE_DL vs Autre)
-const getType = (de) => de.type_de || 'de';
-const getDesignation = (de) =>
-  getType(de) === 'autre' ? de.autre_designation : de.designation_article;
-const getDemandeur = (de) =>
-  getType(de) === 'autre' ? de.autre_demandeur : de.demandeur;
-const getTypeDemande = (de) =>
-  getType(de) === 'autre' ? (de.autre_type_demande ? `Autre — type ${de.autre_type_demande}` : null) : de.type_demande_de;
-const getUsine = (de) =>
-  de.usine_validee || (getType(de) === 'autre' ? de.autre_usine_fab : null);
-const getCodeProjet = (de) =>
-  getType(de) === 'autre' ? de.autre_code_origine : de.code_projet;
+// Vues sauvegardées : combinaisons prêtes à l'emploi appliquées en un clic.
+const SAVED_VIEWS = [
+  { id: 'toutes', label: 'Toutes mes demandes' },
+  { id: 'attente_cc', label: 'À traiter — attente code chapeau' },
+  { id: 'attente_cdg', label: 'À valider (CDG)' },
+  { id: 'alerte', label: 'En alerte' },
+];
 
 const TYPE_BADGE = {
   de: { label: 'DE', cls: 'bg-primary/15 text-primary border-primary/30' },
@@ -104,17 +102,26 @@ const DS_CAS_OPTIONS = [
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
 
 export default function DemandesEtude() {
-  const [searchParams] = useSearchParams();
-  const [filter, setFilter] = useState('toutes');
-  const [typeFilter, setTypeFilter] = useState('tous');
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Tous les filtres sont initialisés depuis l'URL (liens profonds + partage /
+  // rechargement) et re-synchronisés vers l'URL à chaque changement (voir effet).
+  const [filter, setFilter] = useState(() => searchParams.get('statut') || 'toutes');
+  const [typeFilter, setTypeFilter] = useState(() => searchParams.get('type') || 'tous');
   // Recherche pré-remplie par le deep-link e-mail (?code_chapeau) — remplace
   // l'ex-liste DL vers laquelle pointait ce lien.
   const [search, setSearch] = useState(
     () => searchParams.get('code_chapeau') || searchParams.get('search') || '',
   );
-  const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
-  const [dsCasFilter, setDsCasFilter] = useState('tous'); // sous-type DS (1 à 7)
-  const [usineFilter, setUsineFilter] = useState('toutes');
+  const [typeDemandeFilter, setTypeDemandeFilter] = useState(() => searchParams.get('td') || 'tous');
+  const [dsCasFilter, setDsCasFilter] = useState(() => searchParams.get('dscas') || 'tous'); // sous-type DS (1 à 7)
+  const [usineFilter, setUsineFilter] = useState(() => searchParams.get('usine') || 'toutes');
+  const [demandeurFilter, setDemandeurFilter] = useState(() => searchParams.get('demandeur') || 'tous');
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || '');
+  const [dateTo, setDateTo] = useState(() => searchParams.get('to') || '');
+  const [alertOnly, setAlertOnly] = useState(() => searchParams.get('alerte') === '1');
+  const [sortKey, setSortKey] = useState('created_date');
+  const [sortDir, setSortDir] = useState('desc');
+  const [activeView, setActiveView] = useState('toutes');
 
   // Liste branchée sur Dataverse (cr04e_projet).
   const { data: demandes = [], isLoading } = useQuery({
@@ -148,56 +155,107 @@ export default function DemandesEtude() {
     (de.code_projet && localIdByProjet.get(de.code_projet)) ||
     null;
 
-  const searchTerm = normalize(search.trim());
-  const filteredDemandes = demandes.filter(de => {
-    if (typeFilter !== 'tous' && getType(de) !== typeFilter) return false;
-    if (filter !== 'toutes') {
-      if (filter === 'dl_validee') {
-        if (!isValideeCount(de.statut)) return false;
-      } else if (filter === 'de_attente_cc') {
-        // Onglet « En attente de code chapeau » : DE + DS (même sens métier).
-        if (!isEnAttenteCC(de.statut)) return false;
-      } else if (filter === 'de_brouillon') {
-        // Onglet « Brouillon » : DE (de_brouillon) + DS (ds_brouillon).
-        if (de.statut !== 'de_brouillon' && de.statut !== 'ds_brouillon') return false;
-      } else if (de.statut !== filter) {
-        return false;
-      }
-    }
+  // Demandeurs présents dans le jeu de données → options du filtre dédié.
+  const demandeurs = useMemo(() => listDemandeurs(demandes), [demandes]);
 
-    if (typeDemandeFilter === 'DS') {
-      // Filtre DS : on ne garde que les DS, et éventuellement un cas d'usage précis.
-      if (getType(de) !== 'ds') return false;
-      if (dsCasFilter !== 'tous' && String(de.type_demande_de || '') !== dsCasFilter) return false;
-    } else if (typeDemandeFilter !== 'tous') {
-      const td = getTypeDemande(de);
-      if (!td || !td.toLowerCase().includes(typeDemandeFilter.toLowerCase())) return false;
-    }
-    if (usineFilter !== 'toutes' && getUsine(de) !== usineFilter) return false;
+  // Filtrage (module pur testé) puis tri par la colonne active.
+  const filteredDemandes = useMemo(() => {
+    const filtered = filterDemandes(demandes, {
+      filter,
+      typeFilter,
+      typeDemandeFilter,
+      dsCasFilter,
+      usineFilter,
+      demandeurFilter,
+      dateFrom,
+      dateTo,
+      alertOnly,
+      search,
+    });
+    return sortDemandes(filtered, sortKey, sortDir);
+  }, [demandes, filter, typeFilter, typeDemandeFilter, dsCasFilter, usineFilter,
+    demandeurFilter, dateFrom, dateTo, alertOnly, search, sortKey, sortDir]);
 
-    if (searchTerm) {
-      const haystack = [
-        getCodeProjet(de),
-        getDesignation(de),
-        getDemandeur(de),
-        getTypeDemande(de),
-        getUsine(de),
-        de.code_article,
-      ]
-        .map(normalize)
-        .join(' ');
-      if (!haystack.includes(searchTerm)) return false;
+  // Persistance des filtres dans l'URL (partage + rechargement conservent l'état).
+  // On n'écrit que les valeurs non-neutres pour garder l'URL lisible. `replace`
+  // pour ne pas polluer l'historique du navigateur.
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (filter !== 'toutes') p.set('statut', filter);
+    if (typeFilter !== 'tous') p.set('type', typeFilter);
+    if (typeDemandeFilter !== 'tous') p.set('td', typeDemandeFilter);
+    if (dsCasFilter !== 'tous') p.set('dscas', dsCasFilter);
+    if (usineFilter !== 'toutes') p.set('usine', usineFilter);
+    if (demandeurFilter !== 'tous') p.set('demandeur', demandeurFilter);
+    if (dateFrom) p.set('from', dateFrom);
+    if (dateTo) p.set('to', dateTo);
+    if (alertOnly) p.set('alerte', '1');
+    if (search.trim()) p.set('search', search.trim());
+    setSearchParams(p, { replace: true });
+  }, [filter, typeFilter, typeDemandeFilter, dsCasFilter, usineFilter,
+    demandeurFilter, dateFrom, dateTo, alertOnly, search, setSearchParams]);
+
+  // Tri : re-cliquer une colonne inverse le sens ; la date démarre en décroissant.
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'created_date' ? 'desc' : 'asc');
     }
-    return true;
-  });
+  };
+
+  // Vue sauvegardée : réinitialise les filtres secondaires puis applique le preset.
+  const applyView = (view) => {
+    setTypeDemandeFilter('tous');
+    setDsCasFilter('tous');
+    setUsineFilter('toutes');
+    setDemandeurFilter('tous');
+    setDateFrom('');
+    setDateTo('');
+    setSearch('');
+    setAlertOnly(false);
+    setTypeFilter('tous');
+    if (view === 'attente_cc') setFilter('de_attente_cc');
+    else if (view === 'attente_cdg') setFilter('dl_attente_validation_cdg');
+    else if (view === 'alerte') { setFilter('toutes'); setAlertOnly(true); }
+    else setFilter('toutes');
+    setActiveView(view);
+  };
 
   const filtersActive =
-    !!searchTerm || typeDemandeFilter !== 'tous' || dsCasFilter !== 'tous' || usineFilter !== 'toutes';
+    !!search.trim() || typeDemandeFilter !== 'tous' || dsCasFilter !== 'tous' ||
+    usineFilter !== 'toutes' || demandeurFilter !== 'tous' || !!dateFrom || !!dateTo || alertOnly;
   const clearFilters = () => {
     setSearch('');
     setTypeDemandeFilter('tous');
     setDsCasFilter('tous');
     setUsineFilter('toutes');
+    setDemandeurFilter('tous');
+    setDateFrom('');
+    setDateTo('');
+    setAlertOnly(false);
+    setActiveView('toutes');
+  };
+
+  // En-tête de colonne triable (indicateur de sens).
+  const SortHead = ({ sortId, children }) => {
+    const active = sortKey === sortId;
+    return (
+      <TableHead
+        onClick={() => toggleSort(sortId)}
+        className="font-bold text-foreground uppercase text-xs tracking-wide cursor-pointer select-none"
+      >
+        <span className="inline-flex items-center gap-1">
+          {children}
+          {active
+            ? (sortDir === 'asc'
+              ? <ChevronUp className="w-3.5 h-3.5 text-primary" />
+              : <ChevronDown className="w-3.5 h-3.5 text-primary" />)
+            : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+        </span>
+      </TableHead>
+    );
   };
 
   const getStatutBadge = (statut) => {
@@ -362,7 +420,26 @@ export default function DemandesEtude() {
           </div>
         </div>
 
-        <div className="mb-6 bg-card rounded-xl border border-border shadow-sm p-3 flex flex-wrap items-center gap-3">
+        <div className="mb-6 bg-card rounded-xl border border-border shadow-sm p-3 flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">Vues :</span>
+            {SAVED_VIEWS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => applyView(v.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                  activeView === v.id
+                    ? 'bg-primary/10 text-primary border-primary/40'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/40'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -424,6 +501,38 @@ export default function DemandesEtude() {
             />
           </div>
 
+          <div className="w-[190px]">
+            <SearchableSelect
+              value={demandeurFilter === 'tous' ? '' : demandeurFilter}
+              onChange={(v) => setDemandeurFilter(v || 'tous')}
+              options={demandeurs}
+              placeholder="Tous les demandeurs"
+              searchPlaceholder="Rechercher un demandeur…"
+              emptyText="Aucun demandeur."
+              className="h-9"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 w-[150px]"
+              aria-label="Date de début"
+            />
+            <span className="text-muted-foreground text-xs">→</span>
+            <Input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 w-[150px]"
+              aria-label="Date de fin"
+            />
+          </div>
+
           <div className="ml-auto flex items-center gap-3">
             <span className="text-xs text-muted-foreground font-medium">
               {filteredDemandes.length} résultat{filteredDemandes.length > 1 ? 's' : ''}
@@ -439,6 +548,7 @@ export default function DemandesEtude() {
                 Effacer
               </Button>
             )}
+          </div>
           </div>
         </div>
 
@@ -459,13 +569,13 @@ export default function DemandesEtude() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary border-b-2 border-primary">
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Type</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code projet</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Désignation</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Demandeur</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Statut</TableHead>
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
+                  <SortHead sortId="type">Type</SortHead>
+                  <SortHead sortId="code_projet">Code projet</SortHead>
+                  <SortHead sortId="designation">Désignation</SortHead>
+                  <SortHead sortId="demandeur">Demandeur</SortHead>
+                  <SortHead sortId="usine">Usine</SortHead>
+                  <SortHead sortId="statut">Statut</SortHead>
+                  <SortHead sortId="created_date">Date création</SortHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>

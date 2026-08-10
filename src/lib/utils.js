@@ -13,4 +13,6 @@ export const normalizeText = (v) =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
 
-export const isIframe = window.self !== window.top;
+// Garde `typeof window` : le module est importé aussi en environnement de test
+// (node) via les helpers purs — sans cette garde, l'accès à `window` y lève.
+export const isIframe = typeof window !== 'undefined' && window.self !== window.top;
