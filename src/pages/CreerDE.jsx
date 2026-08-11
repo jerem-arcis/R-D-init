@@ -1015,17 +1015,18 @@ export default function CreerDE() {
     const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
-      CodePJ: formData.code_projet || '',
+      CodePJ: '', // DS : toujours vide (demande métier — à tester côté SAP)
       NomProduit: formData.autre_designation || '',
       HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
       SecteurActivite: dsSecteur || '',
       PoidsNet: decimalStr(formData.autre_poids_net_uv),
+      ZUG: dsZug === '' ? '' : String(dsZug),
       DivisionUsine: dsDivisionFab || '',
       ClasseValorisation: dsClasseValo || '',
       CentreProfit: dsCentreProfit || '',
       GroupeAutorisation: 'NEGO', // DS : toujours NEGO
       GroupeFraisGeneraux: 'NEGO', // DS : toujours NEGO
-      GroupeArticleDivision: '',
+      GroupeArticleDivision: 'PF', // DS : toujours PF (règle métier)
       TypeProduit: 'NEGO',
       'ProfilFabricRépét': computeProfilFabricRepetDE(dsDivisionFab),
       // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
@@ -1318,6 +1319,11 @@ export default function CreerDE() {
   const zugAuto = poidsNetNum == null ? '' : Math.round(poidsNetNum * 1000);
   const zugManuel = toNumber(formData.zug);
   const zug = formData.zug === '' || formData.zug == null ? zugAuto : (zugManuel ?? '');
+
+  // ZUG côté DS : basé sur le poids net UV de la DS (autre_poids_net_uv, en kg),
+  // même règle que la DE (× 1000, arrondi). La DS n'a pas de champ poids_net.
+  const dsPoidsNum = toNumber(formData.autre_poids_net_uv);
+  const dsZug = dsPoidsNum == null ? '' : Math.round(dsPoidsNum * 1000);
 
   // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
   // Liste Division restreinte aux 4 sites de fabrication.
