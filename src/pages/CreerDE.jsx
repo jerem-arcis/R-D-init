@@ -1028,7 +1028,7 @@ export default function CreerDE() {
       GroupeFraisGeneraux: 'NEGO', // DS : toujours NEGO
       GroupeArticleDivision: 'PF', // DS : toujours PF (règle métier)
       TypeProduit: 'NEGO',
-      'ProfilFabricRépét': computeProfilFabricRepetDE(dsDivisionFab),
+      'ProfilFabricRépét': dsProfilFabricRepet,
       // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
       // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
       EANCAR: eans.ean_carton || formData.ean_carton || '',
@@ -1372,6 +1372,13 @@ export default function CreerDE() {
     (formData[ovrKey] || '') || computed || formData[snapKey] || '';
   const dsDivisionOrigine = dsOvr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine), '_ds_division_origine');
   const dsDivisionFab = dsOvr('_ds_division_fab_ovr', codeDivisionFabrication(dsCtx), '_ds_division_fab');
+  // Profil fabric répét (DS) : même règle que la DE, mais calculée depuis la
+  // division de fabrication RÉELLE de l'usine (Agen→Z006, Bonloc→Z008,
+  // Rivesaltes→Z010). On omet type_demande pour éviter la bascule négoce 2820
+  // (qui ne mappe aucun profil et renverrait vide).
+  const dsProfilFabricRepet = computeProfilFabricRepetDE(
+    codeDivisionFabrication({ usine: dsCtx.usine, agen_type: dsCtx.agen_type }),
+  );
   const dsHierarchie = dsOvr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite), '_ds_hierarchie');
   const dsClasseValo = dsOvr('_ds_classe_valo_ovr', computeClasseValoDS(dsCtx), '_ds_classe_valo');
   const dsCentreProfit = dsOvr('_ds_centre_profit_ovr', computeCentreProfitDS(dsCtx), '_ds_centre_profit');
