@@ -108,7 +108,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
 
       <div className="space-y-1">
         <p className="text-xs text-slate-500">
-          Saisie des GTIN — 1 code par emballage. Les dimensions sont renseignées côté{' '}
+          Saisie des GTIN - 1 code par emballage. Les dimensions sont renseignées côté{' '}
           <span className="font-semibold">Industriel</span> (lecture seule ici).
         </p>
         <EmballagesTable

@@ -18,7 +18,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
     <SectionShell
       id="supply-chain"
       title="Supply Chain"
-      subtitle="Renseigné par l'ADV — service Supply Chain"
+      subtitle="Renseigné par l'ADV - service Supply Chain"
       icon={Truck}
       accentColor="sky"
       isLocked={isLocked}

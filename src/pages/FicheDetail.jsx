@@ -145,7 +145,7 @@ export default function FicheDetail() {
               <div>
                 <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                   {localFiche.code_article || 'Nouvelle fiche'}
-                  {localFiche.libelle_article && ` — ${localFiche.libelle_article}`}
+                  {localFiche.libelle_article && ` - ${localFiche.libelle_article}`}
                 </h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   ID: {ficheId?.slice(0, 8)}...

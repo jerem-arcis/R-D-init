@@ -11,7 +11,7 @@ import { fr } from 'date-fns/locale';
 const Field = ({ label, value }) => (
   <div className="space-y-0.5">
     <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">{label}</p>
-    <p className="text-sm text-slate-900">{value || '—'}</p>
+    <p className="text-sm text-slate-900">{value || '-'}</p>
   </div>
 );
 
@@ -52,7 +52,7 @@ export default function FLSynthesisSection({ fiche }) {
     fiche.visa_industriel &&
     fiche.visa_commerce;
 
-  const fmtBlock = (b) => (b ? `${b.unite ?? '—'} u • ${b.poids_brut ?? '—'} kg • ${b.long ?? '—'}×${b.larg ?? '—'}×${b.haut ?? '—'} mm` : null);
+  const fmtBlock = (b) => (b ? `${b.unite ?? '-'} u • ${b.poids_brut ?? '-'} kg • ${b.long ?? '-'}×${b.larg ?? '-'}×${b.haut ?? '-'} mm` : null);
 
   return (
     <section id="synthese-fl" className="scroll-mt-32 bg-gradient-to-br from-slate-50 to-violet-50 rounded-2xl border border-violet-200 shadow-sm overflow-hidden">
@@ -61,7 +61,7 @@ export default function FLSynthesisSection({ fiche }) {
           <FileCheck2 className="w-5 h-5" />
           <div>
             <h2 className="text-lg font-bold">Synthèse FL</h2>
-            <p className="text-xs text-violet-100">Consolidation de toutes les sections — lecture seule</p>
+            <p className="text-xs text-violet-100">Consolidation de toutes les sections - lecture seule</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

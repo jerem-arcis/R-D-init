@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import BufferedInput from './BufferedInput';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { PAYS_LIBELLES } from '@/lib/ficheSchema';
 
 // Normalise la valeur reçue (compat ancien format objet {FR:'...', EN:'...'})
 const normalize = (value) => {
-  if (Array.isArray(value)) return value;
+  if (Array.isArray(value)) return value.map((r) => ({ code: r.code ?? '', libelle: r.libelle ?? '' }));
   if (value && typeof value === 'object') {
     return Object.entries(value)
       .filter(([, v]) => v != null && v !== '')
@@ -17,31 +17,62 @@ const normalize = (value) => {
   return [];
 };
 
-// Tableau dynamique : ajouter/supprimer des lignes "pays → libellé"
+const isComplete = (r) => Boolean(r.code && r.libelle);
+
+// Tableau dynamique : ajouter/supprimer des lignes "pays -> libellé".
+//
+// L'état d'édition est LOCAL. Le « + » ajoute une ligne réellement vide ; une ligne
+// dont les 2 champs ne sont pas remplis n'est jamais remontée au parent (donc jamais
+// persistée dans la table Dataverse). Les lignes en cours de saisie survivent aux
+// rechargements (refetch) : seules les lignes complètes reviennent du serveur, on
+// réinjecte par-dessus les brouillons locaux non encore enregistrés.
 export default function LibelleParPaysTable({
   label = 'Libellé par pays',
   value,
   onChange,
   disabled,
 }) {
-  const rows = useMemo(() => normalize(value), [value]);
+  const seq = useRef(0);
+  const mkKey = () => `r${seq.current++}`;
 
-  const emit = (next) => onChange?.(next);
+  const [rows, setRows] = useState(() => normalize(value).map((r) => ({ ...r, _k: mkKey() })));
 
-  const setRow = (idx, patch) => {
-    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
-    emit(next);
+  // Réconcilie l'état local avec la valeur persistée, en conservant les brouillons
+  // locaux (lignes incomplètes) dont le code n'est pas déjà revenu du serveur.
+  useEffect(() => {
+    const incoming = normalize(value);
+    const incomingCodes = new Set(incoming.map((r) => r.code).filter(Boolean));
+    setRows((prev) => {
+      const prevByCode = new Map(prev.filter((r) => r.code).map((r) => [r.code, r]));
+      const persisted = incoming.map((r) => ({ ...r, _k: prevByCode.get(r.code)?._k ?? mkKey() }));
+      const drafts = prev.filter((r) => !isComplete(r) && (!r.code || !incomingCodes.has(r.code)));
+      return [...persisted, ...drafts];
+    });
+  }, [value]);
+
+  // Ne remonte au parent QUE les lignes complètes (les autres restent locales).
+  const pushComplete = (next) => {
+    const complete = next.filter(isComplete).map(({ code, libelle }) => ({ code, libelle }));
+    onChange?.(complete);
   };
 
-  const removeRow = (idx) => emit(rows.filter((_, i) => i !== idx));
+  const commitRows = (next) => {
+    setRows(next);
+    pushComplete(next);
+  };
 
-  const addRow = () => emit([...rows, { code: '', libelle: '' }]);
+  const setRow = (k, patch) => commitRows(rows.map((r) => (r._k === k ? { ...r, ...patch } : r)));
+  const removeRow = (k) => commitRows(rows.filter((r) => r._k !== k));
+  // Le « + » ajoute une ligne VIDE (locale) : rien n'est persisté tant qu'elle
+  // n'est pas complétée.
+  const addRow = () => setRows([...rows, { code: '', libelle: '', _k: mkKey() }]);
 
   // Codes déjà sélectionnés (pour ne pas proposer un doublon)
-  const usedCodes = (excludeIdx) =>
-    new Set(rows.filter((_, i) => i !== excludeIdx).map((r) => r.code).filter(Boolean));
+  const usedCodes = (excludeKey) =>
+    new Set(rows.filter((r) => r._k !== excludeKey).map((r) => r.code).filter(Boolean));
 
-  // La dernière ligne est-elle complète (pays choisi) → on peut autoriser le +
+  // On n'autorise le « + » que si la dernière ligne a un pays choisi : évite
+  // d'empiler plusieurs lignes vides.
   const lastRow = rows[rows.length - 1];
   const canAddMore =
     !disabled &&
@@ -64,19 +95,19 @@ export default function LibelleParPaysTable({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-3 py-4 text-xs text-slate-400 italic text-center">
-                  Aucun libellé — cliquez sur « Ajouter un pays » pour commencer.
+                  Aucun libellé - cliquez sur « Ajouter un pays » pour commencer.
                 </td>
               </tr>
             )}
             {rows.map((row, idx) => {
-              const taken = usedCodes(idx);
+              const taken = usedCodes(row._k);
               const isLast = idx === rows.length - 1;
               return (
-                <tr key={idx} className="border-t border-slate-100">
+                <tr key={row._k} className="border-t border-slate-100">
                   <td className="px-3 py-1.5">
                     <Select
                       value={row.code || undefined}
-                      onValueChange={(v) => setRow(idx, { code: v })}
+                      onValueChange={(v) => setRow(row._k, { code: v })}
                       disabled={disabled}
                     >
                       <SelectTrigger className={`h-8 text-xs ${disabled ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}>
@@ -99,7 +130,7 @@ export default function LibelleParPaysTable({
                   <td className="px-3 py-1.5">
                     <BufferedInput
                       value={row.libelle ?? ''}
-                      onCommit={(v) => setRow(idx, { libelle: v })}
+                      onCommit={(v) => setRow(row._k, { libelle: v })}
                       disabled={disabled || !row.code}
                       placeholder={row.code ? 'Libellé…' : 'Choisir un pays d\'abord'}
                       className={`h-8 text-xs ${disabled || !row.code ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
@@ -111,7 +142,7 @@ export default function LibelleParPaysTable({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeRow(idx)}
+                        onClick={() => removeRow(row._k)}
                         disabled={disabled}
                         className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
                         title="Supprimer cette ligne"

@@ -25,7 +25,7 @@ const ReadField = ({ label, value, mono, span = 1 }) => (
   <div className={`space-y-1.5 ${span === 2 ? 'md:col-span-2' : ''}`}>
     <Label className="text-xs font-semibold text-slate-600">{label}</Label>
     <div className={`px-3 py-2 rounded-md bg-slate-50 border border-slate-200 text-sm text-slate-800 min-h-[38px] ${mono ? 'font-mono' : ''}`}>
-      {value || <span className="text-slate-400 italic text-xs">—</span>}
+      {value || <span className="text-slate-400 italic text-xs">-</span>}
     </div>
   </div>
 );
@@ -106,7 +106,7 @@ export default function TraiterDE() {
           <Alert className="bg-emerald-50 border-emerald-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <AlertDescription className="text-emerald-700">
-              Code chapeau reçu : <strong>{de.code_chapeau}</strong> — statut : {getStatutMeta(de.statut).label}
+              Code chapeau reçu : <strong>{de.code_chapeau}</strong> - statut : {getStatutMeta(de.statut).label}
             </AlertDescription>
           </Alert>
         )}
@@ -169,7 +169,7 @@ export default function TraiterDE() {
                   label="Type de demande"
                   value={
                     de.autre_type_demande
-                      ? `${de.autre_type_demande} — ${TYPES_DEMANDE_AUTRE_LABELS[de.autre_type_demande] || ''}`
+                      ? `${de.autre_type_demande} - ${TYPES_DEMANDE_AUTRE_LABELS[de.autre_type_demande] || ''}`
                       : ''
                   }
                 />

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { BONCOLAC_LOGO_DATA_URI } from '@/assets/boncolacLogo';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,10 @@ export default function SapSendModal({ state, onClose }) {
   const success = status === 'success';
   const error = status === 'error';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+  // Rendu via portal sur <body> : le fond couvre TOUT l'écran, sans décalage dû à
+  // un ancêtre positionné/transformé (le modal vit sinon dans <main> centré).
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -60,6 +63,7 @@ export default function SapSendModal({ state, onClose }) {
           </Button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

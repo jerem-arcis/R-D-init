@@ -345,10 +345,10 @@ export default function Accueil() {
                       {fiche.id?.slice(0, 8)}...
                     </TableCell>
                     <TableCell className="font-semibold text-foreground">
-                      {fiche.code_article || <span className="text-muted-foreground/60">—</span>}
+                      {fiche.code_article || <span className="text-muted-foreground/60">-</span>}
                     </TableCell>
                     <TableCell className="text-foreground/80">
-                      {fiche.libelle_article || <span className="text-muted-foreground/60">—</span>}
+                      {fiche.libelle_article || <span className="text-muted-foreground/60">-</span>}
                     </TableCell>
                     <TableCell>
                       {getIndicateurAvancement(fiche)}
@@ -357,12 +357,12 @@ export default function Accueil() {
                       {getEtatBadge(fiche)}
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
-                      {fiche.usine || <span className="text-muted-foreground/60">—</span>}
+                      {fiche.usine || <span className="text-muted-foreground/60">-</span>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {fiche.created_date
                         ? format(new Date(fiche.created_date), 'dd MMM yyyy', { locale: fr })
-                        : '—'}
+                        : '-'}
                     </TableCell>
                     <TableCell>
                       <Link to={createPageUrl(`FicheDetail?id=${fiche.id}`)}>

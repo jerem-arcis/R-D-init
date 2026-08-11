@@ -18,7 +18,7 @@ function unwrap(result, action) {
     const status = err.status ? `HTTP ${err.status}` : 'échec';
     const reqId = err.requestId ? ` [requestId ${err.requestId}]` : '';
     const e = new Error(
-      `${action} Dataverse — ${status} : ${err.message || 'erreur inconnue'}${reqId}`,
+      `${action} Dataverse - ${status} : ${err.message || 'erreur inconnue'}${reqId}`,
     );
     e.status = err.status;
     e.requestId = err.requestId;

@@ -68,7 +68,7 @@ const DE_TABS = ['de_brouillon', 'de_attente_cc', 'dl_attente_validation_cdg', '
 // Vues sauvegardées : combinaisons prêtes à l'emploi appliquées en un clic.
 const SAVED_VIEWS = [
   { id: 'toutes', label: 'Toutes mes demandes' },
-  { id: 'attente_cc', label: 'À traiter — attente code chapeau' },
+  { id: 'attente_cc', label: 'À traiter - attente code chapeau' },
   { id: 'attente_cdg', label: 'À valider (CDG)' },
   { id: 'alerte', label: 'En alerte' },
 ];
@@ -90,13 +90,13 @@ const TYPES_DEMANDE_OPTIONS = [
 
 // Les 7 cas d'usage DS (valeur stockée dans type_demande_de = cr04e_typedelademande).
 const DS_CAS_OPTIONS = [
-  { value: '1', label: '1 — Transfert industriel (savoir-faire)' },
-  { value: '2', label: '2 — Semi-fini pour une autre usine' },
-  { value: '3', label: '3 — Massification' },
-  { value: '4', label: '4 — Produits extérieurs négoce' },
-  { value: '5', label: '5 — Produits d\'une filiale du groupe' },
-  { value: '6', label: '6 — Changement produit mineur (< 2%)' },
-  { value: '7', label: '7 — Modification palettisation mineure (< 2%)' },
+  { value: '1', label: '1 - Transfert industriel (savoir-faire)' },
+  { value: '2', label: '2 - Semi-fini pour une autre usine' },
+  { value: '3', label: '3 - Massification' },
+  { value: '4', label: '4 - Produits extérieurs négoce' },
+  { value: '5', label: '5 - Produits d\'une filiale du groupe' },
+  { value: '6', label: '6 - Changement produit mineur (< 2%)' },
+  { value: '7', label: '7 - Modification palettisation mineure (< 2%)' },
 ];
 
 const USINES_OPTIONS = ['Bonloc', 'Rivesaltes', 'Aire', 'Agen', 'Produit négoce'];
@@ -593,16 +593,16 @@ export default function DemandesEtude() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {getCodeProjet(de) || <span className="text-muted-foreground/50">—</span>}
+                      {getCodeProjet(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell className="font-semibold text-foreground">
-                      {getDesignation(de) || <span className="text-muted-foreground/50">—</span>}
+                      {getDesignation(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
-                      {getDemandeur(de) || <span className="text-muted-foreground/50">—</span>}
+                      {getDemandeur(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
-                      {getUsine(de) || <span className="text-muted-foreground/50">—</span>}
+                      {getUsine(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell>
                       {getStatutBadge(de.statut)}
@@ -612,7 +612,7 @@ export default function DemandesEtude() {
                         <span>
                           {de.created_date
                             ? format(new Date(de.created_date), 'dd MMM yyyy', { locale: fr })
-                            : '—'}
+                            : '-'}
                         </span>
                         <CodeChapeauAlertIcon de={de} />
                       </div>

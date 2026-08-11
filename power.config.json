@@ -67,6 +67,10 @@
         "unitofmeasure": {
           "entitySetName": "cr04e_unitofmeasures",
           "logicalName": "cr04e_unitofmeasure"
+        },
+        "canauxdedistribution": {
+          "entitySetName": "cr04e_canauxdedistributions",
+          "logicalName": "cr04e_canauxdedistribution"
         }
       },
       "environmentVariableName": ""

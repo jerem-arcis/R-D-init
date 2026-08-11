@@ -14,7 +14,7 @@ export const getDemandeur = (de) =>
   getType(de) === 'autre' ? de.autre_demandeur : de.demandeur;
 export const getTypeDemande = (de) =>
   getType(de) === 'autre'
-    ? (de.autre_type_demande ? `Autre — type ${de.autre_type_demande}` : null)
+    ? (de.autre_type_demande ? `Autre - type ${de.autre_type_demande}` : null)
     : de.type_demande_de;
 export const getUsine = (de) =>
   de.usine_validee || (getType(de) === 'autre' ? de.autre_usine_fab : null);

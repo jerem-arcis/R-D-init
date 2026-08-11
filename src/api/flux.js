@@ -93,7 +93,7 @@ export async function postFlow(cle, body) {
   const res = await postFlowRaw(cle, body);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ''}`);
+    throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` - ${text}` : ''}`);
   }
   return res;
 }

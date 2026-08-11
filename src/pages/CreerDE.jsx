@@ -128,12 +128,12 @@ const REQUIRED_FIELDS_DS = [
   },
   {
     key: 'autre_agen_type',
-    label: 'Agen — type',
+    label: 'Agen - type',
     isRequired: (fd) => fd.autre_usine_fab === 'Agen' && !isTypeNegoce(fd.autre_type_demande),
   },
   {
     key: 'autre_agen_choix',
-    label: 'Agen — choix',
+    label: 'Agen - choix',
     isRequired: (fd) => fd.autre_usine_fab === 'Agen' && !isTypeNegoce(fd.autre_type_demande),
   },
   { key: 'autre_activite', label: 'Activité' },
@@ -237,7 +237,7 @@ const ReadOnlyField = ({ label, value, hint, onChange, options, type = 'text' })
         value={value ?? ''}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         readOnly={!onChange}
-        placeholder={onChange ? '— Auto (modifiable) —' : '— Calculé automatiquement —'}
+        placeholder={onChange ? '- Auto (modifiable) -' : '- Calculé automatiquement -'}
         className={onChange ? 'h-11' : 'h-11 bg-muted/40 text-foreground/90 cursor-not-allowed'}
       />
     )}
@@ -622,7 +622,7 @@ const DocumentViewer = ({ codePJ }) => {
           <DialogHeader className="shrink-0 px-5 py-4 border-b border-slate-200">
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-sky-600" />
-              Document — {code}
+              Document - {code}
             </DialogTitle>
           </DialogHeader>
 
@@ -678,7 +678,7 @@ const DocumentViewer = ({ codePJ }) => {
               )}
               {sheets[active]?.truncated && (
                 <div className="shrink-0 px-4 py-1.5 text-[11px] text-amber-700 bg-amber-50 border-b border-amber-200">
-                  Aperçu limité aux {GRID_MAX_ROWS} premières lignes / {GRID_MAX_COLS} colonnes — utilisez « Télécharger » pour la feuille complète.
+                  Aperçu limité aux {GRID_MAX_ROWS} premières lignes / {GRID_MAX_COLS} colonnes - utilisez « Télécharger » pour la feuille complète.
                 </div>
               )}
               <div className="flex-1 min-h-0 overflow-auto bg-slate-100 p-3">
@@ -705,7 +705,7 @@ const DocumentViewer = ({ codePJ }) => {
 const SynthField = ({ label, value }) => (
   <div className="space-y-0.5">
     <p className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">{label}</p>
-    <p className="text-sm text-slate-900">{value !== '' && value != null ? value : '—'}</p>
+    <p className="text-sm text-slate-900">{value !== '' && value != null ? value : '-'}</p>
   </div>
 );
 
@@ -726,8 +726,8 @@ const SapSynthesisDialog = ({ open, onOpenChange, data, zug }) => (
         <header className="bg-gradient-to-r from-violet-600 to-violet-700 text-white px-6 py-4 flex items-center gap-3">
           <Monitor className="w-5 h-5" />
           <div>
-            <h2 className="text-lg font-bold">Synthèse SAP — aperçu</h2>
-            <p className="text-xs text-violet-100">Consolidation des données article — lecture seule, rien n'est écrit dans SAP</p>
+            <h2 className="text-lg font-bold">Synthèse SAP - aperçu</h2>
+            <p className="text-xs text-violet-100">Consolidation des données article - lecture seule, rien n'est écrit dans SAP</p>
           </div>
         </header>
         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1001,7 +1001,7 @@ export default function CreerDE() {
         projetId = created?.cr04e_projetid || '';
       }
       queryClient.invalidateQueries({ queryKey: ['projets-de'] });
-      toast({ title: 'DS enregistrée', description: statut === 'ds_brouillon' ? 'Brouillon enregistré.' : 'DS créée — en attente de création de code chapeau.' });
+      toast({ title: 'DS enregistrée', description: statut === 'ds_brouillon' ? 'Brouillon enregistré.' : 'DS créée - en attente de création de code chapeau.' });
       navigate(createPageUrl('DemandesEtude'));
     } catch (err) {
       toast({ title: 'Échec de l\'enregistrement de la DS', description: err?.message || 'Erreur inconnue.', variant: 'destructive' });
@@ -1251,14 +1251,14 @@ export default function CreerDE() {
         return {
           ok: false,
           title: 'Une ou plusieurs erreurs sur SAP',
-          message: `Contactez l'administrateur.\nArticle ${codeChapeau || '—'} · PJ ${formData.code_projet || '—'}.`,
+          message: `Contactez l'administrateur.\nArticle ${codeChapeau || '-'} · PJ ${formData.code_projet || '-'}.`,
         };
       }
       const text = await res.text().catch(() => '');
       return {
         ok: false,
         title: 'Envoi SAP échoué',
-        message: `Le flux a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
+        message: `Le flux a répondu HTTP ${res.status}${text ? ` - ${text}` : ''}.`,
       };
     } catch (err) {
       return {
@@ -1475,7 +1475,7 @@ export default function CreerDE() {
           setSapModal({
             status: 'error',
             title: 'Code chapeau déjà existant',
-            message: 'Ce code existe déjà dans SAP — demandez un nouveau code chapeau.',
+            message: 'Ce code existe déjà dans SAP - demandez un nouveau code chapeau.',
           });
           return;
         }
@@ -1484,7 +1484,7 @@ export default function CreerDE() {
           setSapModal({
             status: 'error',
             title: 'Vérification impossible',
-            message: `VERIF_DE a répondu HTTP ${res.status}${text ? ` — ${text}` : ''}.`,
+            message: `VERIF_DE a répondu HTTP ${res.status}${text ? ` - ${text}` : ''}.`,
           });
           return;
         }
@@ -1678,7 +1678,7 @@ export default function CreerDE() {
               <fieldset disabled={deReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
                 {deReadOnly && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
-                    Demande d'Étude — fiche en lecture seule.
+                    Demande d'Étude - fiche en lecture seule.
                   </div>
                 )}
                 <FormSection title="Informations générales" icon={FileText}>
@@ -1775,7 +1775,7 @@ export default function CreerDE() {
                       </Field>
                     </div>
                     <div className="md:col-span-2">
-                      <Field label="Client" hint="Saisie libre — prérempli depuis beCPG">
+                      <Field label="Client" hint="Saisie libre - prérempli depuis beCPG">
                         <Input
                           value={formData.client}
                           onChange={(e) => handleChange('client', e.target.value)}
@@ -1869,7 +1869,7 @@ export default function CreerDE() {
                       <Field
                         label="Groupe article (division)"
                         required
-                        hint={deAgenWarning ? 'Agen — PF-AS par défaut, modifiable' : 'Choix libre (Aire)'}
+                        hint={deAgenWarning ? 'Agen - PF-AS par défaut, modifiable' : 'Choix libre (Aire)'}
                       >
                         <SearchableSelect
                           value={formData.groupe_article}
@@ -1994,7 +1994,7 @@ export default function CreerDE() {
                             {e.label}
                           </p>
                           <p className="text-lg font-mono font-bold text-foreground tracking-wide">
-                            {e.value || '—'}
+                            {e.value || '-'}
                           </p>
                         </div>
                       ))}
@@ -2008,7 +2008,7 @@ export default function CreerDE() {
               <fieldset disabled={dsReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
                 {dsReadOnly && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
-                    DS validée — fiche en lecture seule.
+                    DS validée - fiche en lecture seule.
                   </div>
                 )}
                 <FormSection title="Informations générales" icon={FileText}>
@@ -2057,7 +2057,7 @@ export default function CreerDE() {
                   {/* Panneau d'exemples des cas d'usage */}
                   <div className="rounded-xl border border-border bg-secondary/40 p-4">
                     <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-3">
-                      Cas d'usage — exemples
+                      Cas d'usage - exemples
                     </p>
                     <div className="space-y-1.5">
                       {CAS_USAGE_EXEMPLES.map((c) => (
@@ -2070,7 +2070,7 @@ export default function CreerDE() {
                               : 'bg-card border-border text-muted-foreground',
                           )}
                         >
-                          <span className="font-semibold">{c.value} — {c.titre}</span>
+                          <span className="font-semibold">{c.value} - {c.titre}</span>
                           {c.exemple && <span className="block mt-0.5 italic">{c.exemple}</span>}
                         </div>
                       ))}
@@ -2248,7 +2248,7 @@ export default function CreerDE() {
 
                     {formData.autre_usine_fab === 'Agen' && !isTypeNegoce(formData.autre_type_demande) && (
                       <>
-                        <Field label="Agen — type" required>
+                        <Field label="Agen - type" required>
                           <Select
                             value={formData.autre_agen_type}
                             onValueChange={(v) => handleChange('autre_agen_type', v)}
@@ -2263,7 +2263,7 @@ export default function CreerDE() {
                             </SelectContent>
                           </Select>
                         </Field>
-                        <Field label="Agen — choix" required>
+                        <Field label="Agen - choix" required>
                           <Select
                             value={formData.autre_agen_choix}
                             onValueChange={(v) => handleChange('autre_agen_choix', v)}

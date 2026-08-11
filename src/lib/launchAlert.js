@@ -107,7 +107,7 @@ export const bucketFor = ({ joursAvant, visasValides }) => {
 };
 
 export const formatJourLabel = (joursAvant) => {
-  if (joursAvant == null) return '—';
+  if (joursAvant == null) return '-';
   if (joursAvant === 0) return "Aujourd'hui";
   if (joursAvant > 0) return `J-${joursAvant}`;
   return `J+${Math.abs(joursAvant)} (retard)`;

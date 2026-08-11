@@ -4,7 +4,7 @@ import BufferedInput from './BufferedInput';
 
 // Lignes : chaque ligne = un type d'emballage avec sa clé de stockage dans la fiche
 const ROWS = [
-  { key: 'uvc_block', label: 'UVC — Unité de vente', required: true },
+  { key: 'uvc_block', label: 'UVC - Unité de vente', required: true },
   { key: 'element_block', label: 'Unité d\'élément' },
   { key: 'couche_block', label: 'Couche' },
   { key: 'colis_block', label: 'Colis' },

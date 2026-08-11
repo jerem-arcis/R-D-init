@@ -171,7 +171,7 @@ export function getStaleWaitingTransitions(fiches, thresholdMs = SLOW_THRESHOLD_
 
 // Format human-friendly d'une durée en ms
 export function formatDuration(ms) {
-  if (ms == null) return '—';
+  if (ms == null) return '-';
   if (ms < MS_PER_HOUR) {
     const minutes = Math.round(ms / (60 * 1000));
     return `${minutes} min`;

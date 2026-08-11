@@ -27,7 +27,7 @@ export default function EANField({
   return (
     <FieldShell
       label={label}
-      warning={warning || 'Plusieurs EAN possibles — vérifier la règle de calcul (14 chiffres).'}
+      warning={warning || 'Plusieurs EAN possibles - vérifier la règle de calcul (14 chiffres).'}
       {...shellProps}
     >
       <div className="space-y-1.5">

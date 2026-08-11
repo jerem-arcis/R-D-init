@@ -184,7 +184,7 @@ export default function Dashboard() {
             {isSample && (
               <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 <FlaskConical className="w-3.5 h-3.5 shrink-0" />
-                <span><b>Données d'exemple</b> — {SAMPLE_PROJETS.length} demandes fictives réparties sur 3 organisations commerciales (VKORG),
+                <span><b>Données d'exemple</b> - {SAMPLE_PROJETS.length} demandes fictives réparties sur 3 organisations commerciales (VKORG),
                   pour illustrer le tableau de bord multi-org. Bascule sur « Réel » pour les vraies données Dataverse.</span>
               </div>
             )}
@@ -383,10 +383,10 @@ export default function Dashboard() {
                       return (
                         <TableRow key={p.id} className="hover:bg-secondary/50 transition-colors border-b border-border">
                           <TableCell className="font-mono text-xs text-muted-foreground">
-                            {p.code_projet || <span className="text-muted-foreground/50">—</span>}
+                            {p.code_projet || <span className="text-muted-foreground/50">-</span>}
                           </TableCell>
                           <TableCell className="font-semibold text-foreground">
-                            {p.designation_article || <span className="text-muted-foreground/50">—</span>}
+                            {p.designation_article || <span className="text-muted-foreground/50">-</span>}
                           </TableCell>
                           {isSample && (
                             <TableCell className="text-xs">
@@ -395,17 +395,17 @@ export default function Dashboard() {
                             </TableCell>
                           )}
                           <TableCell className="text-foreground/80 text-sm">
-                            {p.usine_validee || <span className="text-muted-foreground/50">—</span>}
+                            {p.usine_validee || <span className="text-muted-foreground/50">-</span>}
                           </TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">
-                            {p.code_chapeau || <span className="text-muted-foreground/50">—</span>}
+                            {p.code_chapeau || <span className="text-muted-foreground/50">-</span>}
                           </TableCell>
                           <TableCell>
                             <Badge className={TONE_BADGE[meta.tone] || TONE_BADGE.amber}>{meta.label}</Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <div className="flex items-center gap-2">
-                              <span>{p.created_date ? format(new Date(p.created_date), 'dd MMM yyyy', { locale: fr }) : '—'}</span>
+                              <span>{p.created_date ? format(new Date(p.created_date), 'dd MMM yyyy', { locale: fr }) : '-'}</span>
                               <CodeChapeauAlertIcon de={p} />
                             </div>
                           </TableCell>

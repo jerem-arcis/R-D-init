@@ -111,8 +111,7 @@ export const UNITES_DUREE_VIE = [
   'A - Années',
 ];
 
-// Durées de vie standard (valeurs du référentiel SAP). « Autres : à définir ici »
-// pour un cas non listé.
+// Durées de vie standard (valeurs du référentiel SAP).
 export const DUREES_VIE = [
   '6',
   '9',
@@ -126,7 +125,6 @@ export const DUREES_VIE = [
   '270',
   '365',
   '456',
-  'Autres : à définir ici',
 ];
 
 export const STATUTS_LANCEMENT = [

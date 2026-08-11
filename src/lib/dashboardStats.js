@@ -99,7 +99,7 @@ export function byMonth(projets) {
 export function byOrg(projets) {
   const acc = new Map();
   for (const p of projets) {
-    const code = p.organisation || '—';
+    const code = p.organisation || '-';
     const label = p.organisation_label || (p.organisation ? p.organisation : 'Non renseignée');
     const prev = acc.get(code) || { code, label, value: 0 };
     prev.value += 1;
@@ -112,7 +112,7 @@ export function byOrg(projets) {
 export function byUsine(projets) {
   const acc = new Map();
   for (const p of projets) {
-    const key = p.usine_validee || '—';
+    const key = p.usine_validee || '-';
     const prev = acc.get(key) || { usine: key, value: 0 };
     prev.value += 1;
     acc.set(key, prev);

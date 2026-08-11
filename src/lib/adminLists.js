@@ -60,7 +60,7 @@ export function useAdminOptions() {
 export function buildOptions(rows = [], current) {
   const options = rows.map(({ value, designation }) => ({
     value,
-    label: designation ? `${value} — ${designation}` : value,
+    label: designation ? `${value} - ${designation}` : value,
     keywords: designation ? `${value} ${designation}` : value,
   }));
   if (current && !options.some((o) => o.value === current)) {

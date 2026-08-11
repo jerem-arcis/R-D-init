@@ -30,7 +30,7 @@ function unwrap(result, action) {
   if (result && result.success === false) {
     const err = result.error || {};
     const status = err.status ? `HTTP ${err.status}` : 'échec';
-    throw new Error(`${action} Dataverse — ${status} : ${err.message || 'erreur inconnue'}`);
+    throw new Error(`${action} Dataverse - ${status} : ${err.message || 'erreur inconnue'}`);
   }
   return result?.data ?? null;
 }

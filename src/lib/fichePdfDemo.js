@@ -43,7 +43,7 @@ export const DEMO_FICHE = {
   libelle_classification: 'TRAITEUR / BOUCHÉES APÉRITIVES FROIDES / APÉRITIF · COCKTAIL SALÉ / BOUCHÉES GMS ET FREEZER',
 
   // Définition
-  definition_produit: '21/09/26 · Nouvelles recettes — Nouveau code étui : 5/6 cls · vernis ACHB',
+  definition_produit: '21/09/26 · Nouvelles recettes - Nouveau code étui : 5/6 cls · vernis ACHB',
 
   // Groupements SAP
   secteur_activite: '15 · Marques Distrib.',

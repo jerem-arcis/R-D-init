@@ -16,7 +16,6 @@ import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import TextField from '@/components/fiche/fields/TextField';
 import SelectField from '@/components/fiche/fields/SelectField';
 import MultiSelectField from '@/components/fiche/fields/MultiSelectField';
-import EANField from '@/components/fiche/fields/EANField';
 import EmballagesTable from '@/components/fiche/fields/EmballagesTable';
 import LibelleParPaysTable from '@/components/fiche/fields/LibelleParPaysTable';
 import {
@@ -192,7 +191,7 @@ export default function FicheDetailV2() {
               <div>
                 <h1 className="text-lg font-bold text-foreground uppercase tracking-tight">
                   {localFiche.code_article || 'Nouvelle fiche'}
-                  {localFiche.libelle_article && ` — ${localFiche.libelle_article}`}
+                  {localFiche.libelle_article && ` - ${localFiche.libelle_article}`}
                 </h1>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   ID: {ficheId?.slice(0, 8)}…
@@ -301,10 +300,9 @@ export default function FicheDetailV2() {
 
         {/* ----- 6. Codes-barres ----- */}
         <Group visible={showGroup('codes_barres')} id="codes_barres" title="Codes-barres (EAN / GTIN)">
+          {/* EAN couche / colis / palette : déjà saisis dans le tableau des GTIN
+              par emballage (section Emballages). On ne garde ici que l'EAN manuel. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Fld visible={showField('ean_carton')}><EANField label="EAN carton" {...fld('ean_carton')} /></Fld>
-            <Fld visible={showField('ean_couche')}><EANField label="EAN couche" {...fld('ean_couche')} /></Fld>
-            <Fld visible={showField('ean_palette')}><EANField label="EAN palette" {...fld('ean_palette')} /></Fld>
             <Fld visible={showField('ean_manuel')}><TextField label="EAN manuel" maxLength={14} {...fld('ean_manuel')} /></Fld>
           </div>
         </Group>
@@ -333,16 +331,16 @@ export default function FicheDetailV2() {
             <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} options={SITES_STOCKAGE} fromSAP /></Fld>
             <Fld visible={showField('dluc_dluo_critique')}><TextField label="DLC/DLUO critique (j)" type="number" {...fld('dluc_dluo_critique')} /></Fld>
             <Fld visible={showField('gestion_par_lots')}><SelectField label="Gestion par lots" {...fld('gestion_par_lots')} options={GESTION_PAR_LOTS} /></Fld>
-            <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot — usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
-            <Fld visible={showField('cle_calcul_lot_stockiste')}><SelectField label="Clé calcul lot — stockage" {...fld('cle_calcul_lot_stockiste')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
-            <Fld visible={showField('profil_couverture_usine')}><SelectField label="Profil couverture — usine" {...fld('profil_couverture_usine')} options={PROFILS_COUVERTURE} /></Fld>
-            <Fld visible={showField('profil_couverture_stockiste')}><SelectField label="Profil couverture — stockiste" {...fld('profil_couverture_stockiste')} options={PROFILS_COUVERTURE} /></Fld>
-            <Fld visible={showField('type_approvisionnement_usine')}><SelectField label="Type appro — usine" {...fld('type_approvisionnement_usine')} options={TYPES_APPROVISIONNEMENT} /></Fld>
-            <Fld visible={showField('type_approvisionnement_stockiste')}><SelectField label="Type appro — stockiste" {...fld('type_approvisionnement_stockiste')} options={TYPES_APPROVISIONNEMENT} /></Fld>
-            <Fld visible={showField('delai_securite_usine')}><TextField label="Délai sécurité — usine (j)" type="number" {...fld('delai_securite_usine')} /></Fld>
-            <Fld visible={showField('delai_securite_stockiste')}><TextField label="Délai sécurité — stockiste (j)" type="number" {...fld('delai_securite_stockiste')} /></Fld>
-            <Fld visible={showField('delai_securite_couv_reelle_usine')}><TextField label="Délai sec/couv réelle — usine" type="number" {...fld('delai_securite_couv_reelle_usine')} /></Fld>
-            <Fld visible={showField('delai_securite_couv_reelle_stockiste')}><TextField label="Délai sec/couv réelle — stockiste" type="number" {...fld('delai_securite_couv_reelle_stockiste')} /></Fld>
+            <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot - usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
+            <Fld visible={showField('cle_calcul_lot_stockiste')}><SelectField label="Clé calcul lot - stockage" {...fld('cle_calcul_lot_stockiste')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
+            <Fld visible={showField('profil_couverture_usine')}><SelectField label="Profil couverture - usine" {...fld('profil_couverture_usine')} options={PROFILS_COUVERTURE} /></Fld>
+            <Fld visible={showField('profil_couverture_stockiste')}><SelectField label="Profil couverture - stockiste" {...fld('profil_couverture_stockiste')} options={PROFILS_COUVERTURE} /></Fld>
+            <Fld visible={showField('type_approvisionnement_usine')}><SelectField label="Type appro - usine" {...fld('type_approvisionnement_usine')} options={TYPES_APPROVISIONNEMENT} /></Fld>
+            <Fld visible={showField('type_approvisionnement_stockiste')}><SelectField label="Type appro - stockiste" {...fld('type_approvisionnement_stockiste')} options={TYPES_APPROVISIONNEMENT} /></Fld>
+            <Fld visible={showField('delai_securite_usine')}><TextField label="Délai sécurité - usine (j)" type="number" {...fld('delai_securite_usine')} /></Fld>
+            <Fld visible={showField('delai_securite_stockiste')}><TextField label="Délai sécurité - stockiste (j)" type="number" {...fld('delai_securite_stockiste')} /></Fld>
+            <Fld visible={showField('delai_securite_couv_reelle_usine')}><TextField label="Délai sec/couv réelle - usine" type="number" {...fld('delai_securite_couv_reelle_usine')} /></Fld>
+            <Fld visible={showField('delai_securite_couv_reelle_stockiste')}><TextField label="Délai sec/couv réelle - stockiste" type="number" {...fld('delai_securite_couv_reelle_stockiste')} /></Fld>
             <Fld visible={showField('appro_special')}><TextField label="Approvisionnement spécial" {...fld('appro_special')} /></Fld>
             <Fld visible={showField('delai_previsionnel_livraison')}><TextField label="Délai prévisionnel livraison" {...fld('delai_previsionnel_livraison')} fromSAP /></Fld>
             <Fld visible={showField('temps_reception_usine')}><TextField label="Temps réception (usine, j)" type="number" {...fld('temps_reception_usine')} /></Fld>

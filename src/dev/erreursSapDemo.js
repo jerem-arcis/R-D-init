@@ -111,7 +111,7 @@ export const demoErreurRows = [
   {
     id: 'seed-e6', reference: '000000000000404502', vue: 'Vue vente',
     codeErreurSap: 'MVKE-MTPOS',
-    messageErreur: 'Type de poste non requis pour ce circuit — anomalie ignorée.',
+    messageErreur: 'Type de poste non requis pour ce circuit - anomalie ignorée.',
     statutTraitement: 'Ignoree', statutCode: 'DE', entite: 'A_Product',
     parametre: paramFor('000000000000404502', '2 x Tartelettes Tatin -U', '2802'),
     createdOn: iso('2026-08-02T16:05:00'), createdBy: 'yannick.trouvay', codeChapeau: 'C404502',

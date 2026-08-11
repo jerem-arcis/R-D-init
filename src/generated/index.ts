@@ -5,6 +5,7 @@
 
 // Models
 export * as CommonModels from './models/CommonModels';
+export * as Cr04e_canauxdedistributionsModel from './models/Cr04e_canauxdedistributionsModel';
 export * as Cr04e_centredeprofitcepctsModel from './models/Cr04e_centredeprofitcepctsModel';
 export * as Cr04e_centredeprofittkao2sModel from './models/Cr04e_centredeprofittkao2sModel';
 export * as Cr04e_classedevalorisationsModel from './models/Cr04e_classedevalorisationsModel';
@@ -21,6 +22,7 @@ export * as Cr04e_unitofmeasuresModel from './models/Cr04e_unitofmeasuresModel';
 export * as New_libellepaysesModel from './models/New_libellepaysesModel';
 
 // Services
+export * from './services/Cr04e_canauxdedistributionsService';
 export * from './services/Cr04e_centredeprofitcepctsService';
 export * from './services/Cr04e_centredeprofittkao2sService';
 export * from './services/Cr04e_classedevalorisationsService';

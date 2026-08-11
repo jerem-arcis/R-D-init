@@ -5,6 +5,13 @@
  */
 
 export const dataSourcesInfo = {
+  "cr04e_canauxdedistributions": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "cr04e_canauxdedistributionid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
+  },
   "cr04e_centredeprofitcepcts": {
     "tableId": "",
     "version": "",

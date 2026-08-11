@@ -9,6 +9,7 @@ import { lookupBind } from '@/api/sapLists';
 import { trimOrUndef } from '@/api/_odata';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
 import { listForProjet as listEmballages, syncForProjet as syncEmballages, blocsFromRows } from '@/api/ficheEmballages';
+import { listValuesForProjet as listCanaux, syncForProjet as syncCanaux } from '@/api/ficheCanaux';
 
 // Clés des 5 blocs emballage (tables filles) : jamais envoyées au payload parent.
 const BLOC_KEYS = ['uvc_block', 'element_block', 'couche_block', 'colis_block', 'palette_block'];
@@ -150,7 +151,7 @@ function unwrap(result, action) {
     const err = result.error || {};
     const status = err.status ? `HTTP ${err.status}` : 'échec';
     const reqId = err.requestId ? ` [requestId ${err.requestId}]` : '';
-    const e = new Error(`${action} Dataverse — ${status} : ${err.message || 'erreur inconnue'}${reqId}`);
+    const e = new Error(`${action} Dataverse - ${status} : ${err.message || 'erreur inconnue'}${reqId}`);
     e.status = err.status;
     e.requestId = err.requestId;
     throw e;
@@ -166,6 +167,7 @@ export async function getFicheById(id) {
   if (!p) return null;
   const fiche = toFicheShape(p);
   fiche.libelle_par_pays = await listLibellePays(id);
+  fiche.canaux_distribution = await listCanaux(id);
   Object.assign(fiche, blocsFromRows(await listEmballages(id)));
   return fiche;
 }
@@ -197,6 +199,9 @@ export async function updateFiche(id, patch, { sapOptions = {} } = {}) {
   }
   if (Array.isArray(patch?.libelle_par_pays)) {
     await syncLibellePays(id, patch.libelle_par_pays);
+  }
+  if (Array.isArray(patch?.canaux_distribution)) {
+    await syncCanaux(id, patch.canaux_distribution);
   }
   // Emballages : EmballagesTable n'envoie qu'un bloc à la fois. On fusionne le(s)
   // bloc(s) du patch avec les blocs existants (relus) avant de synchroniser, sinon

@@ -19,7 +19,7 @@ function normalizeOption(opt) {
   if (typeof opt === 'string') return { value: opt, label: opt, keywords: opt };
   const value = opt.value ?? '';
   const designation = opt.designation ?? '';
-  const label = opt.label ?? (designation ? `${value} — ${designation}` : value);
+  const label = opt.label ?? (designation ? `${value} - ${designation}` : value);
   const keywords = opt.keywords ?? `${value} ${designation}`.trim();
   return { value, label, keywords };
 }

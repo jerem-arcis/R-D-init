@@ -39,9 +39,9 @@ function ResultatBadge({ resultat }) {
 }
 
 const fmtDate = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : format(d, 'dd/MM HH:mm');
+  return Number.isNaN(d.getTime()) ? '-' : format(d, 'dd/MM HH:mm');
 };
 
 const fmtDateLong = (iso) => {
@@ -100,7 +100,7 @@ function ErrorCard({ err }) {
         )}
       </div>
 
-      <p className="mt-2 text-sm text-foreground">{err.messageErreur || '—'}</p>
+      <p className="mt-2 text-sm text-foreground">{err.messageErreur || '-'}</p>
 
       {params.length > 0 && (
         <details className="group mt-3">
@@ -302,11 +302,11 @@ export default function SuiviCreationsSap({ filter = 'suivi' }) {
                     selected && selected.reference === c.reference ? 'bg-primary/5' : ''
                   }`}
                 >
-                  <TableCell className="text-sm text-muted-foreground">{c.codeProjet || '—'}</TableCell>
-                  <TableCell className="text-sm font-semibold">{c.reference || '—'}</TableCell>
-                  <TableCell className="text-sm max-w-[280px] truncate">{c.designation || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.usine || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.demandeur || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.codeProjet || '-'}</TableCell>
+                  <TableCell className="text-sm font-semibold">{c.reference || '-'}</TableCell>
+                  <TableCell className="text-sm max-w-[280px] truncate">{c.designation || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.usine || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.demandeur || '-'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {fmtDate(c.createdOn)}
                   </TableCell>

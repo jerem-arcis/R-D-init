@@ -93,4 +93,43 @@
   body {
     @apply bg-background text-foreground font-inter;
   }
+
+  /* Champs date : rendu propre et cohérent avec les dropdowns (même hauteur/bordure
+     via la classe .Input ; ici on nettoie le rendu natif du navigateur). */
+  input[type="date"] {
+    cursor: pointer;
+    color: hsl(var(--foreground));
+    font-family: var(--font-inter);
+  }
+  input[type="date"]::-webkit-datetime-edit {
+    color: hsl(var(--foreground));
+    padding: 0;
+  }
+  input[type="date"]:required:invalid::-webkit-datetime-edit {
+    color: hsl(var(--muted-foreground));
+  }
+  input[type="date"]::-webkit-inner-spin-button,
+  input[type="date"]::-webkit-clear-button {
+    display: none;
+    -webkit-appearance: none;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.5;
+    padding: 3px;
+    margin-left: 4px;
+    border-radius: 6px;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+  }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 0.9;
+    background-color: hsl(var(--accent));
+  }
+  input[type="date"]:disabled {
+    cursor: not-allowed;
+  }
+  input[type="date"]:disabled::-webkit-calendar-picker-indicator {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
 }
