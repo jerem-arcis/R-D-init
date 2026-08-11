@@ -1084,6 +1084,36 @@ export default function CreerDE() {
     // l'opération, puis vert (succès) / rouge (erreur).
     setSapModal({ status: 'loading' });
     try {
+      // VERIF avant envoi (identique à la DE) : le code chapeau ne doit pas déjà
+      // exister dans SAP. 400 => on stoppe (rien n'est envoyé), l'ADV doit
+      // demander un nouveau code.
+      try {
+        const verif = await postFlowRaw(FLUX.VERIF_DE, { 'Numéro': effectiveCode });
+        if (verif.status === 400) {
+          setSapModal({
+            status: 'error',
+            title: 'Code chapeau déjà existant',
+            message: 'Ce code existe déjà dans SAP - demandez un nouveau code chapeau.',
+          });
+          return;
+        }
+        if (verif.status !== 200) {
+          const text = await verif.text().catch(() => '');
+          setSapModal({
+            status: 'error',
+            title: 'Vérification impossible',
+            message: `VERIF_DE a répondu HTTP ${verif.status}${text ? ` - ${text}` : ''}.`,
+          });
+          return;
+        }
+      } catch (err) {
+        setSapModal({
+          status: 'error',
+          title: 'Vérification impossible',
+          message: `Impossible de vérifier le code auprès de SAP : ${err?.message || 'erreur inconnue'}.`,
+        });
+        return;
+      }
       const result = await triggerSapSendDs(effectiveCode);
       if (!result.ok) {
         setSapModal({ status: 'error', title: result.title, message: result.message });
