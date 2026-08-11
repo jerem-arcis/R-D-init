@@ -1035,10 +1035,15 @@ export default function CreerDE() {
       EANZCO: eans.ean_couche || formData.ean_couche || '',
       EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
+    // Power Automate n'aime pas les chaînes vides : on remplace toute valeur
+    // vide/absente par le TEXTE « null » pour envoyer un objet complet.
+    const bodyComplet = Object.fromEntries(
+      Object.entries(body).map(([k, v]) => [k, v === '' || v == null ? 'null' : v]),
+    );
     // Même contrat que la DE (triggerSapSend) : ne lève pas, renvoie
     // { ok, title, message } pour piloter la pop-up centrale.
     try {
-      const res = await postFlowRaw(FLUX.SAP_SEND, body);
+      const res = await postFlowRaw(FLUX.SAP_SEND, bodyComplet);
       if (res.status === 200) {
         return {
           ok: true,
