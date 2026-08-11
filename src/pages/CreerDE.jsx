@@ -1015,7 +1015,7 @@ export default function CreerDE() {
     const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
     const body = {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
-      CodePJ: '', // DS : toujours vide (demande métier — à tester côté SAP)
+      CodePJ: null, // DS : toujours null (demande métier — traité côté flux/SAP)
       NomProduit: formData.autre_designation || '',
       HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
       SecteurActivite: dsSecteur || '',
@@ -1035,7 +1035,37 @@ export default function CreerDE() {
       EANZCO: eans.ean_couche || formData.ean_couche || '',
       EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
-    await postFlow(FLUX.SAP_SEND, body);
+    // Même contrat que la DE (triggerSapSend) : ne lève pas, renvoie
+    // { ok, title, message } pour piloter la pop-up centrale.
+    try {
+      const res = await postFlowRaw(FLUX.SAP_SEND, body);
+      if (res.status === 200) {
+        return {
+          ok: true,
+          title: 'Envoyé vers SAP',
+          message: 'La création a bien été transmise à SAP.',
+        };
+      }
+      if (res.status === 400) {
+        return {
+          ok: false,
+          title: 'Une ou plusieurs erreurs sur SAP',
+          message: `Contactez l'administrateur.\nArticle ${effectiveCode || codeChapeau || '-'}.`,
+        };
+      }
+      const text = await res.text().catch(() => '');
+      return {
+        ok: false,
+        title: 'Envoi SAP échoué',
+        message: `Le flux a répondu HTTP ${res.status}${text ? ` - ${text}` : ''}.`,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        title: 'Envoi SAP non déclenché',
+        message: `L'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
+      };
+    }
   };
   const handleDsPushSap = async () => {
     if (isCreatingDs) return;
@@ -1050,14 +1080,32 @@ export default function CreerDE() {
       return;
     }
     setIsCreatingDs(true);
+    // Pop-up centrale « Envoi vers SAP », identique à la DE : spinner pendant
+    // l'opération, puis vert (succès) / rouge (erreur).
+    setSapModal({ status: 'loading' });
     try {
-      await triggerSapSendDs(effectiveCode);
-      if (formData.projet_id) await updateDsFromForm(formData.projet_id, { ...formData, code_chapeau: effectiveCode }, { sapOptions, statut: 'ds_validee' });
-      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
-      toast({ title: 'DS envoyée vers SAP', description: 'La DS est passée en « DS validée ».' });
-      navigate(createPageUrl('DemandesEtude'));
+      const result = await triggerSapSendDs(effectiveCode);
+      if (!result.ok) {
+        setSapModal({ status: 'error', title: result.title, message: result.message });
+        return;
+      }
+      // Succès : on diffère le passage en « DS validée » + la navigation au clic
+      // du bouton vert de la pop-up (l'utilisateur voit d'abord le succès).
+      pendingSuccessRef.current = async () => {
+        try {
+          if (formData.projet_id) {
+            await updateDsFromForm(formData.projet_id, { ...formData, code_chapeau: effectiveCode }, { sapOptions, statut: 'ds_validee' });
+          }
+          queryClient.invalidateQueries({ queryKey: ['projets-de'] });
+        } catch (err) {
+          toast({ title: 'Statut DS non mis à jour', description: err?.message || 'Erreur inconnue.', variant: 'destructive' });
+        } finally {
+          navigate(createPageUrl('DemandesEtude'));
+        }
+      };
+      setSapModal({ status: 'success', title: result.title, message: result.message });
     } catch (err) {
-      toast({ title: 'Échec envoi SAP', description: err?.message || 'Erreur inconnue.', variant: 'destructive' });
+      setSapModal({ status: 'error', title: 'Envoi SAP non déclenché', message: err?.message || 'Erreur inconnue.' });
     } finally {
       setIsCreatingDs(false);
     }
@@ -1072,14 +1120,23 @@ export default function CreerDE() {
   // (l'utilisateur voit le message vert). Le payload en attente est mémorisé ici.
   const [sapModal, setSapModal] = useState(null);
   const pendingSaveRef = useRef(null);
+  // Action différée au clic du bouton vert de la pop-up (utilisée par la DS :
+  // passage en « DS validée » + navigation). La DE utilise pendingSaveRef.
+  const pendingSuccessRef = useRef(null);
 
   const handleSapModalClose = () => {
     const wasSuccess = sapModal?.status === 'success';
     setSapModal(null);
-    if (wasSuccess && pendingSaveRef.current) {
+    if (!wasSuccess) return;
+    if (pendingSaveRef.current) {
       const payload = pendingSaveRef.current;
       pendingSaveRef.current = null;
-      saveMutation.mutate(payload); // invalide + navigue vers la liste
+      saveMutation.mutate(payload); // DE : invalide + navigue vers la liste
+    }
+    if (pendingSuccessRef.current) {
+      const action = pendingSuccessRef.current;
+      pendingSuccessRef.current = null;
+      action(); // DS : maj « DS validée » + navigation (async, best-effort)
     }
   };
 
