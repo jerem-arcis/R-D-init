@@ -50,7 +50,8 @@ const GROUPS = [
 const REMOVED_FIELDS = new Set([
   'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
   'specificite_produit', 'sites_stockage', 'groupe_marchandises', 'groupement_articles',
-  'vl', 'article_prix', 'biv', 'ancien_numero_article', 'dluc_dluo_critique', 'gestion_par_lots',
+  // `ancien_numero_article` reste visible : c'est MARA-BISMT / ProductOldID côté SAP.
+  'vl', 'article_prix', 'biv', 'dluc_dluo_critique', 'gestion_par_lots',
   'ean_carton', 'ean_couche', 'ean_palette', 'ean_manuel',
   'cle_calcul_lot_usine', 'cle_calcul_lot_stockiste',
   'profil_couverture_usine', 'profil_couverture_stockiste',
@@ -120,13 +121,23 @@ export default function FicheDetailV2() {
       queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] });
       queryClient.invalidateQueries({ queryKey: ['fiches'] });
     },
+    // Échec d'écriture : on relit la fiche pour que l'affichage revienne à l'état
+    // réel de la base (l'affichage optimiste mentirait sinon, ex. un canal décoché
+    // à l'écran mais toujours présent en base).
+    onError: () => queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] }),
   });
 
   const handleUpdate = async (updates) => {
     setLocalFiche((prev) => ({ ...prev, ...updates }));
     setIsSaving(true);
-    await updateMutation.mutateAsync(updates);
-    setIsSaving(false);
+    try {
+      await updateMutation.mutateAsync(updates);
+    } catch (err) {
+      console.error('[FL enregistrement]', err);
+      toast({ variant: 'destructive', title: 'Enregistrement échoué', description: err?.message });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleExportPdf = async () => {
@@ -276,7 +287,7 @@ export default function FicheDetailV2() {
         {/* ----- 4. Libellés ----- */}
         <Group visible={showGroup('libelles')} id="libelles" title="Libellés & étiquettes">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Fld visible={showField('design_normalisee')}><TextField label="Désign. normalisée" {...fld('design_normalisee')} /></Fld>
+            <Fld visible={showField('design_normalisee')}><TextField label="Désign. normalisée" maxLength={18} {...fld('design_normalisee')} /></Fld>
             <Fld visible={showField('libelle_long_40')}><TextField label="Libellé long 40 caractères" maxLength={40} {...fld('libelle_long_40')} /></Fld>
             <Fld visible={showField('libelle_caisse')}><TextField label="Libellé caisse" {...fld('libelle_caisse')} /></Fld>
             <Fld visible={showField('libelle_client')}><TextField label="Libellé client" {...fld('libelle_client')} /></Fld>

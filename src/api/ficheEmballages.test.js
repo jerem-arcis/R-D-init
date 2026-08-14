@@ -43,6 +43,12 @@ describe('blocsFromRows (relecture)', () => {
     expect(back.colis_block.volume).toBeCloseTo(0.02630068, 8); // CDM -> m³
     expect(back.palette_block).toMatchObject({ unite: 48, haut: 1790, gtin: '03270162009495' });
   });
+
+  it('round-trip : un volume colis saisi revient à l’identique', () => {
+    const avec = { ...blocs, colis_block: { ...blocs.colis_block, volume: 0.0263 } };
+    const rows = diffEmballages([], avec).toCreate.map((r, i) => ({ ...r, cr04e_unitofmeasureid: `id${i}` }));
+    expect(blocsFromRows(rows).colis_block.volume).toBe(0.0263);
+  });
 });
 
 describe('isEmptyBloc', () => {

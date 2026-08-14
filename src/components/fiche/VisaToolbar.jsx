@@ -32,11 +32,12 @@ function VisaPill({ visa, fiche, onVisa, onRefus }) {
 
   const Icon = state === 'ok' ? ShieldCheck : state === 'ko' ? X : AlertCircle;
 
+  // Motif obligatoire : bouton désactivé + message inline, jamais d'alert()
+  // natif (aucune boîte de dialogue navigateur dans l'app).
+  const motifValide = motif.trim().length > 0;
+
   const confirmRefus = () => {
-    if (!motif.trim()) {
-      alert('Motif requis');
-      return;
-    }
+    if (!motifValide) return;
     onRefus(motif);
     setMotif('');
     setShowRefus(false);
@@ -111,7 +112,12 @@ function VisaPill({ visa, fiche, onVisa, onRefus }) {
                 <Button size="sm" variant="outline" onClick={() => setShowRefus(false)} className="flex-1 h-7 text-xs">
                   Annuler
                 </Button>
-                <Button size="sm" onClick={confirmRefus} className="flex-1 h-7 bg-red-600 hover:bg-red-700 text-white text-xs">
+                <Button
+                  size="sm"
+                  onClick={confirmRefus}
+                  disabled={!motifValide}
+                  className="flex-1 h-7 bg-red-600 hover:bg-red-700 text-white text-xs"
+                >
                   Confirmer
                 </Button>
               </div>

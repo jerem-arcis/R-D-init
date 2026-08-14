@@ -67,12 +67,15 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           onChange={set('date_limite_creation_mm01')}
           disabled={disabled}
         />
+        {/* Jamais saisie à la main : horodatée automatiquement quand le flux
+            SAP_SEND_FL répond 200 (cf. FLSynthesisSection). C'est elle qui
+            verrouille ensuite le bouton « Créer l'article dans SAP ». */}
         <TextField
           label="Date envoi de la fiche"
           type="date"
           value={fiche.date_envoi_ficher}
-          onChange={set('date_envoi_ficher')}
-          disabled={disabled}
+          disabled
+          hint="Renseignée automatiquement à l'envoi vers SAP"
         />
       </div>
     </section>

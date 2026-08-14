@@ -62,6 +62,10 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
     cr04e_zug: toNumber(zug),
     cr04e_codechapeau: trimOrUndef(codeChapeau),
     cr04e_statut_en_cours: trimOrUndef(statut),
+    // Type de produit SAP : une DE est toujours un produit FINI. Constante et non
+    // saisissable — même valeur que le champ TypeProduit du payload SAP_SEND.
+    // Le pendant DS (négoce) vaut NEGO, cf. buildDsPayload.
+    cr04e_typedeproduit: 'PFIN',
   };
 
   for (const [key, field, bindProp] of PROJET_LOOKUPS) {

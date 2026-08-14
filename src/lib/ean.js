@@ -64,6 +64,42 @@ export const eanCarton = (code) => gtin14(code, '01'); // EAN14CT
 export const eanCouche = (code) => gtin14(code, '02'); // EAN14CO
 export const eanPalette = (code) => gtin14(code, '03'); // EAN14PL
 
+// EAN-13 « UE » (unité d'élément) : 325151 + code(4) + 99 + clé.
+// Source : 419805-FM-2025-10-29.xlsm, feuille EAN ligne 2.
+export function eanElement(code) {
+  const body = PREFIX + digitsOnly(code) + '99';
+  return body + gs1CheckDigit(body);
+}
+
+// Divisions d'origine pour lesquelles le fichier FM ne génère PAS d'EAN d'unité
+// d'élément (formule EAN!B2 : origine 2834 ou 2866 -> vide).
+const ORIGINES_SANS_EAN_ELEMENT = ['2834', '2866'];
+
+// Jeu complet des GTIN par niveau d'emballage de la FL, dérivé du code article
+// (code chapeau). Reprend une à une les formules de la feuille EAN du fichier FM :
+//   UVC     -> EAN 13 UB (suffixe 00)
+//   Élément -> EAN 13 UE (suffixe 99), sauf origine 2834 / 2866
+//   Colis   -> EAN 14 CT (suffixe 01)
+//   Couche  -> EAN 14 CO (suffixe 02)
+//   Palette -> EAN 14 PL (suffixe 03)
+// Renvoie des chaînes vides si le code ne fournit pas 4 chiffres.
+// NB : le fichier FM prévoit deux préfixes alternatifs (354183 en facturation
+// « TDL », 342472 en « GP »). La FL ne porte pas cette notion : on applique le
+// préfixe Boncolac standard 325151, comme la DE.
+export function buildGtinSet(code, { origine } = {}) {
+  const base = baseCodeFromCode(code);
+  const vide = { uvc: '', element: '', couche: '', colis: '', palette: '' };
+  if (!base) return vide;
+  const origineCode = String(origine ?? '').trim().slice(0, 4);
+  return {
+    uvc: eanUV(base),
+    element: ORIGINES_SANS_EAN_ELEMENT.includes(origineCode) ? '' : eanElement(base),
+    couche: eanCouche(base),
+    colis: eanCarton(base),
+    palette: eanPalette(base),
+  };
+}
+
 // Jeu Couche / Carton / Palette pour le formulaire DE — les trois niveaux de
 // conditionnement de la fiche produit (GTIN-14). Le niveau « Couche » (CO,
 // suffixe 02) remplace l'UV : la fiche ne track pas d'unité de vente conso, son

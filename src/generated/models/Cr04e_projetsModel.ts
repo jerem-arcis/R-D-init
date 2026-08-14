@@ -49,6 +49,7 @@ export interface Cr04e_projetsBase {
   cr04e_masquedeletiquettecolis?: string;
   cr04e_nombreducpalette?: string;
   cr04e_nomduproduitdesignation?: string;
+  cr04e_nomenclature_douaniere?: string;
   cr04e_nomenclaturedouaniere?: string;
   cr04e_oc2groupedarticle?: string;
   cr04e_oc2groupederistournes?: string;

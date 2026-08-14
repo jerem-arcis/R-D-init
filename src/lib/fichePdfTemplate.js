@@ -80,56 +80,66 @@ export function buildFichePdfHtml(fiche = {}, de = null) {
 
   return `<div class="fl-pdf-sheet">
   <style>
+  /* Contraintes de rendu html2canvas 1.4 — à respecter pour toute évolution :
+     1. Il repositionne le texte à partir d'une ligne de base qu'il recalcule.
+        Tailles fractionnaires et line-height sans unité le font dériver de 1 à
+        3 px. => font-size ENTIERS et line-height en PX explicites PARTOUT.
+     2. Il n'applique PAS l'alignement flex au texte : align-items/justify-content
+        sur un conteneur à hauteur fixe laissent le texte collé en haut à gauche.
+        => centrer avec text-align + line-height égal à la hauteur de contenu
+        (cf. les cases de chiffres .digits span), jamais avec inline-flex.
+     Le positionnement des BOÎTES, lui, vient de la mise en page réelle : flex et
+     grid restent utilisables pour disposer les éléments. */
   .fl-pdf-sheet *{box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
   .fl-pdf-sheet{width:794px;background:#fff;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#241a3a;display:flex;flex-direction:column;overflow:hidden;}
   .fl-pdf-sheet .hero{background:linear-gradient(135deg,#2e164f 0%,#45247a 48%,#6a3fa0 100%);padding:14px 24px;display:flex;align-items:center;gap:14px;}
   .fl-pdf-sheet .logo{background:#fff;border-radius:9px;padding:7px;width:60px;flex:0 0 60px;box-shadow:0 5px 14px rgba(0,0,0,.18);}
   .fl-pdf-sheet .logo img{display:block;width:100%;height:auto;border-radius:3px;}
   .fl-pdf-sheet .htxt{flex:1;color:#fff;}
-  .fl-pdf-sheet .kicker{margin:0 0 3px;font-size:9.5px;letter-spacing:2.2px;text-transform:uppercase;color:#d7c8f0;font-weight:600;}
-  .fl-pdf-sheet h1{margin:0;font-size:18px;font-weight:800;line-height:1.1;}
+  .fl-pdf-sheet .kicker{margin:0 0 3px;font-size:10px;line-height:12px;letter-spacing:2.2px;text-transform:uppercase;color:#d7c8f0;font-weight:600;}
+  .fl-pdf-sheet h1{margin:0;font-size:18px;font-weight:800;line-height:20px;}
   .fl-pdf-sheet .hero-right{display:flex;align-items:center;gap:10px;}
-  .fl-pdf-sheet .badge-status{background:#fff3e0;color:#e65100;font-size:10px;font-weight:800;padding:5px 12px;border-radius:16px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+  .fl-pdf-sheet .badge-status{background:#fff3e0;color:#e65100;display:inline-block;font-size:10px;line-height:12px;font-weight:800;padding:5px 12px;border-radius:16px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
   .fl-pdf-sheet .racine{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:5px 12px;text-align:center;}
-  .fl-pdf-sheet .racine .rl{display:block;font-size:8px;letter-spacing:1.2px;text-transform:uppercase;color:#e5daf7;}
-  .fl-pdf-sheet .racine .rv{display:block;font-size:15px;font-weight:800;line-height:1.05;}
+  .fl-pdf-sheet .racine .rl{display:block;font-size:8px;line-height:10px;letter-spacing:1.2px;text-transform:uppercase;color:#e5daf7;}
+  .fl-pdf-sheet .racine .rv{display:block;font-size:15px;font-weight:800;line-height:17px;}
   .fl-pdf-sheet .accent{height:3px;background:linear-gradient(90deg,#6a3fa0,#b388ff 50%,#6a3fa0);}
   .fl-pdf-sheet .body{padding:9px 18px 11px;display:flex;flex-direction:column;gap:6px;}
   .fl-pdf-sheet .strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
   .fl-pdf-sheet .strip .cell{background:#f3eefb;border:1px solid #e1d4f5;border-radius:8px;padding:6px 10px;}
-  .fl-pdf-sheet .strip .cell .k{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#8b6fb8;font-weight:700;margin-bottom:1px;}
-  .fl-pdf-sheet .strip .cell .v{font-size:12px;font-weight:800;color:#45247a;line-height:1.15;}
+  .fl-pdf-sheet .strip .cell .k{font-size:8px;line-height:10px;letter-spacing:1px;text-transform:uppercase;color:#8b6fb8;font-weight:700;margin-bottom:1px;}
+  .fl-pdf-sheet .strip .cell .v{font-size:12px;font-weight:800;color:#45247a;line-height:14px;}
   .fl-pdf-sheet .card{border:1px solid #e6e2ee;border-radius:9px;overflow:hidden;}
-  .fl-pdf-sheet .card>h2{margin:0;padding:4px 10px;font-size:9px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#fff;background:linear-gradient(90deg,#45247a,#6a3fa0);}
+  .fl-pdf-sheet .card>h2{margin:0;padding:4px 10px;font-size:9px;line-height:11px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:#fff;background:linear-gradient(90deg,#45247a,#6a3fa0);}
   .fl-pdf-sheet .card .inner{padding:7px 10px;}
   .fl-pdf-sheet .grid{display:grid;gap:6px 12px;}
   .fl-pdf-sheet .g2{grid-template-columns:1fr 1fr;}.fl-pdf-sheet .g3{grid-template-columns:1fr 1fr 1fr;}.fl-pdf-sheet .g4{grid-template-columns:repeat(4,1fr);}
   .fl-pdf-sheet .f{display:flex;flex-direction:column;gap:1px;min-width:0;}
-  .fl-pdf-sheet .f .k{font-size:8px;letter-spacing:.5px;text-transform:uppercase;color:#8b6fb8;font-weight:700;}
-  .fl-pdf-sheet .f .v{font-size:11px;font-weight:600;color:#241a3a;word-break:break-word;line-height:1.2;}
-  .fl-pdf-sheet .f .v.big{font-size:12.5px;font-weight:800;color:#45247a;}
+  .fl-pdf-sheet .f .k{font-size:8px;line-height:10px;letter-spacing:.5px;text-transform:uppercase;color:#8b6fb8;font-weight:700;}
+  .fl-pdf-sheet .f .v{font-size:11px;font-weight:600;color:#241a3a;word-break:break-word;line-height:13px;}
+  .fl-pdf-sheet .f .v.big{font-size:12px;line-height:14px;font-weight:800;color:#45247a;}
   .fl-pdf-sheet .f .v.muted{color:#a49db4;font-weight:500;font-style:italic;}
   .fl-pdf-sheet .span2{grid-column:span 2;}
   .fl-pdf-sheet .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
   .fl-pdf-sheet .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
   .fl-pdf-sheet .digits{display:inline-flex;gap:2px;flex-wrap:wrap;vertical-align:middle;}
-  .fl-pdf-sheet .digits span{width:15px;height:19px;border:1px solid #e1d4f5;border-radius:3px;background:#f7f6fa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#45247a;font-variant-numeric:tabular-nums;}
+  .fl-pdf-sheet .digits span{width:15px;height:19px;border:1px solid #e1d4f5;border-radius:3px;background:#f7f6fa;display:inline-block;text-align:center;line-height:17px;font-size:11px;font-weight:700;color:#45247a;font-variant-numeric:tabular-nums;}
   .fl-pdf-sheet .pills{display:flex;flex-wrap:wrap;gap:4px;}
-  .fl-pdf-sheet .pill{background:#f3eefb;border:1px solid #e1d4f5;color:#45247a;border-radius:14px;padding:2px 9px;font-size:10px;font-weight:700;}
-  .fl-pdf-sheet .defbox{background:#f7f6fa;border-left:3px solid #6a3fa0;border-radius:0 6px 6px 0;padding:6px 10px;font-size:10.5px;color:#555566;line-height:1.4;}
+  .fl-pdf-sheet .pill{background:#f3eefb;border:1px solid #e1d4f5;color:#45247a;border-radius:14px;padding:2px 9px;display:inline-block;font-size:10px;line-height:12px;font-weight:700;}
+  .fl-pdf-sheet .defbox{background:#f7f6fa;border-left:3px solid #6a3fa0;border-radius:0 6px 6px 0;padding:6px 10px;font-size:10px;color:#555566;line-height:15px;}
   .fl-pdf-sheet .metrics{display:grid;gap:5px;}
   .fl-pdf-sheet .metric{background:#f3eefb;border:1px solid #e1d4f5;border-radius:7px;padding:5px 6px;text-align:center;}
-  .fl-pdf-sheet .metric .mv{font-size:13px;font-weight:800;color:#45247a;line-height:1.05;}
-  .fl-pdf-sheet .metric .mu{font-size:7.5px;color:#8b6fb8;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:2px;}
+  .fl-pdf-sheet .metric .mv{font-size:13px;font-weight:800;color:#45247a;line-height:15px;}
+  .fl-pdf-sheet .metric .mu{font-size:8px;line-height:10px;color:#8b6fb8;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-top:2px;}
   .fl-pdf-sheet .visas{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
   .fl-pdf-sheet .visa{border:1px dashed #e1d4f5;border-radius:7px;padding:6px 6px;text-align:center;}
-  .fl-pdf-sheet .visa .vk{font-size:8px;letter-spacing:.4px;text-transform:uppercase;color:#8b6fb8;font-weight:700;}
-  .fl-pdf-sheet .visa .vn{font-size:11px;font-weight:700;color:#241a3a;margin-top:3px;}
-  .fl-pdf-sheet .visa .vs{font-size:8.5px;font-weight:700;color:#e65100;background:#fff3e0;border-radius:10px;padding:1px 7px;display:inline-block;margin-top:3px;}
+  .fl-pdf-sheet .visa .vk{font-size:8px;line-height:10px;letter-spacing:.4px;text-transform:uppercase;color:#8b6fb8;font-weight:700;}
+  .fl-pdf-sheet .visa .vn{font-size:11px;line-height:13px;font-weight:700;color:#241a3a;margin-top:3px;}
+  .fl-pdf-sheet .visa .vs{font-size:9px;line-height:11px;font-weight:700;color:#e65100;background:#fff3e0;border-radius:10px;padding:1px 7px;display:inline-block;margin-top:3px;}
   .fl-pdf-sheet .visa.done .vs{color:#2e7d32;background:#e8f5e9;}
   .fl-pdf-sheet .visa.ko .vs{color:#c62828;background:#fdecea;}
   .fl-pdf-sheet .foot{padding:7px 18px;text-align:center;border-top:1px solid #e6e2ee;}
-  .fl-pdf-sheet .foot p{margin:0;font-size:9px;color:#9a93ab;line-height:1.4;}
+  .fl-pdf-sheet .foot p{margin:0;font-size:9px;color:#9a93ab;line-height:13px;}
   .fl-pdf-sheet .foot .brand{color:#45247a;font-weight:700;margin-top:1px;}
   </style>
 

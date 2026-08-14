@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { listShapeForTest, formDataForTest } from './projet';
+import { listShapeForTest, formDataForTest, buildProjetPayload } from './projet';
+import { buildDsPayload } from './ds';
 
 describe('toListShape — type DS', () => {
   it('marque type_de=ds pour un statut DS', () => {
@@ -41,5 +42,17 @@ describe('toFormData — résolution des lookups à la réouverture', () => {
   it('repli division sur cr04e_divisionimport si le lookup est absent', () => {
     const f = formDataForTest({ cr04e_projetid: '9', cr04e_divisionimport: 'RIVESALTES' }, sapOptions);
     expect(f.division).toBe('2866'); // divisionCodeFromPlant('RIVESALTES')
+  });
+});
+
+describe('type de produit SAP (cr04e_typedeproduit)', () => {
+  it('une DE est toujours PFIN, une DS toujours NEGO', () => {
+    expect(buildProjetPayload({}).cr04e_typedeproduit).toBe('PFIN');
+    expect(buildDsPayload({}).cr04e_typedeproduit).toBe('NEGO');
+  });
+
+  it('la valeur est posée quel que soit le statut (dont validation)', () => {
+    expect(buildProjetPayload({}, { statut: 'dl_attente_validation_cdg' }).cr04e_typedeproduit).toBe('PFIN');
+    expect(buildDsPayload({}, { statut: 'ds_validee' }).cr04e_typedeproduit).toBe('NEGO');
   });
 });

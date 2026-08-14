@@ -21,16 +21,46 @@ async function designationsByCode() {
   return map;
 }
 
+// Clé d'appariement d'un canal : insensible aux espaces et à la casse. Un
+// appariement TROP STRICT est ce qui fait « repatcher » des canaux inchangés : une
+// ligne dont le code lu ne matche pas au caractère près part en suppression ET est
+// recréée, alors que rien n'a bougé côté saisie.
+const codeKey = (c) => (c ?? '').toString().trim().toLowerCase();
+
 // Diff pur entre canaux existants et saisie courante. La valeur d'un canal (issue
 // du multi-select) sert à la fois de code et de libellé (liste courte figée).
 // existants: [{ id, code }] ; saisis: [string].
+//
+// Garanties :
+//  - un canal DÉJÀ EN BASE et toujours coché n'est NI supprimé NI recréé (sa ligne
+//    et son GUID sont conservés tels quels) — cocher un 3e canal quand il y en a 2
+//    ne produit qu'UNE création ;
+//  - un canal DÉCOCHÉ voit sa ligne supprimée (sinon elle survit en base et part
+//    dans SAP via SAP_SEND_FL) ;
+//  - les doublons de code (même canal créé deux fois) sont ramenés à une ligne.
 export function diffCanaux(existants = [], saisis = []) {
-  const voulus = [...new Set((saisis || []).map((s) => (s ?? '').toString().trim()).filter(Boolean))];
-  const voulusSet = new Set(voulus);
-  const existantsCodes = new Set(existants.map((r) => r.code));
+  // Saisie normalisée, dédoublonnée, dans l'ordre de sélection.
+  const voulus = [];
+  const voulusKeys = new Set();
+  for (const s of saisis || []) {
+    const v = (s ?? '').toString().trim();
+    if (!v || voulusKeys.has(codeKey(v))) continue;
+    voulusKeys.add(codeKey(v));
+    voulus.push(v);
+  }
 
-  const toCreate = voulus.filter((c) => !existantsCodes.has(c));
-  const toDelete = existants.filter((r) => !voulusSet.has(r.code));
+  // Lignes conservées telles quelles : celles dont le code est toujours coché
+  // (première occurrence seulement). Tout le reste part en suppression.
+  const gardes = new Set();
+  const toDelete = [];
+  for (const r of existants) {
+    const k = codeKey(r.code);
+    if (voulusKeys.has(k) && !gardes.has(k)) gardes.add(k);
+    else toDelete.push(r);
+  }
+
+  // On ne crée QUE ce qui n'est pas déjà couvert par une ligne conservée.
+  const toCreate = voulus.filter((c) => !gardes.has(codeKey(c)));
   return { toCreate, toDelete };
 }
 
@@ -53,7 +83,11 @@ export async function listForProjet(projetId) {
   const rows = unwrap(result, 'Liste canaux de distribution') ?? [];
   return rows.map((r) => ({
     id: r.cr04e_canauxdedistributionid,
-    code: r.cr04e_code ?? r.cr04e_nom ?? '',
+    // cr04e_code fait foi. Repli sur cr04e_nom quand le code est VIDE (pas
+    // seulement null) : les lignes historiques créées avant la colonne code
+    // seraient sinon lues avec un code vide, jamais appariées, donc supprimées
+    // puis recréées à chaque sauvegarde.
+    code: (r.cr04e_code ?? '').trim() || (r.cr04e_nom ?? '').trim(),
   }));
 }
 
@@ -83,6 +117,25 @@ export async function syncForProjet(projetId, saisis = []) {
     );
   }
   for (const d of toDelete) {
+    // Le service généré renvoie `void` : un échec de suppression ne lève rien et
+    // laisserait un canal fantôme (envoyé ensuite à SAP par SAP_SEND_FL). D'où la
+    // relecture de contrôle ci-dessous.
     await Cr04e_canauxdedistributionsService.delete(d.id);
+  }
+
+  // Contrôle après écriture : la base doit refléter EXACTEMENT la sélection. On
+  // échoue bruyamment plutôt que de laisser une ligne décochée survivre en base.
+  if (toCreate.length || toDelete.length) {
+    const apres = await listValuesForProjet(projetId);
+    const attendu = new Set((saisis || []).map(codeKey).filter(Boolean));
+    const obtenu = new Set(apres.map(codeKey).filter(Boolean));
+    const ecart =
+      obtenu.size !== attendu.size || [...attendu].some((c) => !obtenu.has(c));
+    if (ecart) {
+      throw new Error(
+        `Canaux de distribution non synchronisés : la base contient [${apres.join(', ') || '-'}]` +
+          ` au lieu de [${(saisis || []).join(', ') || '-'}].`,
+      );
+    }
   }
 }

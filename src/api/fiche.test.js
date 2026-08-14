@@ -70,6 +70,49 @@ describe('buildFichePayload', () => {
     expect(buildFichePayload({ statut_sap: 'Création SAP effectuée' }).cr04e_statut_en_cours).toBe('fl_sap_cree');
   });
 
+  it('persiste l’ancien n° article (MARA-BISMT / ProductOldID)', () => {
+    expect(buildFichePayload({ ancien_numero_article: '8779' }).cr04e_anciennarticle).toBe('8779');
+    expect(toFicheShape({ cr04e_anciennarticle: '8779' }).ancien_numero_article).toBe('8779');
+  });
+
+  it('persiste la désignation normalisée', () => {
+    expect(buildFichePayload({ design_normalisee: 'TARTE POMME 400G' }).cr04e_designnormalisee)
+      .toBe('TARTE POMME 400G');
+    expect(toFicheShape({ cr04e_designnormalisee: 'TARTE POMME 400G' }).design_normalisee)
+      .toBe('TARTE POMME 400G');
+  });
+
+  it('écrit la nomenclature douanière dans la nouvelle colonne (et l’ancienne)', () => {
+    const p = buildFichePayload({ nomenclature_douaniere: '19059030' });
+    expect(p.cr04e_nomenclature_douaniere).toBe('19059030');
+    expect(p.cr04e_nomenclaturedouaniere).toBe('19059030');
+  });
+
+  it('ne pousse que le code pour nomenclature / type d’usine / éclatement', () => {
+    // Valeurs historiques enregistrées en toutes lettres : nettoyées à l’écriture.
+    expect(buildFichePayload({ nomenclature_douaniere: '19059030 = Plaques de pain : sucre <5%' })
+      .cr04e_nomenclature_douaniere).toBe('19059030');
+    expect(buildFichePayload({ type_usine: 'Z004 - Carcassonne' }).cr04e_typedusine).toBe('Z004');
+    expect(buildFichePayload({ eclatement_groupe_marchandise: '00100 - Pâtisseries' })
+      .cr04e_eclatementgroupedemarchandise).toBe('00100');
+    // Une valeur déjà réduite au code passe inchangée.
+    expect(buildFichePayload({ type_usine: 'Z008' }).cr04e_typedusine).toBe('Z008');
+  });
+
+  it('ne pousse que le code pour le groupe d’imputation (séparateur sans espaces)', () => {
+    expect(buildFichePayload({ groupe_imputation: '01-produits finis' })
+      .cr04e_oc2groupeimputationarticle).toBe('01');
+    expect(buildFichePayload({ groupe_imputation: '05' })
+      .cr04e_oc2groupeimputationarticle).toBe('05');
+  });
+
+  it('lit la nomenclature : nouvelle colonne d’abord, repli sur l’ancienne', () => {
+    expect(toFicheShape({ cr04e_nomenclature_douaniere: 'NEW', cr04e_nomenclaturedouaniere: 'OLD' })
+      .nomenclature_douaniere).toBe('NEW');
+    expect(toFicheShape({ cr04e_nomenclature_douaniere: '', cr04e_nomenclaturedouaniere: 'OLD' })
+      .nomenclature_douaniere).toBe('OLD');
+  });
+
   it("pousse le nombre d'UC / palette depuis le bloc palette (ligne Palette, colonne Unité)", () => {
     expect(buildFichePayload({ palette_block: { unite: 48 } }).cr04e_nombreducpalette).toBe('48');
     // Palette vidée -> colonne effacée

@@ -13,11 +13,12 @@ export default function RefusSection({
   const [showRefus, setShowRefus] = useState(false);
   const [motifRefus, setMotifRefus] = useState('');
 
+  // Motif obligatoire : contrôlé en désactivant le bouton, sans alert() natif
+  // (aucune boîte de dialogue navigateur dans l'app).
+  const motifValide = motifRefus.trim().length > 0;
+
   const handleConfirmRefus = () => {
-    if (!motifRefus.trim()) {
-      alert('Veuillez saisir un motif de refus');
-      return;
-    }
+    if (!motifValide) return;
     onRefus(motifRefus);
     setShowRefus(false);
     setMotifRefus('');
@@ -38,6 +39,9 @@ export default function RefusSection({
             placeholder="Expliquer pourquoi cette étape est refusée..."
             className="min-h-[100px]"
           />
+          {!motifValide && (
+            <p className="text-xs text-red-600">Le motif est obligatoire pour refuser.</p>
+          )}
         </div>
         <div className="flex justify-end gap-3">
           <Button
@@ -51,6 +55,7 @@ export default function RefusSection({
           </Button>
           <Button
             onClick={handleConfirmRefus}
+            disabled={!motifValide}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
             <XCircle className="w-4 h-4 mr-2" />

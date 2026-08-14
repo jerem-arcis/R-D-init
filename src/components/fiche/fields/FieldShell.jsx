@@ -19,6 +19,7 @@ export default function FieldShell({
   crossRef,
   fromSAP,
   warning,
+  hint, // note discrète sous le champ (ex. « renseigné automatiquement »)
   highlight,
   owner,
   ownerLabel,
@@ -69,6 +70,7 @@ export default function FieldShell({
         )}
       </div>
       {children}
+      {hint && <p className="text-[10px] text-slate-500">{hint}</p>}
       {warning && (
         <div className="flex items-start gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
           <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />

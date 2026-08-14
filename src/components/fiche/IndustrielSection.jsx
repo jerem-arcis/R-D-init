@@ -111,6 +111,13 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           disabled={disabled}
           options={TEMPS_RECEPTION_USINE}
         />
+        {/* MARA-BISMT / ProductOldID : n° de l'article remplacé, saisie libre. */}
+        <TextField
+          label="Ancien n° article"
+          value={fiche.ancien_numero_article}
+          onChange={set('ancien_numero_article')}
+          disabled={disabled}
+        />
       </FieldGrid>
 
       <FieldGrid title="Durée de vie" cols={2}>

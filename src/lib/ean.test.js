@@ -6,6 +6,7 @@ import {
   eanCouche,
   eanPalette,
   buildEANSet,
+  buildGtinSet,
   baseCodeFromCode,
   isValidBaseCode,
 } from './ean';
@@ -107,5 +108,29 @@ describe('isValidBaseCode', () => {
     expect(isValidBaseCode('741603')).toBe(false);
     expect(isValidBaseCode('')).toBe(false);
     expect(isValidBaseCode(null)).toBe(false);
+  });
+});
+
+// Valeurs de référence : 419805-FM-2025-10-29.xlsm, feuille EAN (article 4198).
+// Les résultats attendus sont ceux calculés par le classeur lui-même.
+describe('buildGtinSet — conforme au fichier FM 419805', () => {
+  it('dérive les 5 GTIN depuis le code article', () => {
+    expect(buildGtinSet('419805')).toEqual({
+      uvc: '3251514198005',       // EAN 13 UB  : 325151 + 4198 + 00 + clé
+      element: '3251514198999',   // EAN 13 UE  : 325151 + 4198 + 99 + clé
+      colis: '03251514198012',    // EAN 14 CT  : 0325151 + 4198 + 01 + clé
+      couche: '03251514198029',   // EAN 14 CO  : 0325151 + 4198 + 02 + clé
+      palette: '03251514198036',  // EAN 14 PL  : 0325151 + 4198 + 03 + clé
+    });
+  });
+
+  it("pas d'EAN d'unité d'élément pour les origines 2834 et 2866", () => {
+    expect(buildGtinSet('419805', { origine: '2866 - Rivesaltes' }).element).toBe('');
+    expect(buildGtinSet('419805', { origine: '2834' }).element).toBe('');
+    expect(buildGtinSet('419805', { origine: '2886 - Bonloc' }).element).toBe('3251514198999');
+  });
+
+  it('renvoie des chaînes vides si le code fournit moins de 4 chiffres', () => {
+    expect(buildGtinSet('41')).toEqual({ uvc: '', element: '', couche: '', colis: '', palette: '' });
   });
 });

@@ -75,6 +75,10 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
     // secteur d'activité. Permet de recalculer la hiérarchie à la réouverture.
     cr04e_activite_ds: trimOrUndef(formData.autre_activite),
     cr04e_statut_en_cours: trimOrUndef(statut),
+    // Type de produit SAP : une DS est toujours du NÉGOCE. Constante et non
+    // saisissable — même valeur que le champ TypeProduit du payload SAP_SEND.
+    // Le pendant DE (produit fini) vaut PFIN, cf. buildProjetPayload.
+    cr04e_typedeproduit: 'NEGO',
   };
 
   const divBind = lookupBind('divisions', c.divisionFab, sapOptions.divisions);

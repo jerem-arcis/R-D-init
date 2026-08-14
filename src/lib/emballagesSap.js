@@ -50,6 +50,16 @@ function set(row, col, val) {
   return row;
 }
 
+// Volume d'une unité CDM (colis / couche / palette) : la valeur SAISIE dans la FL
+// fait foi, convertie m³ -> dm³ (×1000). Sans saisie, on retombe sur le calcul
+// depuis les dimensions. Auparavant les dimensions gagnaient toujours : saisir
+// 0,0263 m³ sur un colis 316×203×410 renvoyait 26,30068 dm³ (=0,02630068 m³)
+// à la relecture, écrasant silencieusement la saisie.
+function volumeCdm(bloc) {
+  if (isNil(bloc.volume) || Number.isNaN(Number(bloc.volume))) return volumeFromDims(bloc, true);
+  return numStr(Number(bloc.volume) * 1000);
+}
+
 // Colonnes poids / dimensions / volume / GTIN communes aux unités physiques.
 // bloc : bloc FL source ; volumeUnit : 'CM3' | 'CDM' ; cdm : true pour ÷1_000_000.
 function physicalColumns(row, bloc, { volumeUnit, cdm, gtin }) {
@@ -61,7 +71,9 @@ function physicalColumns(row, bloc, { volumeUnit, cdm, gtin }) {
   set(row, 'cr04e_unitspecificproductlength', numStr(isNil(bloc.long) ? null : Number(bloc.long) / 10));
   set(row, 'cr04e_unitspecificproductwidth', numStr(isNil(bloc.larg) ? null : Number(bloc.larg) / 10));
   set(row, 'cr04e_unitspecificproductheight', numStr(isNil(bloc.haut) ? null : Number(bloc.haut) / 10));
-  set(row, 'cr04e_materialvolume', volumeFromDims(bloc, cdm));
+  // U (CM3) : le champ « volume » du bloc UVC est en LITRES et part sur ZUG, il ne
+  // peut pas alimenter des cm³ — on garde le calcul depuis les dimensions.
+  set(row, 'cr04e_materialvolume', cdm ? volumeCdm(bloc) : volumeFromDims(bloc, false));
   set(row, 'cr04e_globaltradeitemnumber', gtin);
   return row;
 }

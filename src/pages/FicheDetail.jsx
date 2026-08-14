@@ -79,13 +79,23 @@ export default function FicheDetail() {
       queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] });
       queryClient.invalidateQueries({ queryKey: ['fiches'] });
     },
+    // Échec d'écriture : on relit la fiche pour que l'affichage revienne à l'état
+    // réel de la base (l'affichage optimiste mentirait sinon, ex. un canal décoché
+    // à l'écran mais toujours présent en base).
+    onError: () => queryClient.invalidateQueries({ queryKey: ['fiche', ficheId] }),
   });
 
   const handleUpdate = async (updates) => {
     setLocalFiche((prev) => ({ ...prev, ...updates }));
     setIsSaving(true);
-    await updateMutation.mutateAsync(updates);
-    setIsSaving(false);
+    try {
+      await updateMutation.mutateAsync(updates);
+    } catch (err) {
+      console.error('[FL enregistrement]', err);
+      toast({ variant: 'destructive', title: 'Enregistrement échoué', description: err?.message });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleExportPdf = async () => {

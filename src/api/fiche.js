@@ -7,6 +7,7 @@
 import { Cr04e_projetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
 import { trimOrUndef } from '@/api/_odata';
+import { withQueue } from '@/api/_serialize';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
 import { listForProjet as listEmballages, syncForProjet as syncEmballages, blocsFromRows } from '@/api/ficheEmballages';
 import { listValuesForProjet as listCanaux, syncForProjet as syncCanaux } from '@/api/ficheCanaux';
@@ -32,11 +33,11 @@ const TEXT_MAP = {
   date_demande: 'cr04e_datedelademande',
   date_envoi_ficher: 'cr04e_dateenvoidelafiche',
   date_limite_creation_mm01: 'cr04e_datelimitedecreationsouhaitee',
+  design_normalisee: 'cr04e_designnormalisee',
   libelle_long_40: 'cr04e_libellelong40caracteres',
   libelle_caisse: 'cr04e_libellearticlecaisse',
   marque: 'cr04e_marque',
   secteur_activite: 'cr04e_secteurdactivite',
-  nomenclature_douaniere: 'cr04e_nomenclaturedouaniere',
   origine_fabrication: 'cr04e_originedefabrication',
   libelle_etiquette_colis: 'cr04e_libelleproduitsuretiquettecolis',
   masque_etiquette_colis: 'cr04e_masquedeletiquettecolis',
@@ -44,6 +45,8 @@ const TEXT_MAP = {
   format_date_etiquette_colis: 'cr04e_formatdateetiquettecolis',
   format_dluo_etiquette_colis: 'cr04e_formatdluoetiquettecolis',
   type_magasin: 'cr04e_typedemagasinem',
+  // MARA-BISMT (ProductOldID côté OData A_Product) : ancien n° d'article.
+  ancien_numero_article: 'cr04e_anciennarticle',
   eclatement_groupe_marchandise: 'cr04e_eclatementgroupedemarchandise',
   type_usine: 'cr04e_typedusine',
   type_palette: 'cr04e_typedesupportpalette',
@@ -55,6 +58,14 @@ const TEXT_MAP = {
   groupe_ristourne: 'cr04e_oc2groupederistournes',
   groupe_imputation: 'cr04e_oc2groupeimputationarticle',
 };
+
+// Nomenclature douanière : deux colonnes coexistent sur cr04e_projet. La NOUVELLE
+// (cr04e_nomenclature_douaniere) est celle que le métier alimente ; l'ancienne
+// (cr04e_nomenclaturedouaniere) reste écrite en parallèle tant que des flux la
+// lisent encore. Lecture : la nouvelle d'abord, repli sur l'ancienne pour les
+// fiches créées avant l'ajout de la colonne. Hors TEXT_MAP (1 champ -> 2 colonnes).
+const NOMENCLATURE_COL = 'cr04e_nomenclature_douaniere';
+const NOMENCLATURE_COL_LEGACY = 'cr04e_nomenclaturedouaniere';
 
 // Champs date : lus tronqués à AAAA-MM-JJ (input type=date).
 const DATE_FIELDS = new Set(['date_demande', 'date_envoi_ficher', 'date_limite_creation_mm01']);
@@ -88,17 +99,32 @@ export function toFicheShape(p) {
   for (const [ff, [, , valueCol]] of Object.entries(LOOKUP_MAP)) {
     f[ff] = p[`${valueCol}${FMT}`] ?? '';
   }
+  f.nomenclature_douaniere =
+    (p[NOMENCLATURE_COL] ?? '').trim() || (p[NOMENCLATURE_COL_LEGACY] ?? '').trim();
   if (p.cr04e_statut_en_cours === SAP_STATUT) f.statut_sap = SAP_LABEL;
   return f;
 }
 
 // Extrait le code de tête d'une valeur « CODE — LABEL » / « CODE - LABEL » /
-// « CODE : LABEL » (séparateur entouré d'espaces). Sans séparateur, renvoie la
-// valeur telle quelle. '' -> undefined.
+// « CODE : LABEL » / « CODE = LABEL ». Les espaces autour du séparateur sont
+// facultatifs : le fichier FM écrit aussi bien « Z004 - Carcassonne » que
+// « 01-produits finis ». Sans séparateur, renvoie la valeur telle quelle.
+// '' -> undefined.
 function leadingCode(v) {
   const s = (v ?? '').toString().trim();
-  return s ? s.split(/\s+[—:-]\s+/)[0].trim() : undefined;
+  return s ? s.split(/\s*[—:=-]\s*/)[0].trim() : undefined;
 }
+
+// Champs dont SEUL LE CODE est stocké puis poussé dans SAP : la désignation
+// n'existe que pour l'affichage de la liste déroulante. Les listes fournissent
+// déjà le code seul en `value` ; l'extraction ci-dessous nettoie en plus les
+// valeurs historiques enregistrées en toutes lettres (« Z004 - Carcassonne »).
+const CODE_ONLY_FIELDS = new Set([
+  'type_usine',
+  'eclatement_groupe_marchandise',
+  'nomenclature_douaniere',
+  'groupe_imputation',
+]);
 
 // Objet FL partiel -> payload cr04e_projet (seuls les champs présents dans `patch`).
 // Les lookups sont poussés par leur code, résolus en @odata.bind via le référentiel.
@@ -107,11 +133,19 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
   for (const [ff, col] of Object.entries(TEXT_MAP)) {
     if (ff in patch) {
       const v = trimOrUndef(patch[ff]);
-      if (v !== undefined) payload[col] = v;
+      if (v !== undefined) payload[col] = CODE_ONLY_FIELDS.has(ff) ? leadingCode(v) : v;
     }
   }
   for (const [ff, col] of Object.entries(VISA_MAP)) {
     if (ff in patch) payload[col] = patch[ff] === true;
+  }
+  if ('nomenclature_douaniere' in patch) {
+    // Seul le code douanier part dans SAP (« 19059030 », pas la ligne complète).
+    const v = leadingCode(trimOrUndef(patch.nomenclature_douaniere));
+    if (v !== undefined) {
+      payload[NOMENCLATURE_COL] = v;
+      payload[NOMENCLATURE_COL_LEGACY] = v;
+    }
   }
   for (const [ff, [key, bindProp]] of Object.entries(LOOKUP_MAP)) {
     if (ff in patch) {
@@ -196,8 +230,15 @@ export async function getProjetIdByCodePJ(code) {
 
 // Met à jour une FL (projet + tables filles). `patch` = objet FL partiel. Le parent
 // n'est écrit que si son payload n'est pas vide. `sapOptions` résout les lookups.
+// Les sauvegardes d'une MÊME fiche sont sérialisées : les tables filles se
+// synchronisent en « lire -> diff -> écrire », donc deux sauvegardes concurrentes
+// liraient le même état d'avant écriture (cf. src/api/_serialize.js).
 export async function updateFiche(id, patch, { sapOptions = {} } = {}) {
   if (!id) return;
+  return withQueue(id, () => writeFiche(id, patch, { sapOptions }));
+}
+
+async function writeFiche(id, patch, { sapOptions }) {
   const payload = buildFichePayload(patch, { sapOptions });
   if (Object.keys(payload).length) {
     const result = await Cr04e_projetsService.update(id, payload);

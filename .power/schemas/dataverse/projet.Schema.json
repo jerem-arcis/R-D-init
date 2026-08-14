@@ -327,6 +327,14 @@
           "x-ms-schema-name": "cr04e_NomduproduitDesignation",
           "maxLength": 100
         },
+        "cr04e_nomenclature_douaniere": {
+          "type": "string",
+          "title": "Nomenclature_douanière",
+          "x-ms-dataverse-attribute": "cr04e_nomenclature_douaniere",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Nomenclature_douaniere",
+          "maxLength": 100
+        },
         "cr04e_nomenclaturedouaniere": {
           "type": "string",
           "title": "Nomenclature douanière",

@@ -51,6 +51,15 @@ describe('computeEmballagesSap — exemple 4198', () => {
     });
   });
 
+  it('CAR — un volume SAISI (m³) prime sur le calcul depuis les dimensions', () => {
+    const rows = computeEmballagesSap({
+      ...blocs4198,
+      colis_block: { ...blocs4198.colis_block, volume: 0.0263 },
+    });
+    // 0,0263 m³ -> 26,3 dm³ (et non 26,30068 recalculé depuis 316×203×410).
+    expect(byUnit(rows).CAR.cr04e_materialvolume).toBe('26.3');
+  });
+
   it('ZCO — 1/12, volume 393.6 CDM', () => {
     expect(u.ZCO).toMatchObject({
       cr04e_quantitynumerator: '1', cr04e_quantitydenominator: '12',

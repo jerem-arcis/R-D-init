@@ -54,6 +54,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
       <FieldGrid title="Libellés" cols={2}>
         <TextField
           label="Désign. normalisée"
+          maxLength={18}
           value={fiche.design_normalisee}
           onChange={set('design_normalisee')}
           disabled={disabled}

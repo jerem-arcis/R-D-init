@@ -1,14 +1,18 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Barcode } from 'lucide-react';
+import { buildGtinSet } from '@/lib/ean';
 import BufferedInput from './BufferedInput';
 
-// Lignes : chaque ligne = un type d'emballage avec sa clé de stockage dans la fiche
+// Lignes : chaque ligne = un type d'emballage avec sa clé de stockage dans la fiche.
+// `gtinKey` = niveau correspondant dans buildGtinSet (calcul depuis le code article).
 const ROWS = [
-  { key: 'uvc_block', label: 'UVC - Unité de vente', required: true },
-  { key: 'element_block', label: 'Unité d\'élément' },
-  { key: 'couche_block', label: 'Couche' },
-  { key: 'colis_block', label: 'Colis' },
-  { key: 'palette_block', label: 'Palette' },
+  { key: 'uvc_block', label: 'UVC - Unité de vente', required: true, gtinKey: 'uvc' },
+  { key: 'element_block', label: 'Unité d\'élément', gtinKey: 'element' },
+  { key: 'couche_block', label: 'Couche', gtinKey: 'couche' },
+  { key: 'colis_block', label: 'Colis', gtinKey: 'colis' },
+  { key: 'palette_block', label: 'Palette', gtinKey: 'palette' },
 ];
 
 // Colonnes : sous-champ + type (int/dec) + libellé court + suffixe
@@ -47,9 +51,37 @@ export default function EmballagesTable({
     onUpdate?.({ [rowKey]: { ...block, gtin: raw === '' ? null : raw } });
   };
 
+  // GTIN calculés depuis le code article, règle du fichier FM (feuille EAN) —
+  // même dérivation que les EAN de la DE, étendue à l'UVC et à l'unité d'élément.
+  const gtins = buildGtinSet(fiche.code_article, { origine: fiche.origine_fabrication });
+  const manquants = ROWS.filter((r) => gtins[r.gtinKey] && !(fiche[r.key] || {}).gtin);
+
+  // Ne remplit QUE les cellules vides : une saisie manuelle n'est jamais écrasée.
+  const genererManquants = () => {
+    const patch = {};
+    for (const r of manquants) {
+      patch[r.key] = { ...(fiche[r.key] || {}), gtin: gtins[r.gtinKey] };
+    }
+    if (Object.keys(patch).length) onUpdate?.(patch);
+  };
+
   return (
     <div className="space-y-2">
-      <Label className="text-xs font-semibold text-slate-700">{label}</Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label className="text-xs font-semibold text-slate-700">{label}</Label>
+        {showGtin && gtinEditable && manquants.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={genererManquants}
+            className="h-7 gap-1.5 text-xs"
+          >
+            <Barcode className="w-3.5 h-3.5" />
+            Générer les {manquants.length} GTIN manquants
+          </Button>
+        )}
+      </div>
       <div className="border border-slate-200 rounded-lg overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead className="bg-slate-100">
@@ -98,7 +130,8 @@ export default function EmballagesTable({
                         type="text"
                         inputMode="numeric"
                         maxLength={14}
-                        placeholder="EAN"
+                        // Le GTIN calculé sert de repère avant génération.
+                        placeholder={gtins[row.gtinKey] || 'EAN'}
                         value={block.gtin ?? ''}
                         onCommit={(raw) => setGtin(row.key, raw)}
                         disabled={!gtinEditable}

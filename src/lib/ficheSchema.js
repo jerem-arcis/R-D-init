@@ -24,64 +24,21 @@ export const SITES_STOCKAGE = [
 
 // OC2 — Groupe d'article. Valeurs du fichier FM (feuille ListesSAP, plage
 // GroupeArticle). À terme : dropdown alimenté par une table Dataverse (copie SAP).
-export const GROUPES_ARTICLE = [
-  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN',
-  'A3-MB CR GLACEE SM MDD', 'A4-MB PATISSERIE MB', 'A5-MB PATISSERIE MN',
-  'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD', 'A8-MB PATISSERIE SM MN',
-  'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
-  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB CAKESMITHS',
-  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
-  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
-  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB MDD TRAITEUR', 'AR-MB MDD PATISSERIE',
-  'AS-MB EISMANN', 'AT-MB PROPER CORNISH', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE',
-  'AW-MB FROSTINVEST', 'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA',
-  'B0-MB LE MUTANT', 'B1-MB MAG M', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
-  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
-  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
-  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
-  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
-  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
-  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BT-MB CODITOUR PATISSER', 'BU-MB FLUNCH',
-  'BV-MB POMONA TRAITEUR', 'BW-MB INTERMARCHE TRAITEUR', 'BX-BPT CLASS(ANC.GP)',
-  'BY-MB ENTREMONT', 'BZ-TDL', 'BQ-MDD DIVERS', 'BR-BOULPAT', 'BS-MARIE',
-];
+export const GROUPES_ARTICLE = ['01'];
 
 // OC2 — Groupe de ristournes. Valeurs du fichier FM (plage GroupeDeRistourne).
-export const GROUPES_RISTOURNE = [
-  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN',
-  'A3-MB CR GLACEE SM MDD', 'A4-MB PATISSERIE RHF MB', 'A5-MB PATISSERIE GMS MN',
-  'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD', 'A8-MB PATISSERIE SM MN',
-  'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
-  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB ASDA',
-  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
-  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
-  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB DIA', 'AR-MB ED', 'AS-MB EISMANN',
-  'AT-MB EN CUISINE', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE', 'AW-MB FROSTINVEST',
-  'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA', 'B0-MB LE MUTANT',
-  'B1-MB LE PROFESSIONNEL', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
-  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
-  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
-  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
-  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
-  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
-  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT', 'BS-MARIE',
-  'BT-MB CODITOUR PATISSERIE', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
-  'BW-MB INTERMARCHE TRAITEUR',
-];
+export const GROUPES_RISTOURNE = ['01'];
 
 // OC2 — Groupe imputation article. Valeurs du fichier FM (plage GpeImputArt).
+// Désignation affichée, code seul stocké/poussé (cf. codeOption plus bas).
 export const GROUPES_IMPUTATION = [
-  '01-produits finis',
-  '05-produits négoce',
+  { value: '01', label: '01 - produits finis', keywords: '01 produits finis' },
+  { value: '05', label: '05 - produits négoce', keywords: '05 produits négoce' },
 ];
 
 // MVKE-VERSG — Groupe statistique article (nouveau champ FL).
-// ⚠️ Valeurs provisoires : à remplacer par le référentiel SAP réel.
-export const GROUPES_STATISTIQUE = [
-  '1 - Groupe article 1',
-  '2 - Groupe article 2',
-  '3 - Groupe article 3',
-];
+// ⚠️ Provisoire : une seule valeur en attendant le référentiel SAP réel.
+export const GROUPES_STATISTIQUE = ['1'];
 
 // MARA-XCHPF — Gestion par lots (nouveau champ FL). Indicateur oui/non.
 export const GESTION_PAR_LOTS = ['Oui', 'Non'];
@@ -104,19 +61,27 @@ export const TYPES_APPROVISIONNEMENT = [
   'F - Approvisionnement externe (stockage)',
 ];
 
+// Options « code — désignation » : la désignation est affichée dans la liste, mais
+// seule la `value` (le code) est stockée puis poussée dans SAP.
+const codeOption = (value, designation) => ({
+  value,
+  label: `${value} - ${designation}`,
+  keywords: `${value} ${designation}`,
+});
+
 export const ECLATEMENTS_GROUPE_MARCHANDISE = [
-  '00100 - Pâtisseries',
-  '00200 - Traiteur',
-  '00300 - Mochis',
-  '00400 - Négoce',
+  codeOption('00100', 'Pâtisseries'),
+  codeOption('00200', 'Traiteur'),
+  codeOption('00300', 'Mochis'),
+  codeOption('00400', 'Négoce'),
 ];
 
 export const TYPES_USINE = [
-  'Z004 - Carcassonne',
-  'Z006 - Agen-St Médard',
-  'Z008 - Bonloc',
-  'Z010 - Rivesaltes',
-  'Z011 - Montblanc',
+  codeOption('Z004', 'Carcassonne'),
+  codeOption('Z006', 'Agen-St Médard'),
+  codeOption('Z008', 'Bonloc'),
+  codeOption('Z010', 'Rivesaltes'),
+  codeOption('Z011', 'Montblanc'),
 ];
 
 export const TYPES_PALETTE = [
@@ -150,18 +115,12 @@ export const FORMATS_DATE_ETIQUETTE = [
   '6 - AA MM',
 ];
 
-// Temps de réception usine (jours). Valeurs du fichier FM (liste_date_réception_usine).
-export const TEMPS_RECEPTION_USINE = [
-  '0 j : Traiteur frais',
-  '3 j',
-  '4 j',
-  '4 j : Bonloc - Pâtisseries hors Picard',
-  '7 j',
-  '7 j : Bonloc - Prod. Picard sous assurance qualité',
-  '10 j : Plateaux, Assortiments, Pains surprises',
-  '10 j : Bonloc - P. Picard soumis à échantillonnage client',
-  '15 j : Produits Picard',
-];
+// Temps de réception usine (jours). Valeurs du fichier FM
+// (liste_date_réception_usine), réduites au seul NOMBRE DE JOURS : la liste
+// d'origine répétait la même durée avec des commentaires de cas d'usage
+// (« 4 j » / « 4 j : Bonloc - Pâtisseries hors Picard »), ce qui donnait des
+// entrées en double dans le menu pour une valeur SAP identique.
+export const TEMPS_RECEPTION_USINE = ['0', '3', '4', '7', '10', '15'];
 
 // Durées de vie standard (valeurs du référentiel SAP).
 export const DUREES_VIE = [
@@ -221,8 +180,11 @@ export const MARQUES = [
   'Marque Export',
 ];
 
-// Nomenclature douanière. Valeurs du fichier FM (plage NomenclatureDouaniere).
-export const NOMENCLATURES_DOUANIERES = [
+// Nomenclature douanière. Valeurs du fichier FM (plage NomenclatureDouaniere),
+// au format « code = désignation ». Seul le CODE est stocké et poussé dans SAP
+// (cf. NOMENCLATURES_DOUANIERES juste en dessous) ; la ligne complète ne sert
+// qu'à l'affichage et à la recherche dans la liste déroulante.
+const NOMENCLATURES_DOUANIERES_LIGNES = [
   "19059030 = Plaques de pain : sucre et gras <5%",
   "19059070 = Tartes, plaques, canapés, P.Surp. > 5% saccharose",
   "19059080 = Canapés, P.Surp. < 5% saccharose",
@@ -260,6 +222,12 @@ export const NOMENCLATURES_DOUANIERES = [
   "19053130 = Biscuits avec matière grasse issue du lait ≤ 8%",
   "19053199 = Biscuits autres",
 ];
+
+export const NOMENCLATURES_DOUANIERES = NOMENCLATURES_DOUANIERES_LIGNES.map((ligne) => ({
+  value: ligne.split('=')[0].trim(),
+  label: ligne,
+  keywords: ligne,
+}));
 
 export const MENTIONS_PRODUIT = [
   'Fabriqué en France',

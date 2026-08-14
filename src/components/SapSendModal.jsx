@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 //   { status: 'success', title, message }  -> vert + bouton
 //   { status: 'error',   title, message }  -> rouge + bouton
 // `onClose` est appelé au clic du bouton (le parent décide de naviguer ou non).
-export default function SapSendModal({ state, onClose }) {
+// `okLabel` remplace le libellé du bouton de succès (défaut « Voir mes DE », adapté
+// à la création de DE ; la FL passe « Fermer » car elle reste sur la fiche).
+export default function SapSendModal({ state, onClose, okLabel = 'Voir mes DE' }) {
   if (!state) return null;
   const { status, title, message } = state;
   const loading = status === 'loading';
@@ -59,7 +61,7 @@ export default function SapSendModal({ state, onClose }) {
               success ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
             }`}
           >
-            {success ? 'Voir mes DE' : 'Fermer'}
+            {success ? okLabel : 'Fermer'}
           </Button>
         )}
       </div>
