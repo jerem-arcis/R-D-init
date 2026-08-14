@@ -4,20 +4,34 @@ import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
 import TextField from './fields/TextField';
 import SelectField from './fields/SelectField';
+import SearchableSelectField from './fields/SearchableSelectField';
 import MultiSelectField from './fields/MultiSelectField';
 import LibelleParPaysTable from './fields/LibelleParPaysTable';
 import EmballagesTable from './fields/EmballagesTable';
 import {
-  ORIGINES_FABRICATION,
-  CANAUX_DISTRIBUTION,
   SECTEURS_ACTIVITE,
   MARQUES,
   NOMENCLATURES_DOUANIERES,
 } from '@/lib/ficheSchema';
+import { useSapOptions } from '@/lib/sapLists';
+import { DE_DIVISION_CODES } from '@/lib/deRules';
+import { buildOptions, useAdminOptions } from '@/lib/adminLists';
 
 export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
+
+  // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
+  // restreinte aux sites de fabrication — identique à « Division (Usine) » de la DE.
+  const sap = useSapOptions();
+  const origineFabOptions = buildOptions(
+    (sap.divisions || []).filter((o) => DE_DIVISION_CODES.includes(String(o.value))),
+    fiche.origine_fabrication,
+  );
+
+  // Canaux de distribution : options « code - désignation » issues de la catégorie
+  // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
+  const canauxOptions = buildOptions(useAdminOptions().canaux_distrib);
 
   return (
     <SectionShell
@@ -38,6 +52,12 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
       visaLabel="Visa Commerce"
     >
       <FieldGrid title="Libellés" cols={2}>
+        <TextField
+          label="Désign. normalisée"
+          value={fiche.design_normalisee}
+          onChange={set('design_normalisee')}
+          disabled={disabled}
+        />
         <TextField
           label="Libellé long 40 caractères"
           value={fiche.libelle_long_40}
@@ -66,14 +86,15 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           value={fiche.origine_fabrication}
           onChange={set('origine_fabrication')}
           disabled={disabled}
-          options={ORIGINES_FABRICATION}
+          options={origineFabOptions}
+          fromSAP
         />
         <MultiSelectField
           label="Canaux de distribution"
           value={fiche.canaux_distribution}
           onChange={set('canaux_distribution')}
           disabled={disabled}
-          options={CANAUX_DISTRIBUTION}
+          options={canauxOptions}
         />
         <SelectField
           label="Secteur d'activité"
@@ -96,7 +117,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           onChange={set('hierarchie_produit')}
           disabled={disabled}
         />
-        <SelectField
+        <SearchableSelectField
           label="Nomenclature douanière"
           value={fiche.nomenclature_douaniere}
           onChange={set('nomenclature_douaniere')}

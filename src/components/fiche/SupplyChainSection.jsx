@@ -3,6 +3,7 @@ import { Truck } from 'lucide-react';
 import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
 import SelectField from './fields/SelectField';
+import SearchableSelectField from './fields/SearchableSelectField';
 import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
@@ -41,7 +42,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           options={GROUPES_STATISTIQUE}
           fromSAP
         />
-        <SelectField
+        <SearchableSelectField
           label="Groupe d'article"
           value={fiche.groupe_article}
           onChange={set('groupe_article')}
@@ -49,7 +50,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           options={GROUPES_ARTICLE}
           fromSAP
         />
-        <SelectField
+        <SearchableSelectField
           label="Groupe de ristournes"
           value={fiche.groupe_ristourne}
           onChange={set('groupe_ristourne')}

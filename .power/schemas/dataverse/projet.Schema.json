@@ -18,6 +18,14 @@
           "x-ms-schema-name": "cr04e_Activite_DS",
           "maxLength": 100
         },
+        "cr04e_anciennarticle": {
+          "type": "string",
+          "title": "Ancien n°article",
+          "x-ms-dataverse-attribute": "cr04e_anciennarticle",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Anciennarticle",
+          "maxLength": 100
+        },
         "cr04e_axestrategique": {
           "type": "string",
           "title": "Axe stratégique",
@@ -91,6 +99,13 @@
           "x-ms-dataverse-primary-name": true,
           "maxLength": 850
         },
+        "cr04e_datedebutfl": {
+          "type": "string",
+          "title": "Date début FL ",
+          "x-ms-dataverse-attribute": "cr04e_datedebutfl",
+          "x-ms-dataverse-type": "DateTimeType",
+          "x-ms-schema-name": "cr04e_DatedebutFL"
+        },
         "cr04e_datedelademande": {
           "type": "string",
           "title": "Date de la demande",
@@ -134,6 +149,14 @@
           "x-ms-dataverse-attribute": "cr04e_designationclientsurcolis",
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_Designationclientsurcolis",
+          "maxLength": 100
+        },
+        "cr04e_designnormalisee": {
+          "type": "string",
+          "title": "Désign normalisée",
+          "x-ms-dataverse-attribute": "cr04e_designnormalisee",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Designnormalisee",
           "maxLength": 100
         },
         "cr04e_divisionimport": {
@@ -180,8 +203,9 @@
           "type": "string",
           "title": "Format date étiquette colis",
           "x-ms-dataverse-attribute": "cr04e_formatdateetiquettecolis",
-          "x-ms-dataverse-type": "DateTimeType",
-          "x-ms-schema-name": "cr04e_Formatdateetiquettecolis"
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Formatdateetiquettecolis",
+          "maxLength": 100
         },
         "cr04e_formatdluoetiquettecolis": {
           "type": "string",
@@ -285,6 +309,14 @@
           "x-ms-dataverse-attribute": "cr04e_masquedeletiquettecolis",
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_Masquedeletiquettecolis",
+          "maxLength": 100
+        },
+        "cr04e_nombreducpalette": {
+          "type": "string",
+          "title": "Nombre D'UC palette",
+          "x-ms-dataverse-attribute": "cr04e_nombreducpalette",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_NombreDUCpalette",
           "maxLength": 100
         },
         "cr04e_nomduproduitdesignation": {
@@ -421,6 +453,14 @@
           "x-ms-dataverse-attribute": "cr04e_typedemagasinem",
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_TypedemagasinEM",
+          "maxLength": 100
+        },
+        "cr04e_typedeproduit": {
+          "type": "string",
+          "title": "Type de produit",
+          "x-ms-dataverse-attribute": "cr04e_typedeproduit",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Typedeproduit",
           "maxLength": 100
         },
         "cr04e_typedesupportpalette": {

@@ -1,89 +1,92 @@
-// Table fille cr04e_unitofmeasure (lookup cr04e_IDprojet -> cr04e_projet) : le
-// tableau « Saisie des GTIN / emballages » de la FL. Une ligne = 1 type d'emballage
-// réellement renseigné, identifié par cr04e_alternativeunit (code AUoM SAP).
+// Table fille cr04e_unitofmeasure (lookup cr04e_IDprojet -> cr04e_projet) : les
+// unités de mesure SAP (A_ProductUnitsOfMeasure) de l'article. Elle contient les
+// 8 lignes GÉNÉRÉES (U, UE, ZCO, CAR, PAL + PCB, ZPP, ZUG) — voir computeEmballagesSap.
+// La FL saisit 5 blocs (uvc/element/couche/colis/palette) ; on génère les 8 lignes à
+// l'écriture, et on reconstruit les 5 blocs à la relecture (option B).
 // Synchronisation ligne par ligne (create/update/delete) à la sauvegarde de la FL.
 
 import { Cr04e_unitofmeasuresService } from '@/generated';
+import { computeEmballagesSap } from '@/lib/emballagesSap';
 
-// Type d'emballage (clé bloc FL) -> code unité alternative SAP.
-// ⚠️ Codes AUoM à confirmer avec le référentiel SAP réel.
+// Unité alternative SAP « primaire » de chaque bloc FL (pour la relecture).
+// PCB/ZPP/ZUG sont dérivées et ne correspondent à aucun bloc.
 export const BLOC_UNIT = {
-  uvc_block: 'ST',
-  element_block: 'PCE',
-  couche_block: 'LAY',
+  uvc_block: 'U',
+  element_block: 'UE',
+  couche_block: 'ZCO',
   colis_block: 'CAR',
   palette_block: 'PAL',
 };
-const UNIT_BLOC = Object.fromEntries(Object.entries(BLOC_UNIT).map(([k, v]) => [v, k]));
-
-// Sous-champ bloc FL -> colonne cr04e_unitofmeasure.
-const FIELD_COL = {
-  unite: 'cr04e_quantitynumerator',
-  poids_brut: 'cr04e_grossweight',
-  poids_net: 'cr04e_netweight',
-  long: 'cr04e_unitspecificproductlength',
-  larg: 'cr04e_unitspecificproductwidth',
-  haut: 'cr04e_unitspecificproductheight',
-  volume: 'cr04e_materialvolume',
-  gtin: 'cr04e_globaltradeitemnumber',
-};
 
 const isBlank = (v) => v === null || v === undefined || v === '';
+const num = (v) => (isBlank(v) ? null : Number(v));
+// Dimension SAP (cm) -> saisie FL (mm) : ×10.
+const mm = (v) => (isBlank(v) ? null : Number(v) * 10);
+// Volume CDM (dm³) -> saisie FL (m³) : ÷1000.
+const m3 = (v) => (isBlank(v) ? null : Number(v) / 1000);
 
 // Un bloc est vide si aucun de ses sous-champs n'est renseigné.
 export function isEmptyBloc(bloc = {}) {
-  return Object.keys(FIELD_COL).every((f) => isBlank(bloc[f]));
-}
-
-// Bloc FL -> ligne cr04e_unitofmeasure (valeurs en chaînes, champs vides omis).
-export function blocToRow(blocKey, bloc = {}) {
-  const row = { cr04e_alternativeunit: BLOC_UNIT[blocKey] };
-  for (const [field, col] of Object.entries(FIELD_COL)) {
-    if (!isBlank(bloc[field])) row[col] = String(bloc[field]);
-  }
-  return row;
-}
-
-// Ligne cr04e_unitofmeasure -> { key (clé bloc FL), bloc, id }.
-export function rowToBloc(row = {}) {
-  const num = (v) => (isBlank(v) ? null : Number(v));
-  const bloc = {
-    unite: num(row.cr04e_quantitynumerator),
-    poids_brut: num(row.cr04e_grossweight),
-    poids_net: num(row.cr04e_netweight),
-    long: num(row.cr04e_unitspecificproductlength),
-    larg: num(row.cr04e_unitspecificproductwidth),
-    haut: num(row.cr04e_unitspecificproductheight),
-    volume: num(row.cr04e_materialvolume),
-    gtin: row.cr04e_globaltradeitemnumber ?? null,
-  };
-  return { key: UNIT_BLOC[row.cr04e_alternativeunit], bloc, id: row.cr04e_unitofmeasureid };
+  return ['unite', 'poids_brut', 'poids_net', 'long', 'larg', 'haut', 'volume', 'gtin']
+    .every((f) => isBlank(bloc[f]));
 }
 
 function rowDiffers(existing, row) {
   return Object.keys(row).some((k) => (existing[k] ?? '') !== (row[k] ?? ''));
 }
 
-// Diff pur entre lignes existantes et blocs saisis. Appariement par code unité.
-// existants: [row cr04e_unitofmeasure] ; blocs: { uvc_block, element_block, ... }.
+// Diff pur entre lignes existantes et lignes générées (par computeEmballagesSap).
+// Appariement par code unité (cr04e_alternativeunit).
 export function diffEmballages(existants = [], blocs = {}) {
-  const desired = [];
-  for (const [key, unit] of Object.entries(BLOC_UNIT)) {
-    const bloc = blocs[key];
-    if (bloc && !isEmptyBloc(bloc)) desired.push({ unit, row: blocToRow(key, bloc) });
-  }
+  const desired = computeEmballagesSap(blocs);
   const byUnit = new Map(existants.map((r) => [r.cr04e_alternativeunit, r]));
-  const desiredUnits = new Set(desired.map((d) => d.unit));
+  const desiredUnits = new Set(desired.map((r) => r.cr04e_alternativeunit));
 
   const toCreate = [];
   const toUpdate = [];
-  for (const d of desired) {
-    const ex = byUnit.get(d.unit);
-    if (!ex) toCreate.push(d.row);
-    else if (rowDiffers(ex, d.row)) toUpdate.push({ id: ex.cr04e_unitofmeasureid, row: d.row });
+  for (const row of desired) {
+    const ex = byUnit.get(row.cr04e_alternativeunit);
+    if (!ex) toCreate.push(row);
+    else if (rowDiffers(ex, row)) toUpdate.push({ id: ex.cr04e_unitofmeasureid, row });
   }
   const toDelete = existants.filter((r) => !desiredUnits.has(r.cr04e_alternativeunit));
   return { toCreate, toUpdate, toDelete };
+}
+
+// Lignes générées -> { uvc_block, element_block, couche_block, colis_block, palette_block }.
+// Le compteur `unite` se lit au numérateur (UE) ou au dénominateur (CAR/ZCO/PAL) ;
+// le volume UVC (L) provient de ZUG, les volumes colis/couche/palette (m³) du CDM.
+export function blocsFromRows(rows = []) {
+  const by = Object.fromEntries((rows || []).map((r) => [r.cr04e_alternativeunit, r]));
+  const blocs = {};
+  const fill = (r, b) => {
+    b.poids_brut = num(r.cr04e_grossweight);
+    b.poids_net = num(r.cr04e_netweight);
+    b.long = mm(r.cr04e_unitspecificproductlength);
+    b.larg = mm(r.cr04e_unitspecificproductwidth);
+    b.haut = mm(r.cr04e_unitspecificproductheight);
+    b.gtin = r.cr04e_globaltradeitemnumber ?? null;
+  };
+
+  if (by.U) {
+    const r = by.U;
+    const b = { unite: num(r.cr04e_quantitynumerator) };
+    fill(r, b);
+    b.volume = by.ZUG ? num(by.ZUG.cr04e_materialvolume) : null; // volume UVC saisi (L)
+    blocs.uvc_block = b;
+  }
+  if (by.UE) {
+    blocs.element_block = { unite: num(by.UE.cr04e_quantitynumerator) };
+  }
+  for (const [unit, key] of [['CAR', 'colis_block'], ['ZCO', 'couche_block'], ['PAL', 'palette_block']]) {
+    const r = by[unit];
+    if (!r) continue;
+    const b = { unite: num(r.cr04e_quantitydenominator) };
+    fill(r, b);
+    b.volume = m3(r.cr04e_materialvolume);
+    blocs[key] = b;
+  }
+  return blocs;
 }
 
 function unwrap(result, action) {
@@ -105,17 +108,7 @@ export async function listForProjet(projetId) {
   return unwrap(result, 'Liste emballages') ?? [];
 }
 
-// Lignes -> { uvc_block, element_block, couche_block, colis_block, palette_block }.
-export function blocsFromRows(rows = []) {
-  const blocs = {};
-  for (const row of rows) {
-    const { key, bloc } = rowToBloc(row);
-    if (key) blocs[key] = bloc;
-  }
-  return blocs;
-}
-
-// Synchronise les lignes emballage d'un projet avec les blocs saisis.
+// Synchronise les lignes emballage d'un projet avec les blocs saisis (génère les 8 lignes).
 export async function syncForProjet(projetId, blocs = {}) {
   if (!projetId) return;
   const existants = await listForProjet(projetId);

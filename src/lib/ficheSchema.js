@@ -22,26 +22,57 @@ export const SITES_STOCKAGE = [
   '2886 - Bonloc',
 ];
 
+// OC2 — Groupe d'article. Valeurs du fichier FM (feuille ListesSAP, plage
+// GroupeArticle). À terme : dropdown alimenté par une table Dataverse (copie SAP).
 export const GROUPES_ARTICLE = [
-  'AY - MB INTERMARCHE',
-  'AZ - MB CARREFOUR',
-  'BA - MN BONCOLAC',
-  'BB - RHF',
-  'BC - EXPORT',
+  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN',
+  'A3-MB CR GLACEE SM MDD', 'A4-MB PATISSERIE MB', 'A5-MB PATISSERIE MN',
+  'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD', 'A8-MB PATISSERIE SM MN',
+  'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
+  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB CAKESMITHS',
+  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
+  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
+  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB MDD TRAITEUR', 'AR-MB MDD PATISSERIE',
+  'AS-MB EISMANN', 'AT-MB PROPER CORNISH', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE',
+  'AW-MB FROSTINVEST', 'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA',
+  'B0-MB LE MUTANT', 'B1-MB MAG M', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
+  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
+  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
+  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
+  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
+  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
+  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BT-MB CODITOUR PATISSER', 'BU-MB FLUNCH',
+  'BV-MB POMONA TRAITEUR', 'BW-MB INTERMARCHE TRAITEUR', 'BX-BPT CLASS(ANC.GP)',
+  'BY-MB ENTREMONT', 'BZ-TDL', 'BQ-MDD DIVERS', 'BR-BOULPAT', 'BS-MARIE',
 ];
 
+// OC2 — Groupe de ristournes. Valeurs du fichier FM (plage GroupeDeRistourne).
 export const GROUPES_RISTOURNE = [
-  '01 - Standard',
-  '02 - Marque distributeur',
-  '03 - Export',
-  '04 - RHF',
+  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN',
+  'A3-MB CR GLACEE SM MDD', 'A4-MB PATISSERIE RHF MB', 'A5-MB PATISSERIE GMS MN',
+  'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD', 'A8-MB PATISSERIE SM MN',
+  'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
+  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB ASDA',
+  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
+  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
+  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB DIA', 'AR-MB ED', 'AS-MB EISMANN',
+  'AT-MB EN CUISINE', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE', 'AW-MB FROSTINVEST',
+  'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA', 'B0-MB LE MUTANT',
+  'B1-MB LE PROFESSIONNEL', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
+  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
+  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
+  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
+  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
+  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
+  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT', 'BS-MARIE',
+  'BT-MB CODITOUR PATISSERIE', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
+  'BW-MB INTERMARCHE TRAITEUR',
 ];
 
+// OC2 — Groupe imputation article. Valeurs du fichier FM (plage GpeImputArt).
 export const GROUPES_IMPUTATION = [
-  '01 - Produits fins',
-  '02 - Produits courants',
-  '03 - Produits négoce',
-  '04 - Produits export',
+  '01-produits finis',
+  '05-produits négoce',
 ];
 
 // MVKE-VERSG — Groupe statistique article (nouveau champ FL).
@@ -97,18 +128,39 @@ export const TYPES_PALETTE = [
   'SMN10 - Palette 100 x 120 NIMP 15',
 ];
 
+// Masque de l'étiquette colis. Valeurs du fichier FM (plage Atelier). Le champ
+// autorise en plus la saisie d'un code custom (masque non présent dans la liste).
 export const MASQUES_ETIQUETTE_COLIS = [
-  'COLIS_STD - Standard 100x150',
-  'COLIS_MDD - Marque distributeur',
-  'COLIS_EXP - Export',
-  'COLIS_RHF - RHF',
+  'mask80x140.lab',
+  'mask80x140bio.lab',
+  'mask54x140.lab',
+  'mask100x150S.lab',
+  'mask100x150F.lab',
+  'mask80x140SSB.lab',
 ];
 
-export const UNITES_DUREE_VIE = [
-  'J - Jours',
-  'S - Semaines',
-  'M - Mois',
-  'A - Années',
+// Format date / DLUO de l'étiquette colis. Valeurs du fichier FM (plage FormatDate,
+// commune au format date et au format DLUO).
+export const FORMATS_DATE_ETIQUETTE = [
+  '1 - JJ MM AAAA',
+  '2 - JJ MM AA',
+  '3 - MM AAAA',
+  '4 - MM JJ AAAA',
+  '5 - AA MM JJ',
+  '6 - AA MM',
+];
+
+// Temps de réception usine (jours). Valeurs du fichier FM (liste_date_réception_usine).
+export const TEMPS_RECEPTION_USINE = [
+  '0 j : Traiteur frais',
+  '3 j',
+  '4 j',
+  '4 j : Bonloc - Pâtisseries hors Picard',
+  '7 j',
+  '7 j : Bonloc - Prod. Picard sous assurance qualité',
+  '10 j : Plateaux, Assortiments, Pains surprises',
+  '10 j : Bonloc - P. Picard soumis à échantillonnage client',
+  '15 j : Produits Picard',
 ];
 
 // Durées de vie standard (valeurs du référentiel SAP).
@@ -140,12 +192,10 @@ export const FABRICATION_NEGOCE = [
   'Négoce',
 ];
 
-export const ORIGINES_FABRICATION = [
-  '3A - Produit Fini DFINI',
-  '3B - Semi-fini',
-  '3C - Négoce import',
-  '3D - Sous-traitance',
-];
+// Origine de fabrication : plus de liste statique — alimentée dynamiquement par la
+// table Dataverse des divisions/usines (useSapOptions().divisions), filtrée sur les
+// sites de fabrication (DE_DIVISION_CODES), exactement comme « Division (Usine) »
+// côté DE. Voir FicheDetailV2 / CommerceSection.
 
 export const CANAUX_DISTRIBUTION = [
   'GMS',
@@ -171,11 +221,44 @@ export const MARQUES = [
   'Marque Export',
 ];
 
+// Nomenclature douanière. Valeurs du fichier FM (plage NomenclatureDouaniere).
 export const NOMENCLATURES_DOUANIERES = [
-  '19053100 - Biscuits',
-  '19059060 - Pâtisseries fraîches',
-  '21069098 - Préparations alimentaires',
-  '19059070 - Autres pâtisseries',
+  "19059030 = Plaques de pain : sucre et gras <5%",
+  "19059070 = Tartes, plaques, canapés, P.Surp. > 5% saccharose",
+  "19059080 = Canapés, P.Surp. < 5% saccharose",
+  "04089980 = Œuf en neige",
+  "16010099 = Saucisses",
+  "16022010 = Prép Foie d'Oie ou de Canard",
+  "16023290 = Prép volaille entre 25% et 57%",
+  "16023929 = Préparation volaille + de 57%",
+  "16023985 = +57% de volaille hors poulet ou dinde",
+  "21050010 = Glaces sans ou <3% matières grasses",
+  "21050091 = Glaces 3-7% matières grasses provenant du lait",
+  "16024110 = Prép de jambon + de 20%",
+  "16024919 = Prép + 80% porc",
+  "16025095 = Prép de bœuf + de 20%",
+  "16041992 = Prép de Morue + de 20%",
+  "16041993 = Lieu Noir (Pollachius virens)",
+  "16041994 = Prép Merlus + de 20%",
+  "16041997 = Autres poissons",
+  "16042010 = Prép de saumons + de 20%",
+  "16042030 = Prép saumon sauvage + de 20%",
+  "16042090 = Prép Mélanges Poissons + de 20%",
+  "16052900 = Prép Crevettes + de 20%",
+  "16055200 = Coquillages",
+  "16055400 = Prép calmars + de 20%",
+  "19019099 = Île Flottante, crème anglaise…",
+  "19022091 = Pâtes alimentaires cuites",
+  "19023090 = Pâtes Alim autres que farcies",
+  "19049010 = Prép alim à base de riz",
+  "20041099 = Gratins pomme de terre",
+  "21069098 = Prép Alim divers (sans pain)",
+  "16024990 = Prép viandes > 20% du produit final",
+  "16025010 = Pasty à base de viande",
+  "16024210 = Bacon",
+  "19053119 = Biscuits recouverts ou enrobés de chocolat >85g",
+  "19053130 = Biscuits avec matière grasse issue du lait ≤ 8%",
+  "19053199 = Biscuits autres",
 ];
 
 export const MENTIONS_PRODUIT = [
@@ -313,7 +396,6 @@ export const FIELD_OWNERS = {
   colis_block: 'ind',
   palette_block: 'ind',
   duree_vie: 'ind',
-  unite_duree_vie: 'ind',
   temps_reception_usine: 'ind',
   format_date_etiquette_colis: 'ind',
   format_dluo_etiquette_colis: 'ind',
@@ -323,6 +405,7 @@ export const FIELD_OWNERS = {
 
   // COM (Commerce)
   statut_lancement: 'com',
+  design_normalisee: 'com',
   libelle_long_40: 'com',
   libelle_caisse: 'com',
   libelle_client: 'com',

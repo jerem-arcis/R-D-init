@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0}</style>
+</head>
+<body>
+<title>Maquette — Tableau de bord multi-org (données fictives)</title>
+<style>
+  :root{
+    --ground:#F6F7F9; --panel:#FFFFFF; --ink:#171B24; --muted:#5B6472; --faint:#8A93A2;
+    --line:#E4E7EC; --line-strong:#CDD3DC;
+    --bp:#1E4FA3; --bp-soft:#EAF0FA; --bp-ink:#12326B;
+    --amber:#B47714; --amber-s:#FBF2E1;
+    --blue:#2563B0; --blue-s:#E8F0FA;
+    --indigo:#4B4BC0; --indigo-s:#ECECFA;
+    --emerald:#2E7D5B; --emerald-s:#E7F3EC;
+    --red:#C0392B; --red-s:#FBEBE9;
+    --violet:#7A3EA8; --violet-s:#F3EAFA;
+    --new:#0E7C6B; --new-s:#E1F3F0;
+    --mono:'Consolas','SFMono-Regular',ui-monospace,'Menlo',monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1160px;margin:0 auto;padding:26px 22px 80px;}
+
+  /* header */
+  .top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:6px;}
+  .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--new);font-weight:700;}
+  h1{font-weight:740;letter-spacing:-.02em;font-size:1.7rem;margin:.28rem 0 0;}
+  .who{display:flex;align-items:center;gap:10px;font-size:.82rem;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:30px;padding:7px 14px;}
+  .who b{color:var(--ink)} .avatar{width:26px;height:26px;border-radius:50%;background:var(--bp);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;}
+
+  .scopebar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:14px 0 4px;font-size:.82rem;color:var(--muted);}
+  .scopebar .pill{background:var(--bp-soft);color:var(--bp-ink);border:1px solid #CFE0F5;border-radius:20px;padding:3px 11px;font-weight:600;}
+  .scopebar .hidden-note{color:var(--faint);font-style:italic;}
+
+  /* NEW markers */
+  .newchip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;
+    text-transform:uppercase;font-weight:700;color:var(--new);background:var(--new-s);border:1px solid #B9E0D9;
+    border-radius:4px;padding:2px 6px;vertical-align:middle;}
+  body.hl .is-new{outline:2px dashed #59B7A9;outline-offset:3px;border-radius:8px;}
+  body:not(.hl) .newchip{display:none;}
+
+  .toolbar{display:flex;align-items:center;gap:14px;margin:16px 0 12px;flex-wrap:wrap;}
+  .toolbar .srv{font-family:var(--mono);font-size:.7rem;color:var(--new);background:var(--new-s);
+    border:1px solid #B9E0D9;border-radius:5px;padding:4px 9px;font-weight:700;}
+  .switch{display:inline-flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted);cursor:pointer;margin-left:auto;}
+  .switch input{accent-color:var(--new);width:15px;height:15px;}
+
+  /* filter bar */
+  .filters{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+    display:grid;grid-template-columns:repeat(12,1fr);gap:13px 14px;box-shadow:0 1px 0 rgba(23,27,36,.02);}
+  .fg{display:flex;flex-direction:column;gap:6px;min-width:0;}
+  .fg.c2{grid-column:span 2}.fg.c3{grid-column:span 3}.fg.c4{grid-column:span 4}.fg.c5{grid-column:span 5}.fg.c6{grid-column:span 6}.fg.c12{grid-column:span 12}
+  @media(max-width:820px){.fg[class*="c"]{grid-column:span 6}.fg.c12{grid-column:span 12}}
+  @media(max-width:520px){.fg[class*="c"]{grid-column:span 12}}
+  .lbl{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700;display:flex;align-items:center;gap:6px;}
+  select,input[type=text],input[type=date]{font-family:var(--sans);font-size:.86rem;color:var(--ink);
+    background:#FBFCFD;border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;width:100%;}
+  select:focus,input:focus{outline:2px solid var(--bp);outline-offset:0;border-color:var(--bp);}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-size:.78rem;padding:5px 11px;border-radius:18px;border:1px solid var(--line-strong);background:#FBFCFD;
+    color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap;transition:.12s;}
+  .chip[aria-pressed=true]{background:var(--bp);border-color:var(--bp);color:#fff;font-weight:600;}
+  .chip.org[aria-pressed=true]{background:var(--bp-ink);border-color:var(--bp-ink);}
+  .daterow{display:flex;align-items:center;gap:8px;}
+  .daterow span{color:var(--faint);font-size:.8rem;}
+  .btn{font-family:var(--sans);font-size:.82rem;font-weight:600;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--line-strong);background:#fff;color:var(--muted);}
+  .btn:hover{background:#F0F2F6;}
+  .filters-foot{grid-column:span 12;display:flex;align-items:center;gap:12px;border-top:1px dashed var(--line);padding-top:12px;flex-wrap:wrap;}
+  .savedviews{display:flex;gap:7px;flex-wrap:wrap;}
+  .view{font-size:.78rem;padding:5px 11px;border-radius:7px;border:1px solid var(--line-strong);background:#FBFCFD;color:var(--bp-ink);cursor:pointer;font-weight:600;}
+  .view.active{background:var(--bp-soft);border-color:#9FBEE8;}
+  .urlnote{font-family:var(--mono);font-size:.68rem;color:var(--faint);margin-left:auto;}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:16px 0 10px;}
+  @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;position:relative;overflow:hidden;}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;}
+  .kpi.k-cur::before{background:var(--bp)} .kpi.k-cc::before{background:var(--amber)}
+  .kpi.k-ok::before{background:var(--emerald)} .kpi.k-no::before{background:var(--red)}
+  .kpi .n{font-size:1.9rem;font-weight:760;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;}
+  .kpi .t{font-size:.76rem;color:var(--muted);margin-top:7px;font-weight:600;}
+  .kpi .sub{font-size:.72rem;margin-top:5px;font-weight:600;}
+  .kpi .sub.alert{color:var(--red)} .kpi .sub.calm{color:var(--faint)}
+
+  /* distribution bar */
+  .distrib{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .distrib .h{font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;}
+  .bar{display:flex;height:16px;border-radius:6px;overflow:hidden;background:#F0F2F6;}
+  .bar>span{height:100%;transition:width .25s;}
+  .dlegend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:11px;font-size:.75rem;color:var(--muted);}
+  .dlegend b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+
+  /* table */
+  .tablecard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .tcap{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line);}
+  .tcap .cnt{font-size:.82rem;color:var(--muted);} .tcap .cnt b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .twrap{overflow-x:auto;}
+  table{border-collapse:collapse;width:100%;min-width:900px;font-size:.86rem;}
+  thead th{text-align:left;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
+    font-weight:700;padding:10px 14px;background:#FBFCFD;border-bottom:1px solid var(--line-strong);white-space:nowrap;cursor:pointer;user-select:none;}
+  thead th .ar{opacity:.4;margin-left:4px;font-size:.7em;}
+  thead th[data-active] .ar{opacity:1;color:var(--bp);}
+  tbody td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:middle;white-space:nowrap;}
+  tbody tr:hover{background:#FAFBFD;}
+  .desig{white-space:normal;min-width:190px;color:var(--ink);}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+  .muted{color:var(--muted);}
+  .typebadge{font-family:var(--mono);font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:5px;}
+  .ty-DE{background:var(--bp-soft);color:var(--bp-ink)} .ty-DS{background:var(--violet-s);color:var(--violet)}
+  .st{display:inline-flex;align-items:center;gap:7px;font-size:.78rem;font-weight:600;padding:3px 10px;border-radius:20px;}
+  .st .d{width:7px;height:7px;border-radius:50%;}
+  .st-amber{background:var(--amber-s);color:#8a5a10}.st-amber .d{background:var(--amber)}
+  .st-blue{background:var(--blue-s);color:var(--blue)}.st-blue .d{background:var(--blue)}
+  .st-indigo{background:var(--indigo-s);color:var(--indigo)}.st-indigo .d{background:var(--indigo)}
+  .st-emerald{background:var(--emerald-s);color:var(--emerald)}.st-emerald .d{background:var(--emerald)}
+  .st-red{background:var(--red-s);color:var(--red)}.st-red .d{background:var(--red)}
+  .cc-alert{color:var(--red);font-weight:700;} .cc-alert::after{content:" ●";font-size:.7em;}
+  .empty{padding:40px;text-align:center;color:var(--faint);}
+  .orgcell{font-family:var(--mono);font-size:.8rem;}
+  .orgtag{display:inline-block;font-size:.62rem;font-weight:700;color:var(--bp-ink);background:var(--bp-soft);border:1px solid #CFE0F5;border-radius:4px;padding:1px 5px;margin-left:5px;}
+
+  .footnote{margin-top:16px;font-size:.78rem;color:var(--faint);font-family:var(--mono);text-align:center;}
+</style>
+
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="eyebrow">Maquette · proposition · données fictives</div>
+      <h1>Tableau de bord — demandes DE / DS</h1>
+    </div>
+    <div class="who"><div class="avatar">ML</div><div>Connectée&nbsp;: <b>Marie Lefèvre</b><br><span style="font-size:.74rem;color:var(--faint)">Chef de projet · CDG</span></div></div>
+  </div>
+
+  <div class="scopebar">
+    <span>Périmètre autorisé&nbsp;:</span>
+    <span class="pill">1000 · France GMS</span>
+    <span class="pill">3000 · RHF</span>
+    <span class="hidden-note">— l'org <b>2000 · Export</b> existe mais est masquée (hors périmètre de Marie)</span>
+    <span class="newchip">Nouveau · scope par org</span>
+  </div>
+
+  <div class="toolbar">
+    <span class="srv">Filtrage serveur (OData $filter)</span>
+    <span class="newchip">Nouveau</span>
+    <label class="switch"><input type="checkbox" id="hlToggle" checked> Surligner les nouveautés proposées</label>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filters" id="filters">
+    <div class="fg c4 is-new">
+      <span class="lbl">Organisation commerciale <span class="newchip">Nouveau</span></span>
+      <div class="chips" id="fOrg">
+        <span class="chip org" data-org="1000" aria-pressed="true">1000 · France GMS</span>
+        <span class="chip org" data-org="3000" aria-pressed="true">3000 · RHF</span>
+      </div>
+    </div>
+    <div class="fg c3">
+      <span class="lbl">Division / usine</span>
+      <select id="fDivision">
+        <option value="">Toutes</option>
+        <option value="2886">2886 · Bonloc</option>
+        <option value="2866">2866 · Rivesaltes</option>
+        <option value="2847">2847 · Agen</option>
+        <option value="2859">2859 · Aire</option>
+      </select>
+    </div>
+    <div class="fg c3 is-new">
+      <span class="lbl">Demandeur <span class="newchip">Nouveau</span></span>
+      <select id="fDemandeur"><option value="">Tous</option></select>
+    </div>
+    <div class="fg c2">
+      <span class="lbl">Type</span>
+      <select id="fType">
+        <option value="all">DE + DS</option>
+        <option value="DE">DE seules</option>
+        <option value="DS">DS seules</option>
+      </select>
+    </div>
+
+    <div class="fg c12">
+      <span class="lbl">Statut</span>
+      <div class="chips" id="fStatut"></div>
+    </div>
+
+    <div class="fg c5 is-new">
+      <span class="lbl">Plage de dates (demande) <span class="newchip">Nouveau</span></span>
+      <div class="daterow">
+        <input type="date" id="fFrom" value="2026-06-01"><span>→</span><input type="date" id="fTo" value="2026-08-10">
+      </div>
+    </div>
+    <div class="fg c5">
+      <span class="lbl">Recherche</span>
+      <input type="text" id="fSearch" placeholder="Code projet, code chapeau, désignation…">
+    </div>
+    <div class="fg c2" style="justify-content:flex-end">
+      <span class="lbl">&nbsp;</span>
+      <button class="btn" id="fClear">Effacer</button>
+    </div>
+
+    <div class="filters-foot is-new">
+      <span class="lbl" style="margin:0">Vues sauvegardées <span class="newchip">Nouveau</span></span>
+      <div class="savedviews" id="savedViews">
+        <span class="view active" data-view="all">Toutes mes demandes</span>
+        <span class="view" data-view="cc">À traiter — attente code chapeau</span>
+        <span class="view" data-view="cdg">À valider (CDG)</span>
+        <span class="view" data-view="alert">En alerte</span>
+      </div>
+      <span class="urlnote">?org=1000,3000&statut=…&from=… &nbsp;(filtres persistés dans l'URL)</span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- distribution -->
+  <div class="distrib">
+    <div class="h"><span>Répartition par statut <span class="newchip">Nouveau · recalcul live</span></span><span id="distTotal" class="muted"></span></div>
+    <div class="bar" id="distBar"></div>
+    <div class="dlegend" id="distLegend"></div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="tablecard">
+    <div class="tcap">
+      <span class="cnt"><b id="rowCount">0</b> demande(s) affichée(s) <span class="muted" id="rowTotal"></span></span>
+      <span class="newchip">Nouveau · tri par colonne + code chapeau en alerte</span>
+    </div>
+    <div class="twrap">
+      <table>
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">Maquette de proposition — toutes les données sont fictives · « aujourd'hui » simulé = 10/08/2026</div>
+</div>
+
+<script>
+(function(){
+  const TODAY = new Date('2026-08-10');
+  const ORGS = {'1000':'France GMS','2000':'Export','3000':'RHF'};
+  const DIV  = {'2886':'Bonloc','2866':'Rivesaltes','2847':'Agen','2859':'Aire'};
+  const STATUTS = {
+    de_brouillon:{l:'Brouillon',tone:'amber',grp:'cur'},
+    ds_brouillon:{l:'Brouillon',tone:'amber',grp:'cur'},
+    de_attente_cc:{l:'Attente code chapeau',tone:'blue',grp:'cc'},
+    ds_attente_cc:{l:'Attente code chapeau',tone:'blue',grp:'cc'},
+    dl_attente_validation_cdg:{l:"En cours d'étude (CDG)",tone:'indigo',grp:'cur'},
+    dl_validee:{l:'Validée',tone:'emerald',grp:'ok'},
+    ds_validee:{l:'DS validée',tone:'emerald',grp:'ok'},
+    dl_refusee:{l:'Refusée',tone:'red',grp:'no'},
+  };
+  const TONEHEX={amber:'#B47714',blue:'#2563B0',indigo:'#4B4BC0',emerald:'#2E7D5B',red:'#C0392B'};
+
+  // ---- données fictives (produits Boncolac : pâtisserie & traiteur surgelés) ----
+  const RAW = [
+    ['DE','PJ5012','Éclair chocolat 90g','Marie Lefèvre','1000','2886','205147','dl_validee','2026-06-04'],
+    ['DE','PJ5018','Mini-quiche lorraine 30g','Thomas Bernard','1000','2847','205153','dl_validee','2026-06-09'],
+    ['DS','PJ5024','Macaron pistache 12g','Sophie Martin','3000','2866','205160','ds_validee','2026-06-12'],
+    ['DE','PJ5031','Tarte citron meringuée 6 parts','Julien Dubois','1000','2886','','de_attente_cc','2026-06-28'],
+    ['DE','PJ5033','Feuilleté saumon 40g','Marie Lefèvre','3000','2859','205171','dl_attente_validation_cdg','2026-07-01'],
+    ['DS','PJ5037','Cannelé bordelais 25g','Camille Roy','3000','2866','','ds_attente_cc','2026-07-02'],
+    ['DE','PJ5041','Croissant pur beurre 55g','Antoine Girard','1000','2847','205188','dl_validee','2026-07-03'],
+    ['DE','PJ5044','Pain au chocolat 70g','Thomas Bernard','1000','2847','','de_attente_cc','2026-07-04'],
+    ['DE','PJ5049','Bouchée apéritive tomate 15g','Sophie Martin','3000','2859','205195','dl_attente_validation_cdg','2026-07-07'],
+    ['DS','PJ5052','Tartelette fraise 45g','Marie Lefèvre','1000','2886','','ds_brouillon','2026-07-09'],
+    ['DE','PJ5055','Moelleux caramel 80g','Julien Dubois','1000','2866','205203','dl_refusee','2026-07-10'],
+    ['DE','PJ5058','Quiche 3 fromages 120g','Camille Roy','3000','2847','','de_attente_cc','2026-07-11'],
+    ['DE','PJ5061','Chausson aux pommes 90g','Antoine Girard','1000','2886','205210','dl_validee','2026-07-14'],
+    ['DS','PJ5064','Financier amande 30g','Thomas Bernard','3000','2866','205217','ds_validee','2026-07-15'],
+    ['DE','PJ5067','Mini-club sandwich traiteur','Marie Lefèvre','3000','2859','','de_brouillon','2026-07-18'],
+    ['DE','PJ5070','Tarte fine pommes 4 parts','Sophie Martin','1000','2886','205224','dl_attente_validation_cdg','2026-07-21'],
+    ['DE','PJ5073','Beignet fourré framboise 65g','Julien Dubois','1000','2847','','de_attente_cc','2026-07-22'],
+    ['DS','PJ5076','Verrine mousse citron','Camille Roy','3000','2866','205231','ds_validee','2026-07-24'],
+    ['DE','PJ5079','Brioche tressée 400g','Antoine Girard','1000','2866','205238','dl_validee','2026-07-25'],
+    ['DE','PJ5082','Feuilleté chèvre-miel 40g','Thomas Bernard','3000','2859','','de_attente_cc','2026-07-28'],
+    ['DE','PJ5085','Millefeuille vanille 100g','Marie Lefèvre','1000','2886','','dl_attente_validation_cdg','2026-07-30'],
+    ['DS','PJ5088','Cake marbré tranché 35g','Sophie Martin','3000','2866','','ds_brouillon','2026-08-01'],
+    ['DE','PJ5091','Pizza royale traiteur 200g','Julien Dubois','3000','2847','','de_attente_cc','2026-08-01'],
+    ['DE','PJ5094','Éclair café 90g','Camille Roy','1000','2886','','de_brouillon','2026-08-04'],
+    ['DE','PJ5097','Tarte myrtille 6 parts','Antoine Girard','1000','2866','','de_attente_cc','2026-08-05'],
+    ['DS','PJ5100','Sablé breton 20g','Thomas Bernard','3000','2859','','ds_attente_cc','2026-08-06'],
+    ['DE','PJ5103','Vol-au-vent volaille 60g','Marie Lefèvre','3000','2859','','de_attente_cc','2026-08-07'],
+    ['DE','PJ5106','Fondant chocolat cœur coulant','Sophie Martin','1000','2847','','de_brouillon','2026-08-08'],
+  ].map((r,i)=>({id:i,type:r[0],code:r[1],desig:r[2],dem:r[3],org:r[4],div:r[5],cc:r[6],statut:r[7],date:r[8]}));
+
+  const businessDaysSince = (iso)=>{ // approx jours ouvrés écoulés
+    let d=new Date(iso), n=0;
+    while(d<TODAY){ d=new Date(d.getTime()+86400000); const wd=d.getDay(); if(wd!==0&&wd!==6) n++; }
+    return n;
+  };
+  const isAlert = (row)=> (row.statut==='de_attente_cc'||row.statut==='ds_attente_cc') && !row.cc && businessDaysSince(row.date)>5;
+
+  // ---- state ----
+  const state={orgs:new Set(['1000','3000']),div:'',dem:'',type:'all',statuts:new Set(),from:'2026-06-01',to:'2026-08-10',q:'',sort:{k:'date',dir:-1}};
+
+  // demandeurs list
+  const dems=[...new Set(RAW.map(r=>r.dem))].sort();
+  const fDem=document.getElementById('fDemandeur');
+  dems.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;fDem.appendChild(o);});
+
+  // statut chips
+  const fStat=document.getElementById('fStatut');
+  const seen=new Set();
+  Object.entries(STATUTS).forEach(([k,v])=>{
+    const key=v.l+'|'+v.tone; if(seen.has(key))return; seen.add(key);
+    const c=document.createElement('span');c.className='chip';c.dataset.statut=k;c.setAttribute('aria-pressed','false');
+    c.textContent=v.l; c.onclick=()=>{ // toggle by label-group (regroupe de_/ds_/dl_)
+      const grpKeys=Object.keys(STATUTS).filter(x=>STATUTS[x].l===v.l);
+      const on=c.getAttribute('aria-pressed')==='true';
+      grpKeys.forEach(x=> on?state.statuts.delete(x):state.statuts.add(x));
+      c.setAttribute('aria-pressed', on?'false':'true'); render();
+    };
+    fStat.appendChild(c);
+  });
+
+  // org chips
+  document.querySelectorAll('#fOrg .chip').forEach(c=>{
+    c.onclick=()=>{const o=c.dataset.org;const on=c.getAttribute('aria-pressed')==='true';
+      if(on){state.orgs.delete(o);c.setAttribute('aria-pressed','false');}else{state.orgs.add(o);c.setAttribute('aria-pressed','true');}render();};
+  });
+
+  // table columns
+  const COLS=[['type','Type'],['code','Code projet'],['desig','Désignation'],['dem','Demandeur'],['org','Organisation'],['div','Division'],['cc','Code chapeau'],['statut','Statut'],['date','Date']];
+  const thead=document.getElementById('thead');
+  COLS.forEach(([k,l])=>{const th=document.createElement('th');th.dataset.k=k;th.innerHTML=l+' <span class="ar">▾</span>';
+    th.onclick=()=>{if(state.sort.k===k)state.sort.dir*=-1;else state.sort={k,dir:1};render();};thead.appendChild(th);});
+
+  // controls
+  const bind=(id,ev,fn)=>document.getElementById(id).addEventListener(ev,fn);
+  bind('fDivision','change',e=>{state.div=e.target.value;render();});
+  bind('fDemandeur','change',e=>{state.dem=e.target.value;render();});
+  bind('fType','change',e=>{state.type=e.target.value;render();});
+  bind('fFrom','change',e=>{state.from=e.target.value;render();});
+  bind('fTo','change',e=>{state.to=e.target.value;render();});
+  bind('fSearch','input',e=>{state.q=e.target.value.toLowerCase();render();});
+  bind('fClear','click',()=>{state.div='';state.dem='';state.type='all';state.statuts.clear();state.from='';state.to='';state.q='';
+    document.getElementById('fDivision').value='';document.getElementById('fDemandeur').value='';document.getElementById('fType').value='all';
+    document.getElementById('fFrom').value='';document.getElementById('fTo').value='';document.getElementById('fSearch').value='';
+    document.querySelectorAll('#fStatut .chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.querySelector('.view[data-view=all]').classList.add('active');render();});
+
+  // saved views
+  document.querySelectorAll('.view').forEach(v=>{v.onclick=()=>{
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));v.classList.add('active');
+    state.statuts.clear();document.querySelectorAll('#fStatut .chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+    const setStat=(labels)=>{document.querySelectorAll('#fStatut .chip').forEach(c=>{const k=c.dataset.statut;if(labels.includes(STATUTS[k].l)){c.click();}});};
+    state._alertOnly=false;
+    if(v.dataset.view==='cc') setStat(['Attente code chapeau']);
+    else if(v.dataset.view==='cdg') setStat(["En cours d'étude (CDG)"]);
+    else if(v.dataset.view==='alert'){state._alertOnly=true;}
+    render();
+  };});
+
+  bind('hlToggle','change',e=>document.body.classList.toggle('hl',e.target.checked));
+  document.body.classList.add('hl');
+
+  const inRange=(iso)=>{if(state.from&&iso<state.from)return false;if(state.to&&iso>state.to)return false;return true;};
+
+  function filtered(){
+    return RAW.filter(r=>{
+      if(!state.orgs.has(r.org))return false;
+      if(state.div&&r.div!==state.div)return false;
+      if(state.dem&&r.dem!==state.dem)return false;
+      if(state.type!=='all'&&r.type!==state.type)return false;
+      if(state.statuts.size&&!state.statuts.has(r.statut))return false;
+      if(!inRange(r.date))return false;
+      if(state._alertOnly&&!isAlert(r))return false;
+      if(state.q){const hay=(r.code+' '+r.desig+' '+r.dem+' '+r.cc+' '+ORGS[r.org]+' '+DIV[r.div]).toLowerCase();if(!hay.includes(state.q))return false;}
+      return true;
+    });
+  }
+
+  function render(){
+    const rows=filtered();
+    const {k,dir}=state.sort;
+    rows.sort((a,b)=>{let x=a[k],y=b[k];if(k==='statut'){x=STATUTS[a.statut].l;y=STATUTS[b.statut].l;}return x<y?-dir:x>y?dir:0;});
+    thead.querySelectorAll('th').forEach(th=>{th.removeAttribute('data-active');th.querySelector('.ar').textContent='▾';
+      if(th.dataset.k===k){th.setAttribute('data-active','1');th.querySelector('.ar').textContent=dir>0?'▴':'▾';}});
+
+    // KPIs
+    const grp={cur:0,cc:0,ok:0,no:0};let alerts=0;
+    rows.forEach(r=>{grp[STATUTS[r.statut].grp]++;if(isAlert(r))alerts++;});
+    document.getElementById('kpis').innerHTML=`
+      <div class="kpi k-cur"><div class="n">${grp.cur}</div><div class="t">En cours</div><div class="sub calm">brouillons + étude CDG</div></div>
+      <div class="kpi k-cc"><div class="n">${grp.cc}</div><div class="t">Attente code chapeau</div><div class="sub ${alerts?'alert':'calm'}">${alerts?('dont '+alerts+' en alerte (&gt;5j)'):'aucune alerte'}</div></div>
+      <div class="kpi k-ok"><div class="n">${grp.ok}</div><div class="t">Validées</div><div class="sub calm">DE + DS</div></div>
+      <div class="kpi k-no"><div class="n">${grp.no}</div><div class="t">Refusées</div><div class="sub calm">état final</div></div>`;
+
+    // distribution bar (par label statut)
+    const byLabel={};rows.forEach(r=>{const v=STATUTS[r.statut];byLabel[v.l]=byLabel[v.l]||{n:0,tone:v.tone};byLabel[v.l].n++;});
+    const tot=rows.length||1;const bar=document.getElementById('distBar');const leg=document.getElementById('distLegend');
+    bar.innerHTML='';leg.innerHTML='';
+    Object.entries(byLabel).sort((a,b)=>b[1].n-a[1].n).forEach(([l,o])=>{
+      const s=document.createElement('span');s.style.width=(o.n/tot*100)+'%';s.style.background=TONEHEX[o.tone];s.title=l+' — '+o.n;bar.appendChild(s);
+      const li=document.createElement('span');li.innerHTML=`<span class="swatch" style="background:${TONEHEX[o.tone]}"></span>${l} <b>${o.n}</b>`;leg.appendChild(li);
+    });
+    document.getElementById('distTotal').textContent=rows.length+' demande(s)';
+
+    // table
+    const tb=document.getElementById('tbody');
+    document.getElementById('rowCount').textContent=rows.length;
+    document.getElementById('rowTotal').textContent='· sur '+RAW.filter(r=>state.orgs.has(r.org)).length+' dans le périmètre';
+    if(!rows.length){tb.innerHTML='<tr><td colspan="9" class="empty">Aucune demande ne correspond à ces filtres.</td></tr>';return;}
+    tb.innerHTML=rows.map(r=>{
+      const v=STATUTS[r.statut];const al=isAlert(r);
+      return `<tr>
+        <td><span class="typebadge ty-${r.type}">${r.type}</span></td>
+        <td class="mono">${r.code}</td>
+        <td class="desig">${r.desig}</td>
+        <td>${r.dem}</td>
+        <td class="orgcell">${r.org}<span class="orgtag">${ORGS[r.org]}</span></td>
+        <td class="muted mono">${r.div} · ${DIV[r.div]}</td>
+        <td class="mono ${al?'cc-alert':''}">${r.cc||(al?'—':'<span class="muted">—</span>')}${al?' <span style="font-size:.66rem">alerte</span>':''}</td>
+        <td><span class="st st-${v.tone}"><span class="d"></span>${v.l}</span></td>
+        <td class="mono muted">${r.date.split('-').reverse().join('/')}</td>
+      </tr>`;
+    }).join('');
+  }
+  render();
+})();
+</script>
+</body>
+</html>

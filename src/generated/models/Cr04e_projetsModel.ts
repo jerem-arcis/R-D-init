@@ -15,6 +15,7 @@ export type Cr04e_projetsstatuscode = keyof typeof Cr04e_projetsstatuscode;
 
 export interface Cr04e_projetsBase {
   cr04e_activite_ds?: string;
+  cr04e_anciennarticle?: string;
   cr04e_axestrategique?: string;
   "cr04e_Centredeprofit@odata.bind"?: string;
   "cr04e_Classedevalorisation@odata.bind"?: string;
@@ -22,12 +23,14 @@ export interface Cr04e_projetsBase {
   cr04e_codechapeau?: string;
   cr04e_codedivisionorigine?: string;
   cr04e_codeprojet?: string;
+  cr04e_datedebutfl?: string;
   cr04e_datedelademande?: string;
   cr04e_dateenvoidelafiche?: string;
   cr04e_datelimitedecreationsouhaitee?: string;
   cr04e_demandeur?: string;
   cr04e_descriptiondubesoin?: string;
   cr04e_designationclientsurcolis?: string;
+  cr04e_designnormalisee?: string;
   cr04e_divisionimport?: string;
   "cr04e_DivisionUsine@odata.bind"?: string;
   cr04e_dureedevie?: string;
@@ -44,6 +47,7 @@ export interface Cr04e_projetsBase {
   cr04e_libelleproduitsuretiquettecolis?: string;
   cr04e_marque?: string;
   cr04e_masquedeletiquettecolis?: string;
+  cr04e_nombreducpalette?: string;
   cr04e_nomduproduitdesignation?: string;
   cr04e_nomenclaturedouaniere?: string;
   cr04e_oc2groupedarticle?: string;
@@ -61,6 +65,7 @@ export interface Cr04e_projetsBase {
   cr04e_tempsdereceptionusinej?: string;
   cr04e_typedelademande?: string;
   cr04e_typedemagasinem?: string;
+  cr04e_typedeproduit?: string;
   cr04e_typedesupportpalette?: string;
   cr04e_typedusine?: string;
   cr04e_unitedureedevie?: string;

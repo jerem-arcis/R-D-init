@@ -15,6 +15,7 @@ export const DROPDOWN_KEYS = [
   'categories_vif',
   'types_logistique',
   'services_demandeur',
+  'canaux_distrib', // Canaux de distribution (FL) — cr04e_id_dd = 'canaux_distrib'
 ];
 
 export const OPTIONSET_QUERY_KEY = ['optionset'];

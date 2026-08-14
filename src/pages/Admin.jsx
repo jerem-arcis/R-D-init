@@ -43,6 +43,7 @@ const LIST_LABELS = {
   categories_vif: 'Catégories (Vif)',
   types_logistique: 'Types de logistique',
   services_demandeur: 'Services demandeur',
+  canaux_distrib: 'Canaux de distribution',
 };
 
 // Exécute `fn` sur chaque item par salves de `size` (Promise.allSettled) pour

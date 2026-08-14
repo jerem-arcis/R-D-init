@@ -16,7 +16,7 @@ const COLS = [
   { sub: 'unite', type: 'int', label: 'Unité', suffix: '' },
   { sub: 'volume', type: 'dec', label: 'Volume', suffix: 'm³' },
   { sub: 'poids_brut', type: 'dec', label: 'Poids brut', suffix: 'kg' },
-  { sub: 'poids_net', type: 'int', label: 'Poids net', suffix: 'kg' },
+  { sub: 'poids_net', type: 'dec', label: 'Poids net', suffix: 'kg' },
   { sub: 'long', type: 'int', label: 'Long', suffix: 'mm' },
   { sub: 'larg', type: 'int', label: 'Larg', suffix: 'mm' },
   { sub: 'haut', type: 'int', label: 'Haut', suffix: 'mm' },

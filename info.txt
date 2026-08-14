@@ -1,0 +1,2 @@
+Vérification impossible
+VERIF_DE a répondu HTTP 502 — {"error":{"code":"NoResponse","message":"The server did not receive a response from an upstream server. Request tracking id '08584155039425111822241263304CU16'.","messageTemplate":"The server did not receive a response from an upstream server. Request tracking id '{0}'."}}.

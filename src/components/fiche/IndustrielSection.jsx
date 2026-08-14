@@ -4,13 +4,15 @@ import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
 import TextField from './fields/TextField';
 import SelectField from './fields/SelectField';
+import ComboField from './fields/ComboField';
 import EmballagesTable from './fields/EmballagesTable';
 import {
   MASQUES_ETIQUETTE_COLIS,
+  FORMATS_DATE_ETIQUETTE,
+  TEMPS_RECEPTION_USINE,
   ECLATEMENTS_GROUPE_MARCHANDISE,
   TYPES_USINE,
   TYPES_PALETTE,
-  UNITES_DUREE_VIE,
   DUREES_VIE,
 } from '@/lib/ficheSchema';
 
@@ -43,7 +45,7 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           onChange={set('libelle_etiquette_colis')}
           disabled={disabled}
         />
-        <SelectField
+        <ComboField
           label="Masque de l'étiquette colis"
           value={fiche.masque_etiquette_colis}
           onChange={set('masque_etiquette_colis')}
@@ -56,19 +58,19 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           onChange={set('designation_client_colis')}
           disabled={disabled}
         />
-        <TextField
+        <SelectField
           label="Format date étiquette colis"
           value={fiche.format_date_etiquette_colis}
           onChange={set('format_date_etiquette_colis')}
           disabled={disabled}
-          placeholder="JJ/MM/AAAA"
+          options={FORMATS_DATE_ETIQUETTE}
         />
-        <TextField
+        <SelectField
           label="Format DLUO étiquette colis"
           value={fiche.format_dluo_etiquette_colis}
           onChange={set('format_dluo_etiquette_colis')}
           disabled={disabled}
-          placeholder="ex: MM AAAA"
+          options={FORMATS_DATE_ETIQUETTE}
         />
         <TextField
           label="Type de magasin EM"
@@ -102,30 +104,23 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           disabled={disabled}
           options={TYPES_PALETTE}
         />
-        <TextField
+        <SelectField
           label="Temps de réception (usine, j)"
-          type="number"
           value={fiche.temps_reception_usine}
           onChange={set('temps_reception_usine')}
           disabled={disabled}
+          options={TEMPS_RECEPTION_USINE}
         />
       </FieldGrid>
 
       <FieldGrid title="Durée de vie" cols={2}>
         <SelectField
-          label="Durée de vie"
+          label="Durée de vie (jours)"
           value={fiche.duree_vie}
           onChange={set('duree_vie')}
           disabled={disabled}
           options={DUREES_VIE}
           crossRef="vu en Commerce"
-        />
-        <SelectField
-          label="Unité durée de vie"
-          value={fiche.unite_duree_vie}
-          onChange={set('unite_duree_vie')}
-          disabled={disabled}
-          options={UNITES_DUREE_VIE}
         />
       </FieldGrid>
 

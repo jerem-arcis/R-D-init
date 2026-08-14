@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0}</style>
+</head>
+<body>
+<title>Audit multi-org SAP & Tableau de bord — Boncolac</title>
+<style>
+  :root{
+    --ground:#F6F7F9; --panel:#FFFFFF; --ink:#171B24; --muted:#5B6472;
+    --line:#E4E7EC; --line-strong:#CDD3DC;
+    --bp:#1E4FA3; --bp-soft:#EAF0FA; --bp-ink:#12326B;
+    --crit:#C0392B; --crit-soft:#FBEBE9;
+    --warn:#B47714; --warn-soft:#FBF2E1;
+    --ok:#2E7D5B; --ok-soft:#E7F3EC;
+    --mono:'Consolas','SFMono-Regular',ui-monospace,'Menlo',monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --serif:Georgia,'Iowan Old Style','Times New Roman',serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:var(--serif);font-size:17px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:28px 28px;background-position:-1px -1px;background-attachment:fixed;}
+  .wrap{max-width:940px;margin:0 auto;padding:0 24px 96px;}
+  .sheet{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--bp);
+    margin-top:40px;padding:44px 48px 8px;box-shadow:0 1px 0 rgba(23,27,36,.03),0 18px 40px -28px rgba(23,27,36,.25);}
+  @media(max-width:640px){.sheet{padding:32px 22px 8px}.wrap{padding:0 12px 64px}}
+
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--bp);font-weight:600;}
+  h1{font-family:var(--sans);font-weight:750;letter-spacing:-.022em;line-height:1.08;
+    font-size:clamp(1.9rem,4.5vw,2.55rem);margin:.5rem 0 .3rem;text-wrap:balance;}
+  .lede{font-size:1.06rem;color:var(--muted);max-width:64ch;margin:.2rem 0 0;}
+  .metabar{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:.78rem;color:var(--muted);}
+  .metabar b{color:var(--ink);font-weight:600;}
+
+  h2{font-family:var(--sans);font-weight:680;letter-spacing:-.015em;font-size:1.34rem;margin:0 0 2px;text-wrap:balance;}
+  section{padding:38px 0;border-top:1px solid var(--line);}
+  section:first-of-type{border-top:0;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:16px;}
+  .sec-no{font-family:var(--mono);font-size:.8rem;color:var(--bp);font-weight:700;padding-top:4px;min-width:1.6ch;}
+  .sec-sub{font-family:var(--sans);font-size:.82rem;color:var(--muted);font-weight:500;margin-top:2px;}
+  p{margin:0 0 14px;max-width:70ch;}
+  strong{font-weight:700;}
+  code,.file{font-family:var(--mono);font-size:.84em;background:#F0F2F6;border:1px solid var(--line);
+    padding:.06em .38em;border-radius:4px;color:var(--bp-ink);white-space:nowrap;}
+
+  /* callout */
+  .callout{background:var(--bp-soft);border:1px solid #CFE0F5;border-left:3px solid var(--bp);
+    padding:18px 22px;margin:6px 0 4px;border-radius:2px;}
+  .callout p{margin:0;max-width:none;}
+  .callout .k{font-family:var(--sans);font-weight:680;color:var(--bp-ink);}
+
+  /* severity dot + legend */
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle;flex:none;}
+  .d-crit{background:var(--crit)} .d-warn{background:var(--warn)} .d-ok{background:var(--ok)} .d-bp{background:var(--bp)}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;}
+
+  /* grouped hardcode list */
+  .group{border:1px solid var(--line);border-radius:6px;margin:0 0 12px;overflow:hidden;}
+  .group>summary{list-style:none;cursor:default;font-family:var(--sans);font-weight:640;font-size:.98rem;
+    padding:13px 18px;background:#FBFCFD;display:flex;align-items:center;gap:9px;}
+  .group>summary::-webkit-details-marker{display:none;}
+  .tag{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;
+    padding:3px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
+  .t-crit{background:var(--crit-soft);color:var(--crit)} .t-warn{background:var(--warn-soft);color:#8a5a10}
+  .t-ok{background:var(--ok-soft);color:var(--ok)} .t-bp{background:var(--bp-soft);color:var(--bp-ink)}
+  .group .body{padding:6px 18px 14px;}
+  ul.tight{margin:6px 0 0;padding-left:0;list-style:none;}
+  ul.tight li{padding:7px 0 7px 20px;position:relative;border-top:1px dotted var(--line);max-width:none;}
+  ul.tight li:first-child{border-top:0;}
+  ul.tight li::before{content:"";position:absolute;left:2px;top:14px;width:6px;height:6px;border-radius:50%;background:var(--line-strong);}
+
+  /* tables */
+  .twrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;margin:4px 0 6px;}
+  table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:560px;}
+  thead th{font-family:var(--sans);text-align:left;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);font-weight:640;padding:11px 16px;background:#FBFCFD;border-bottom:1px solid var(--line-strong);}
+  tbody td{padding:12px 16px;border-top:1px solid var(--line);vertical-align:top;font-family:var(--sans);font-size:.9rem;line-height:1.5;}
+  tbody tr:nth-child(even){background:#FCFCFD;}
+  td.crit-cell{white-space:nowrap;font-family:var(--sans);font-weight:600;}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--bp);font-weight:700;}
+
+  /* size pill */
+  .size{display:inline-block;font-family:var(--mono);font-weight:700;font-size:.78rem;letter-spacing:.04em;
+    padding:3px 10px;border-radius:20px;border:1px solid;}
+  .sz-S{color:var(--ok);border-color:#B7DCC6;background:var(--ok-soft)}
+  .sz-M{color:#8a5a10;border-color:#E7CE93;background:var(--warn-soft)}
+  .sz-L{color:var(--crit);border-color:#E6B6AF;background:var(--crit-soft)}
+
+  /* two-col state/cible */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+  @media(max-width:640px){.cols{grid-template-columns:1fr}table{min-width:520px}}
+  .card{border:1px solid var(--line);border-radius:6px;padding:16px 18px;background:#FBFCFD;}
+  .card h3{font-family:var(--sans);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px;
+    color:var(--muted);font-weight:640;display:flex;align-items:center;}
+  .card ul{margin:0;padding-left:18px;}
+  .card li{margin:5px 0;font-size:.92rem;max-width:none;}
+  .card.now h3{color:var(--crit)} .card.target h3{color:var(--ok)}
+
+  /* validated decisions */
+  .dec{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media(max-width:640px){.dec{grid-template-columns:1fr}}
+  .dec .card{background:var(--ok-soft);border-color:#C4E3CF;}
+  .dec .card h3{color:var(--ok);}
+  .dec p{margin:0;font-size:.92rem;max-width:none;}
+  .check{color:var(--ok);font-weight:800;margin-right:6px;}
+
+  /* questions */
+  ol.q{counter-reset:q;list-style:none;padding:0;margin:6px 0 0;}
+  ol.q li{counter-increment:q;position:relative;padding:14px 16px 14px 52px;border:1px solid var(--line);
+    border-radius:6px;margin-bottom:10px;background:var(--panel);max-width:none;font-size:.96rem;}
+  ol.q li::before{content:counter(q);position:absolute;left:14px;top:12px;font-family:var(--mono);font-weight:700;
+    color:var(--warn);background:var(--warn-soft);border:1px solid #E7CE93;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:.82rem;}
+  ol.q b{font-family:var(--sans);}
+
+  .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);
+    font-size:.74rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between;}
+</style>
+
+<div class="wrap">
+<div class="sheet">
+
+  <header>
+    <div class="eyebrow">Audit d'architecture &middot; Pré-chiffrage</div>
+    <h1>Ségrégation SAP multi-organisation &amp; Tableau de bord</h1>
+    <p class="lede">Faire évoluer l'application Boncolac (mono-tenant) vers la gestion de plusieurs
+      organisations commerciales SAP — et remettre à plat les filtres du tableau de bord.</p>
+    <div class="metabar">
+      <span>App&nbsp;: <b>Boncolac</b> — Power Apps Code App (React/Vite + Dataverse)</span>
+      <span>Vers SAP&nbsp;: <b>flux Power Automate</b></span>
+      <span>Date&nbsp;: <b>10/08/2026</b></span>
+      <span>Branche&nbsp;: <b>dev</b></span>
+    </div>
+  </header>
+
+  <!-- 0 -->
+  <section>
+    <div class="sec-head"><div class="sec-no">00</div><div>
+      <h2>Le constat central</h2>
+      <div class="sec-sub">À poser avant tout le reste</div>
+    </div></div>
+    <p>Aujourd'hui l'app fonctionne en <strong>1 société &times; 4 usines</strong>
+      (Bonloc&nbsp;2886, Rivesaltes&nbsp;2866, Agen&nbsp;2847, Aire&nbsp;2859). L'<strong>organisation
+      commerciale SAP (VKORG) n'existe nulle part</strong>&nbsp;: ni dans le payload envoyé à SAP, ni dans
+      Dataverse, ni dans les droits utilisateur. Elle est <strong>figée à l'intérieur du flux Power
+      Automate</strong> — le fameux «&nbsp;champ fixe&nbsp;».</p>
+    <div class="callout">
+      <p><span class="k">Piège d'architecture à cadrer avec leur équipe SAP&nbsp;:</span>
+      «&nbsp;organisation commerciale&nbsp;» <strong>&ne;</strong> «&nbsp;division usine&nbsp;».
+      <strong>VKORG</strong> / VTWEG / SPART / BUKRS = dimension <em>vente / commerciale</em> —
+      <strong>totalement absente de l'app</strong>. <strong>WERKS / division usine</strong> (2886, 2866…)
+      = dimension <em>logistique / site</em> — la seule que l'app gère, sous le nom «&nbsp;division&nbsp;».</p>
+    </div>
+    <p style="margin-top:16px">Rendre l'app multi-org n'est donc pas <em>étendre</em> un existant&nbsp;: c'est
+      <strong>introduire une dimension commerciale neuve</strong> et la brancher partout. La preuve est déjà
+      dans le code&nbsp;: l'erreur SAP de démo <span class="file">MVKE-VKORG</span> —
+      «&nbsp;Organisation commerciale manquante&nbsp;: la vue vente n'a pas été créée&nbsp;»
+      (<span class="file">src/dev/erreursSapDemo.js:85</span>) — SAP réclame déjà ce que le payload ne fournit pas.</p>
+  </section>
+
+  <!-- Décisions validées -->
+  <section>
+    <div class="sec-head"><div class="sec-no">✓</div><div>
+      <h2>Décisions cadrées</h2>
+      <div class="sec-sub">Arbitrages validés le 10/08/2026 — ils resserrent nettement le périmètre</div>
+    </div></div>
+    <div class="dec">
+      <div class="card"><h3>Périmètre</h3><p><span class="check">✓</span>Plusieurs <b>org. commerciales (VKORG)</b> dans <b>un seul SAP / une seule société</b>. Pas de multi-société, pas de produit multi-tenant. Connexion SAP unique.</p></div>
+      <div class="card"><h3>Ségrégation</h3><p><span class="check">✓</span>Pilotée par <b>Dataverse + Admin</b>. L'app pousse VKORG dans le payload&nbsp;; le flux <b>SAP_SEND reste «&nbsp;bête&nbsp;»</b> et relaie au lieu d'imposer sa valeur fixe.</p></div>
+      <div class="card"><h3>Droits</h3><p><span class="check">✓</span><b>Table de liaison user&nbsp;&harr;&nbsp;org dans Dataverse</b>, gérée en Admin. Pas d'Entra, pas de sécurité BU native.</p></div>
+    </div>
+  </section>
+
+  <!-- 1 hardcode inventory -->
+  <section>
+    <div class="sec-head"><div class="sec-no">01</div><div>
+      <h2>Inventaire de ce qui est «&nbsp;Boncolac&nbsp;» en dur</h2>
+      <div class="sec-sub">La checklist de dé-hardcoding, par couche</div>
+    </div></div>
+    <div class="legend">
+      <span><span class="dot d-crit"></span>bloquant multi-org</span>
+      <span><span class="dot d-warn"></span>à sortir du code</span>
+      <span><span class="dot d-ok"></span>déjà dynamique — point d'appui</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <details class="group" open>
+        <summary><span class="dot d-crit"></span>Payload SAP — le cœur <span class="tag t-crit">bloquant</span></summary>
+        <div class="body"><ul class="tight">
+          <li><span class="file">CreerDE.jsx:1217-1238</span> (DE) et <span class="file">:1016-1036</span> (DS)&nbsp;: le <code>body</code> envoyé à <code>SAP_SEND</code> ne contient <strong>aucun</strong> <code>VKORG / VTWEG / SPART / BUKRS</code>.</li>
+          <li>Constantes en dur&nbsp;: <code>GroupeAutorisation:'NEGO'</code>, <code>GroupeFraisGeneraux:'NEGO'</code>, <code>TypeProduit:'NEGO'</code> (DS)&nbsp;; <code>TypeProduit:'PFIN'</code> (DE).</li>
+        </ul></div>
+      </details>
+
+      <details class="group" open>
+        <summary><span class="dot d-warn"></span>Règles métier figées sur les 4 usines <span class="tag t-warn">à sortir du code</span></summary>
+        <div class="body"><ul class="tight">
+          <li><span class="file">src/lib/deRules.js:7-12</span> — les 4 divisions en dur, plus tous les mappings dérivés&nbsp;: <code>computeHierarchieDE</code> (22/27), <code>computeClasseValoDE</code> (2038/7012), <code>computeCentreProfitDE</code> (27TDL/22PF), <code>computeProfilFabricRepetDE</code> (Z006/Z008/Z010), <code>computeSecteurFromReseau</code> (10/12/15).</li>
+          <li><span class="file">src/lib/dsRules.js:13-20</span> — 6 divisions DS (ajoute «&nbsp;Faux frais STEF Agen 2823&nbsp;», «&nbsp;Produit négoce 2820&nbsp;») + mappings parallèles <span class="file">:100-137</span>.</li>
+        </ul></div>
+      </details>
+
+      <details class="group">
+        <summary><span class="dot d-warn"></span>EAN / GS1 &amp; marque <span class="tag t-warn">propre à la société</span></summary>
+        <div class="body"><ul class="tight">
+          <li><span class="file">src/lib/ean.js:17</span> — <code>const PREFIX = '325151'</code>&nbsp;: préfixe GS1 de la société. <em>Avec 1 seule société, il reste fixe → impact quasi nul.</em></li>
+          <li><span class="file">power.config.json:3</span> <code>appDisplayName:"Boncolac"</code> ; logos <code>alt="Boncolac"</code> (<span class="file">SapSendModal.jsx:27</span>, <span class="file">Accueil.jsx:150</span>, <span class="file">DemandesEtude.jsx:224</span>).</li>
+        </ul></div>
+      </details>
+
+      <details class="group" open>
+        <summary><span class="dot d-ok"></span>Déjà dynamique — les bons points d'appui <span class="tag t-ok">réutilisable</span></summary>
+        <div class="body"><ul class="tight">
+          <li><strong>URLs de flux</strong> paramétrables par environnement via la table <code>cr04e_fluxregistre</code> (<span class="file">src/api/flux.js</span>) — aucun redéploiement.</li>
+          <li>Divisions, classes valo, centres profit, hiérarchie, groupes article = <strong>lookups Dataverse</strong> (<span class="file">src/api/sapLists.js:13-50</span>), pas des constantes.</li>
+          <li>Une table porte déjà une notion de <strong>société</strong>&nbsp;: <code>centredeprofittkao2.cr04e_societe</code> (jamais exploitée pour du scoping).</li>
+        </ul></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 2 flux -->
+  <section>
+    <div class="sec-head"><div class="sec-no">02</div><div>
+      <h2>Les flux — quoi regarder en priorité</h2>
+      <div class="sec-sub">Ordre de criticité pour le multi-org</div>
+    </div></div>
+    <div class="twrap"><table>
+      <thead><tr><th>Flux</th><th>Rôle</th><th>Criticité</th><th>Ce qu'il faut regarder</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>SAP_SEND</code></td>
+          <td>Crée l'article dans SAP</td>
+          <td class="crit-cell"><span class="dot d-crit"></span>Critique</td>
+          <td>Doit <b>recevoir VKORG</b> (&amp; co) dans le payload et <b>arrêter d'utiliser sa valeur fixe interne</b> pour la relayer. Connexion SAP unique&nbsp;→ pas de routage à prévoir.</td>
+        </tr>
+        <tr>
+          <td><code>VERIF_DE</code></td>
+          <td>Vérifie l'unicité du code</td>
+          <td class="crit-cell"><span class="dot d-warn"></span>Élevée</td>
+          <td>L'unicité du code chapeau est-elle <b>globale ou par org</b>&nbsp;? Change la clé de vérification.</td>
+        </tr>
+        <tr>
+          <td><code>NOUVEAU_CODE</code> / <code>VL_CODE</code></td>
+          <td>Génère / attribue le code chapeau</td>
+          <td class="crit-cell"><span class="dot d-warn"></span>Élevée</td>
+          <td>La numérotation est-elle <b>par organisation</b>&nbsp;? (souvent le cas côté SAP)</td>
+        </tr>
+        <tr>
+          <td><code>BECPG</code> / <code>DOCUMENT</code></td>
+          <td>Fiche produit / document</td>
+          <td class="crit-cell"><span class="dot d-ok"></span>Faible</td>
+          <td>Référentiel commun ou par org&nbsp;? A priori commun.</td>
+        </tr>
+      </tbody>
+    </table></div>
+    <div class="callout" style="margin-top:14px">
+      <p><span class="k">Le point n°1 à sécuriser tôt&nbsp;:</span> la modification du flux <code>SAP_SEND</code> dépend
+      de <strong>leur équipe Power Automate / SAP</strong>, hors de ton contrôle direct. C'est le risque
+      calendaire principal du projet.</p>
+    </div>
+  </section>
+
+  <!-- 3 dashboard -->
+  <section>
+    <div class="sec-head"><div class="sec-no">03</div><div>
+      <h2>Tableau de bord — état &amp; propositions</h2>
+      <div class="sec-sub">3 pages&nbsp;: Dashboard, Accueil (FL), DemandesEtude (DE/DS)</div>
+    </div></div>
+    <div class="cols">
+      <div class="card now"><h3><span class="dot d-crit"></span>État actuel</h3><ul>
+        <li>Filtrage <b>100&nbsp;% côté client</b> (React state)&nbsp;; <b>aucun <code>$filter</code> OData</b>.</li>
+        <li><span class="file">projet.js:221-238</span> charge <b>tous</b> les projets puis filtre en JS → tient &lt;1000 lignes, <b>freeze à 5000+</b>.</li>
+        <li>Présents&nbsp;: onglets statut, recherche texte, select usine (5 en dur), type demande, type DE/DS.</li>
+        <li>Absents&nbsp;: filtre org, demandeur, centre profit, plage de dates, tri colonne, persistance (query params), vues sauvegardées.</li>
+      </ul></div>
+      <div class="card target"><h3><span class="dot d-ok"></span>Propositions (par priorité)</h3><ul>
+        <li><b>Passer le filtrage côté serveur (OData <code>$filter</code>)</b> — prérequis absolu du multi-org &amp; chantier perf.</li>
+        <li><b>Filtre + scope «&nbsp;organisation&nbsp;»</b> limité aux org autorisées du user, appliqué par défaut.</li>
+        <li>Filtres manquants&nbsp;: plage de dates, demandeur, centre profit/division&nbsp;; <b>persistance en query params</b>.</li>
+        <li>Tri par colonne, <b>vues sauvegardées par org/rôle</b>, KPI recalculés par org.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- 4 droits -->
+  <section>
+    <div class="sec-head"><div class="sec-no">04</div><div>
+      <h2>Droits &amp; scoping utilisateur</h2>
+      <div class="sec-sub">«&nbsp;n'afficher que les org autorisées&nbsp;» — le socle</div>
+    </div></div>
+    <div class="cols">
+      <div class="card now"><h3><span class="dot d-crit"></span>État&nbsp;: aucun scoping</h3><ul>
+        <li>Identité = <b>mock</b> (<span class="file">base44Client.js:69-74</span>, <code>role:'admin'</code> en dur).</li>
+        <li><b>Aucune</b> table de liaison user&harr;org/division. <code>ownerid</code>/<code>owningbusinessunit</code> jamais lus.</li>
+        <li>Tous les dropdowns chargent <b>tout</b> (<span class="file">sapLists.js</span>, <span class="file">optionSet.js</span>).</li>
+        <li>Admin = gère <b>uniquement les listes déroulantes</b> + suivi créations SAP. Aucune gestion d'utilisateurs.</li>
+      </ul></div>
+      <div class="card target"><h3><span class="dot d-ok"></span>Cible</h3><ul>
+        <li><b>Identité réelle</b>&nbsp;: brancher AuthContext sur le vrai user Power/Entra.</li>
+        <li><b>Référentiel</b>&nbsp;: tables <code>organisation</code>, <code>org&harr;division</code>, <code>user&harr;org</code>.</li>
+        <li><b>Dropdowns filtrés</b> par l'org sélectionnée, elle-même limitée aux org du user.</li>
+        <li><b>Admin étendu</b>&nbsp;: gestion des org, des mappings user&harr;org, des règles par org.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- 5 lots -->
+  <section>
+    <div class="sec-head"><div class="sec-no">05</div><div>
+      <h2>Les lots — trame de pré-chiffrage</h2>
+      <div class="sec-sub">Projet multi-sous-systèmes à décomposer. Taille relative S / M / L, révisée avec le cadrage.</div>
+    </div></div>
+    <div class="twrap"><table>
+      <thead><tr><th>#</th><th>Lot</th><th>Contenu</th><th>Taille</th><th>Note après cadrage</th></tr></thead>
+      <tbody>
+        <tr><td class="num">L1</td><td><b>Modèle de données org</b></td><td>Table organisation, liaisons org&harr;division &amp; org&harr;user, référentiel de règles par org.</td><td><span class="size sz-M">M</span></td><td>Cœur du projet.</td></tr>
+        <tr><td class="num">L2</td><td><b>Identité &amp; scoping</b></td><td>AuthContext réel, résolution user&rarr;org(s), filtrage serveur des listes.</td><td><span class="size sz-M">M</span></td><td>—</td></tr>
+        <tr><td class="num">L3</td><td><b>Dropdowns par org</b></td><td>Filtrer divisions / centres profit / etc. + sélecteur d'org.</td><td><span class="size sz-S">S–M</span></td><td>—</td></tr>
+        <tr><td class="num">L4</td><td><b>Payload + flux SAP</b></td><td>Ajout de VKORG au payload + modif ciblée du flux <code>SAP_SEND</code>.</td><td><span class="size sz-M">M</span></td><td><b>L&rarr;M</b>&nbsp;: connexion unique, pas de routage.</td></tr>
+        <tr><td class="num">L5</td><td><b>Règles data-driven</b></td><td>Sortir <code>deRules</code>/<code>dsRules</code> vers un référentiel par org.</td><td><span class="size sz-L">M–L</span></td><td><b>Le vrai gros morceau</b> — l'effort s'y cache.</td></tr>
+        <tr><td class="num">L6</td><td><b>EAN / GS1</b></td><td>Préfixe paramétrable.</td><td><span class="size sz-S">S</span></td><td><b>Quasi supprimé</b>&nbsp;: 1 société = 1 préfixe.</td></tr>
+        <tr><td class="num">L7</td><td><b>Tableau de bord</b></td><td>Filtrage serveur OData + filtre org + filtres/UX manquants.</td><td><span class="size sz-M">M</span></td><td>—</td></tr>
+        <tr><td class="num">L8</td><td><b>Admin</b></td><td>Gestion org + mappings user&harr;org + référentiels par org.</td><td><span class="size sz-M">M</span></td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout" style="margin-top:16px">
+      <p><span class="k">Chemin critique&nbsp;:</span> L1 (modèle) &rarr; L2 (scoping) &rarr; (L3, L4, L5 en parallèle)
+      &rarr; L7 / L8. &nbsp;<span class="k">Risque n°1&nbsp;:</span> L4 dépend d'un dev côté Power Automate / SAP
+      hors de ton contrôle — à verrouiller dès le départ avec leur équipe.</p>
+    </div>
+  </section>
+
+  <!-- 6 questions -->
+  <section>
+    <div class="sec-head"><div class="sec-no">06</div><div>
+      <h2>Questions résiduelles qui chiffrent</h2>
+      <div class="sec-sub">Les 3 arbitrages qui déplacent encore l'estimation</div>
+    </div></div>
+    <ol class="q">
+      <li><b>Granularité SAP</b> — uniquement <code>VKORG</code>, ou aussi <code>VTWEG</code> (canal) et <code>SPART</code> (secteur) à transmettre&nbsp;? <em>Impacte la taille du payload et du référentiel.</em></li>
+      <li><b>Divisions &harr; org</b> — les usines sont-elles <b>partagées</b> entre organisations, ou <b>partitionnées</b> (chaque org a ses divisions)&nbsp;? <em>Impacte L1 + les dropdowns filtrés.</em></li>
+      <li><b>Règles métier par org</b> — les mappings de <code>deRules.js</code> (hiérarchie 22/27, centre profit…) sont-ils <b>communs</b> à toutes les org ou <b>variables par org</b>&nbsp;? <em>Si variables&nbsp;: L5 passe de M à L.</em></li>
+    </ol>
+  </section>
+
+  <div class="foot">
+    <span>Audit — Boncolac / multi-org SAP</span>
+    <span>Prochaine étape&nbsp;: spec + plan chiffré par lot</span>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

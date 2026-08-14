@@ -5,6 +5,21 @@
 // est une simple étiquette sans valeur associée).
 
 import { Cr04e_canauxdedistributionsService } from '@/generated';
+import { listAll as listOptionSet } from '@/api/optionSet';
+
+// Catégorie admin (option-set) qui porte les canaux + leur désignation.
+const CANAUX_DROPDOWN_ID = 'canaux_distrib';
+
+// Map code -> désignation, depuis la catégorie « canaux_distrib » de l'Admin.
+// Sert à enregistrer la désignation dans cr04e_nom (le code seul est saisi côté FL).
+async function designationsByCode() {
+  const rows = await listOptionSet();
+  const map = new Map();
+  for (const r of rows) {
+    if (r.dropdownId === CANAUX_DROPDOWN_ID && r.value) map.set(String(r.value), r.designation ?? '');
+  }
+  return map;
+}
 
 // Diff pur entre canaux existants et saisie courante. La valeur d'un canal (issue
 // du multi-select) sert à la fois de code et de libellé (liste courte figée).
@@ -48,17 +63,20 @@ export async function listValuesForProjet(projetId) {
   return rows.map((r) => r.code).filter(Boolean);
 }
 
-// Synchronise les canaux d'un projet avec la saisie courante (tableau de chaînes).
+// Synchronise les canaux d'un projet avec la saisie courante (tableau de codes).
+// Chaque ligne créée porte le code (cr04e_code), la désignation (cr04e_nom) résolue
+// depuis la catégorie admin, et le lien projet (cr04e_IDProjet).
 export async function syncForProjet(projetId, saisis = []) {
   if (!projetId) return;
   const existants = await listForProjet(projetId);
   const { toCreate, toDelete } = diffCanaux(existants, saisis);
 
-  for (const c of toCreate) {
+  const designations = toCreate.length ? await designationsByCode() : null;
+  for (const code of toCreate) {
     unwrap(
       await Cr04e_canauxdedistributionsService.create({
-        cr04e_code: c,
-        cr04e_nom: c,
+        cr04e_code: code,
+        cr04e_nom: designations?.get(code) || code,
         'cr04e_IDProjet@odata.bind': `/cr04e_projets(${projetId})`,
       }),
       'Création canal de distribution',

@@ -69,6 +69,14 @@ describe('buildFichePayload', () => {
     expect(buildFichePayload({ visa_commerce: false }).cr04e_visacommerce).toBe(false);
     expect(buildFichePayload({ statut_sap: 'Création SAP effectuée' }).cr04e_statut_en_cours).toBe('fl_sap_cree');
   });
+
+  it("pousse le nombre d'UC / palette depuis le bloc palette (ligne Palette, colonne Unité)", () => {
+    expect(buildFichePayload({ palette_block: { unite: 48 } }).cr04e_nombreducpalette).toBe('48');
+    // Palette vidée -> colonne effacée
+    expect(buildFichePayload({ palette_block: { unite: null } }).cr04e_nombreducpalette).toBe('');
+    // Palette absente du patch -> colonne non touchée
+    expect('cr04e_nombreducpalette' in buildFichePayload({ libelle_long_40: 'X' })).toBe(false);
+  });
 });
 
 describe('toFicheListShape', () => {

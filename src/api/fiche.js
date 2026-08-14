@@ -124,6 +124,12 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
   if ('statut_sap' in patch && patch.statut_sap === SAP_LABEL) {
     payload.cr04e_statut_en_cours = SAP_STATUT;
   }
+  // Nombre d'UC / palette : dénormalisé sur la fiche projet depuis le tableau
+  // emballage (ligne Palette, colonne Unité = palette_block.unite).
+  if ('palette_block' in patch) {
+    const uc = patch.palette_block?.unite;
+    payload.cr04e_nombreducpalette = uc == null || uc === '' ? '' : String(uc);
+  }
   return payload;
 }
 

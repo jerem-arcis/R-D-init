@@ -122,10 +122,11 @@ export default function FLSynthesisSection({ fiche }) {
           <Field label="UVC" value={fmtBlock(fiche.uvc_block)} />
           <Field label="Colis" value={fmtBlock(fiche.colis_block)} />
           <Field label="Palette" value={fmtBlock(fiche.palette_block)} />
-          <Field label="Durée de vie" value={fiche.duree_vie && `${fiche.duree_vie} ${fiche.unite_duree_vie || ''}`} />
+          <Field label="Durée de vie" value={fiche.duree_vie && `${fiche.duree_vie} j`} />
         </SubSection>
 
         <SubSection title="Commerce" icon={ShoppingCart} visa={fiche.visa_commerce}>
+          <Field label="Désign. normalisée" value={fiche.design_normalisee} />
           <Field label="Libellé long 40" value={fiche.libelle_long_40} />
           <Field label="Libellé article caisse" value={fiche.libelle_caisse} />
           <Field label="Marque" value={fiche.marque} />
