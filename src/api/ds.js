@@ -49,7 +49,10 @@ export function computeDsValues(formData) {
       ? ''
       : ovr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine)),
     hierarchie: ovr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite)),
-    classeValo: ovr('_ds_classe_valo_ovr', computeClasseValoDS(ctx)),
+    // Classe de valorisation FIGÉE (2038) tant que le mapping négoce SAP n'est
+    // pas arbitré : un éventuel override manuel est ignoré, comme pour le code
+    // division d'origine en négoce. Le champ est verrouillé côté formulaire.
+    classeValo: computeClasseValoDS(),
     centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
     secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
   };

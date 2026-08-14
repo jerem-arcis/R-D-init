@@ -99,17 +99,24 @@ describe('computeHierarchieDS', () => {
   });
 });
 
-describe('computeClasseValoDS', () => {
-  it('production -> 7012, Aire -> 2038', () => {
-    expect(computeClasseValoDS({ usine: 'Bonloc' })).toBe('7012');
-    expect(computeClasseValoDS({ usine: 'Rivesaltes' })).toBe('7012');
-    expect(computeClasseValoDS({ usine: 'Agen' })).toBe('7012');
-    expect(computeClasseValoDS({ usine: 'Aire' })).toBe('2038');
+describe('computeClasseValoDS (provisoire : toujours 2038)', () => {
+  // En attendant le remapping negoce, la regle par usine/activite est neutralisee.
+  it('renvoie 2038 quels que soient usine, type de demande et activite', () => {
+    const cas = [
+      {},
+      { usine: 'Bonloc' },
+      { usine: 'Rivesaltes' },
+      { usine: 'Agen' },
+      { usine: 'Aire' },
+      { type_demande: '4', activite: 'TRAITEUR' },
+      { type_demande: '5', activite: 'PATISSERIES' },
+      { type_demande: '4', activite: 'MOCHIS' },
+    ];
+    for (const c of cas) expect(computeClasseValoDS(c)).toBe('2038');
   });
-  it('negoce (4/5) : Traiteur -> 2038, Patisseries -> 2030, Mochis -> vide', () => {
-    expect(computeClasseValoDS({ type_demande: '4', activite: 'TRAITEUR' })).toBe('2038');
-    expect(computeClasseValoDS({ type_demande: '5', activite: 'PATISSERIES' })).toBe('2030');
-    expect(computeClasseValoDS({ type_demande: '4', activite: 'MOCHIS' })).toBe('');
+
+  it('ne renvoie plus jamais de valeur vide', () => {
+    expect(computeClasseValoDS(undefined)).toBe('2038');
   });
 });
 

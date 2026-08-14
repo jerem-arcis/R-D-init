@@ -49,7 +49,9 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_activite_ds).toBe('PATISSERIES');
     // lookups résolus
     expect(p['cr04e_DivisionUsine@odata.bind']).toBe('/cr04e_divisionusines(dBon)'); // fab Bonloc
-    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c7012)');
+    // Classe valo DS provisoirement figée à 2038 (remapping négoce en attente),
+    // alors que l'usine de fabrication Bonloc donnait 7012 avec l'ancienne règle.
+    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)');
     expect(p['cr04e_Hierarchieproduitfamille@odata.bind']).toBe('/cr04e_hierarchieproduitfamilles(h22)');
     expect(p['cr04e_Centredeprofit@odata.bind']).toBe('/cr04e_centredeprofitcepcts(cp22)'); // Bonloc → 22PF
   });
@@ -82,5 +84,15 @@ describe('buildDsPayload', () => {
     );
     expect(p.cr04e_secteurdactivite).toBe('99'); // override, pas le '12' calculé
     expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // 2038 forcé
+  });
+});
+
+describe('classe de valorisation figée (mapping négoce en attente)', () => {
+  it("ignore l'override manuel et la persistance : toujours 2038", () => {
+    const p = buildDsPayload(
+      { ...base, _ds_classe_valo_ovr: '7012', _ds_classe_valo: '2030' },
+      { sapOptions, statut: 'ds_attente_cc' },
+    );
+    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)');
   });
 });

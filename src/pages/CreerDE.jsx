@@ -1385,11 +1385,21 @@ export default function CreerDE() {
     codeDivisionFabrication({ usine: dsCtx.usine, agen_type: dsCtx.agen_type }),
   );
   const dsHierarchie = dsOvr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite), '_ds_hierarchie');
-  const dsClasseValo = dsOvr('_ds_classe_valo_ovr', computeClasseValoDS(dsCtx), '_ds_classe_valo');
+  // Classe de valorisation DS : FIGÉE à 2038 (cf. dsRules). Ni override manuel ni
+  // repli sur la valeur persistée d'une DS rouverte — le champ est verrouillé dans
+  // le formulaire tant que le mapping négoce SAP n'est pas arbitré.
+  const dsClasseValo = computeClasseValoDS();
   const dsCentreProfit = dsOvr('_ds_centre_profit_ovr', computeCentreProfitDS(dsCtx), '_ds_centre_profit');
   const dsSecteur = dsOvr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque), '_ds_secteur');
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
   const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
+  // DS créée et en attente du code chapeau : c'est l'ÉTAPE SUIVANTE (réouverture
+  // par l'ADV), la seule où l'obtention du code — « Besoin d'une VL » / « Besoin
+  // d'un nouveau code » — a un sens. À la création par le Commerce, la DS n'existe
+  // pas encore en base : le bloc n'a rien à quoi rattacher un code.
+  // Même condition que le bouton « Envoyer vers SAP » plus bas.
+  const dsAttenteCode =
+    formType === 'autre' && formData.statut === 'ds_attente_cc' && !!formData.projet_id;
   // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
   // Brouillon et de_attente_cc restent éditables (création / obtention du code chapeau).
   const DE_READONLY_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
@@ -2228,30 +2238,34 @@ export default function CreerDE() {
                       />
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-6 pt-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={origine_mode === 'vl'}
-                        onCheckedChange={(v) => handleToggleVL(!!v)}
-                      />
-                      <span className="text-sm font-medium text-foreground">Besoin d'une VL</span>
-                    </label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDemanderNouveauCode}
-                      disabled={isRequestingCode}
-                    >
-                      {isRequestingCode ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Database className="w-4 h-4 mr-2" />
-                      )}
-                      Besoin d'un nouveau code
-                    </Button>
-                  </div>
+                  {/* Obtention du code chapeau : réservée à l'étape d'après (DS
+                      créée, rouverte par l'ADV). Masqué pendant la création. */}
+                  {dsAttenteCode && (
+                    <div className="flex flex-wrap items-center gap-6 pt-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={origine_mode === 'vl'}
+                          onCheckedChange={(v) => handleToggleVL(!!v)}
+                        />
+                        <span className="text-sm font-medium text-foreground">Besoin d'une VL</span>
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleDemanderNouveauCode}
+                        disabled={isRequestingCode}
+                      >
+                        {isRequestingCode ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Database className="w-4 h-4 mr-2" />
+                        )}
+                        Besoin d'un nouveau code
+                      </Button>
+                    </div>
+                  )}
 
-                  {origine_mode === 'vl' && (
+                  {dsAttenteCode && origine_mode === 'vl' && (
                     <div className="space-y-1.5 pt-1">
                       <Label className="text-slate-700 font-medium text-sm">
                         Code article d'origine
@@ -2435,7 +2449,12 @@ export default function CreerDE() {
 
                 <FormSection title="Champs calculés (SAP)" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <ReadOnlyField label="Classe de valorisation" value={dsClasseValo} onChange={(v) => handleChange('_ds_classe_valo_ovr', v)} options={sapOptions.classes_valorisation} hint="Selon usine / type / activité" />
+                    {/* Verrouillée : pas d'onChange -> champ grisé, non modifiable. */}
+                    <ReadOnlyField
+                      label="Classe de valorisation"
+                      value={dsClasseValo}
+                      hint="Figée pour les tests — en attente du mapping négoce sur SAP"
+                    />
                     <ReadOnlyField label="Centre de profit" value={dsCentreProfit} onChange={(v) => handleChange('_ds_centre_profit_ovr', v)} options={sapOptions.centres_profit} hint="Selon usine / activité" />
                   </div>
                 </FormSection>

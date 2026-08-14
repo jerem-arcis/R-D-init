@@ -21,8 +21,17 @@ const FMT = '@OData.Community.Display.V1.FormattedValue';
 const SAP_STATUT = 'fl_sap_cree';
 const SAP_LABEL = 'Création SAP effectuée';
 
-// Statuts des projets considérés comme des FL (liste Accueil / badge).
-const FL_STATUTS = new Set(['dl_validee', SAP_STATUT]);
+// Statuts des projets considérés comme des FL (liste Accueil / badge) :
+//   dl_validee  — DE validée par le CDG
+//   ds_validee  — DS validée (négoce) : même droit d'entrée en FL que la DE.
+//                 Cohérent avec dashboardStats, qui compte déjà les deux comme
+//                 « validées ».
+//   fl_sap_cree — article déjà créé dans SAP (le statut écrase le précédent,
+//                 quelle que soit la voie d'origine).
+const FL_STATUTS = new Set(['dl_validee', 'ds_validee', SAP_STATUT]);
+
+// Un projet est-il entré en phase FL ? (prédicat pur, testable)
+export const isPhaseFL = (statut) => FL_STATUTS.has(statut);
 
 // Champs texte scalaires : champ FL -> colonne cr04e_projet.
 const TEXT_MAP = {
@@ -276,7 +285,7 @@ export async function listFiches() {
   } while (skipToken && guard < 100);
 
   return all
-    .filter((p) => FL_STATUTS.has(p.cr04e_statut_en_cours))
+    .filter((p) => isPhaseFL(p.cr04e_statut_en_cours))
     .map(toFicheListShape)
     .sort((a, b) => (b.created_date || '').localeCompare(a.created_date || ''));
 }

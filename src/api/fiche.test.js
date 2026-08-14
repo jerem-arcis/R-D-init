@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toFicheShape, buildFichePayload, toFicheListShape } from './fiche';
+import { toFicheShape, buildFichePayload, toFicheListShape, isPhaseFL } from './fiche';
 
 const FMT = '@OData.Community.Display.V1.FormattedValue';
 
@@ -144,5 +144,20 @@ describe('toFicheListShape', () => {
       type_demande: 'Création',
       visas_valides: 2,
     });
+  });
+});
+
+describe('isPhaseFL', () => {
+  it('ouvre la FL pour une DE validée, une DS validée et un article déjà créé', () => {
+    expect(isPhaseFL('dl_validee')).toBe(true);
+    expect(isPhaseFL('ds_validee')).toBe(true);
+    expect(isPhaseFL('fl_sap_cree')).toBe(true);
+  });
+
+  it('exclut les phases amont et les demandes refusées', () => {
+    for (const s of ['de_brouillon', 'de_attente_cc', 'dl_attente_validation_cdg',
+                     'dl_refusee', 'ds_brouillon', 'ds_attente_cc', '', undefined]) {
+      expect(isPhaseFL(s)).toBe(false);
+    }
   });
 });
