@@ -43,3 +43,6 @@ src/dev/seedFL.js
 
 # SDD scratch (ledger, diffs, reports)
 .superpowers/
+
+# capture locale (ne pas versionner)
+/image.png
