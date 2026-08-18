@@ -1010,10 +1010,14 @@ export default function CreerDE() {
     }
   };
 
-  const triggerSapSendDs = async (effectiveCode) => {
+  const triggerSapSendDs = async (effectiveCode, projetId) => {
     // EAN calculés à l'envoi (idem DE) : toujours transmis, bloc masqué ou non.
     const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
     const body = {
+      // GUID de la ligne cr04e_projet (DS déjà créée) : permet au flux de relire
+      // la ligne au lieu de se limiter aux champs. Toujours présent ici (le bouton
+      // d'envoi SAP n'apparaît que pour une DS ayant un projet_id).
+      ID: projetId || '',
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       CodePJ: null, // DS : toujours null (demande métier — traité côté flux/SAP)
       NomProduit: formData.autre_designation || '',
@@ -1119,7 +1123,7 @@ export default function CreerDE() {
         });
         return;
       }
-      const result = await triggerSapSendDs(effectiveCode);
+      const result = await triggerSapSendDs(effectiveCode, formData.projet_id);
       if (!result.ok) {
         setSapModal({ status: 'error', title: result.title, message: result.message });
         return;
@@ -1303,11 +1307,14 @@ export default function CreerDE() {
   //    (« ungültiger Wert '1,598' ») ;
   //  - ZUG : entier (poids × 1000) sans bruit flottant.
   // Non bloquant : un échec n'annule pas la validation.
-  const triggerSapSend = async (codeChapeau) => {
+  const triggerSapSend = async (codeChapeau, projetId) => {
     // EAN calculés à l'envoi (325151 + 4 chiffres du code chapeau) : toujours
     // transmis, même si le bloc « Besoin des codes EAN » est masqué/inactif.
     const eans = buildEANSet(codeChapeau);
     const body = {
+      // GUID de la ligne cr04e_projet écrite juste avant (étape bloquante) :
+      // permet au flux de relire la ligne au lieu de se limiter aux champs.
+      ID: projetId || '',
       CodeChapeau: codeChapeau || '',
       CodePJ: formData.code_projet || '',
       NomProduit: formData.designation_article || '',
@@ -1677,7 +1684,7 @@ export default function CreerDE() {
     // REPASSE EN BROUILLON et on garde le projet_id (retry = même ligne). Pop-up
     // rouge, on reste sur le formulaire. Succès => pop-up verte + save différé.
     if (formType === 'de') {
-      const result = await triggerSapSend(effectiveCode);
+      const result = await triggerSapSend(effectiveCode, projetId);
       if (!result.ok) {
         if (projetId) {
           try {
