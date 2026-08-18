@@ -46,19 +46,19 @@ const s = StyleSheet.create({
   accent: { height: 3, backgroundColor: C.violetMid },
 
   // Body — pas de flexGrow (sinon il remplit la page et pousse le pied hors A4).
-  body: { paddingHorizontal: 16, paddingTop: 5, paddingBottom: 3, gap: 3 },
+  body: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4, gap: 4 },
   row: { flexDirection: 'row', gap: 6 },
 
   // Strip cells
   strip: { flexDirection: 'row', gap: 6 },
-  cell: { flexGrow: 1, flexBasis: 0, backgroundColor: C.soft, borderWidth: 1, borderColor: C.border, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8 },
+  cell: { flexGrow: 1, flexBasis: 0, backgroundColor: C.soft, borderWidth: 1, borderColor: C.border, borderRadius: 6, paddingVertical: 5, paddingHorizontal: 8 },
   cellK: { fontSize: 6.5, letterSpacing: 0.8, color: C.label, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 1 },
   cellV: { fontSize: 10, color: C.violet, fontFamily: 'Helvetica-Bold' },
 
   // Card
   card: { borderWidth: 1, borderColor: '#e6e2ee', borderRadius: 6, overflow: 'hidden' },
-  cardH: { backgroundColor: C.violet, color: C.white, fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 3, paddingHorizontal: 9 },
-  inner: { padding: 5 },
+  cardH: { backgroundColor: C.violet, color: C.white, fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 4, paddingHorizontal: 9 },
+  inner: { padding: 6 },
 
   // Field (label + value)
   fK: { fontSize: 6.5, letterSpacing: 0.4, color: C.label, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
@@ -67,7 +67,7 @@ const s = StyleSheet.create({
   fVmuted: { fontSize: 8.5, color: C.muted, fontFamily: 'Helvetica-Oblique', marginTop: 1 },
 
   // EAN digit cells
-  eanRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  eanRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
   eanLabelBox: { width: 92 },
   digits: { flexDirection: 'row', gap: 2 },
   digit: { width: 13, height: 16, borderWidth: 1, borderColor: C.border, borderRadius: 2, backgroundColor: C.box, justifyContent: 'center', alignItems: 'center' },
@@ -79,7 +79,7 @@ const s = StyleSheet.create({
   pillEmpty: { color: C.muted, borderColor: C.border, opacity: 0.7 },
 
   // Def box
-  defbox: { backgroundColor: C.box, borderLeftWidth: 3, borderLeftColor: C.violetMid, borderTopLeftRadius: 0, borderRadius: 4, paddingVertical: 5, paddingHorizontal: 8, fontSize: 8.5, color: '#555566' },
+  defbox: { backgroundColor: C.box, borderLeftWidth: 3, borderLeftColor: C.violetMid, borderTopLeftRadius: 0, borderRadius: 4, paddingVertical: 6, paddingHorizontal: 8, fontSize: 8.5, color: '#555566' },
 
   // Metrics
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
@@ -89,13 +89,13 @@ const s = StyleSheet.create({
 
   // Visas
   visas: { flexDirection: 'row', gap: 6 },
-  visa: { flexGrow: 1, flexBasis: 0, borderWidth: 1, borderColor: C.border, borderStyle: 'dashed', borderRadius: 5, paddingVertical: 5, alignItems: 'center' },
+  visa: { flexGrow: 1, flexBasis: 0, borderWidth: 1, borderColor: C.border, borderStyle: 'dashed', borderRadius: 5, paddingVertical: 6, alignItems: 'center' },
   visaK: { fontSize: 6.5, letterSpacing: 0.3, color: C.label, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
   visaN: { fontSize: 8, color: C.ink, fontFamily: 'Helvetica-Bold', marginTop: 2 },
   visaS: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', borderRadius: 8, paddingVertical: 1.5, paddingHorizontal: 7, marginTop: 3 },
 
   // Foot
-  foot: { paddingVertical: 4, paddingHorizontal: 18, borderTopWidth: 1, borderTopColor: '#e6e2ee', alignItems: 'center' },
+  foot: { paddingVertical: 7, paddingHorizontal: 18, borderTopWidth: 1, borderTopColor: '#e6e2ee', alignItems: 'center' },
   footP: { fontSize: 7, color: '#9a93ab' },
   footBrand: { fontSize: 7, color: C.violet, fontFamily: 'Helvetica-Bold', marginTop: 1 },
 });
