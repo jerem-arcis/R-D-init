@@ -35,8 +35,8 @@ export interface Cr04e_projetsBase {
   "cr04e_DivisionUsine@odata.bind"?: string;
   cr04e_dureedevie?: string;
   cr04e_eclatementgroupedemarchandise?: string;
-  cr04e_fluxenvoiede?: boolean;
-  cr04e_fluxenvoiefl?: boolean;
+  cr04e_fluxenvoiede?: string;
+  cr04e_fluxenvoiefl?: string;
   cr04e_formatdateetiquettecolis?: string;
   cr04e_formatdluoetiquettecolis?: string;
   "cr04e_Groupearticledivision@odata.bind"?: string;
@@ -90,8 +90,6 @@ export interface Cr04e_projets extends Cr04e_projetsBase {
   cr04e_centredeprofitname?: string;
   cr04e_classedevalorisationname?: string;
   cr04e_divisionusinename?: string;
-  cr04e_fluxenvoiedename?: string;
-  cr04e_fluxenvoieflname?: string;
   cr04e_groupearticledivisionname?: string;
   cr04e_hierarchieproduitfamillename?: string;
   cr04e_visacommercename?: string;

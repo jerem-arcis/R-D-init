@@ -215,9 +215,10 @@ const toListShape = (p) => ({
   statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_brouillon,
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,
-  // Statuts d'envoi SAP posés par le flux Power Automate (Boolean : 0 = réussi,
-  // 1 = erreur). Tri-état volontaire : on NE coerce PAS en false, car l'attribut
-  // absent (jamais envoyé) doit rester `undefined` = « non renseigné ».
+  // Statuts d'envoi SAP posés par le flux Power Automate (TEXTE : « reussi » /
+  // « erreur », vide = jamais envoyé). Passe-plat : l'interprétation vit dans
+  // `fluxStatut` (erreursSap.js). Le texte permet l'état nul, impossible avec un
+  // Oui/Non Dataverse (défaut forcé).
   flux_envoi_de: p.cr04e_fluxenvoiede,
   flux_envoi_fl: p.cr04e_fluxenvoiefl,
 });

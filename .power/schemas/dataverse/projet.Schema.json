@@ -203,63 +203,17 @@
           "type": "string",
           "title": "Flux envoie DE",
           "x-ms-dataverse-attribute": "cr04e_fluxenvoiede",
-          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_FluxenvoieDE",
-          "enum": [
-            "réussi",
-            "erreur"
-          ],
-          "x-ms-enum-values": [
-            0,
-            1
-          ],
-          "Color": [
-            null,
-            null
-          ],
-          "x-ms-optionsetmetadataid": "41b56aa0-e19a-f111-b8db-002248388c0b",
-          "x-ms-isGlobal": false,
-          "x-ms-optionsetdisplayname": "Flux envoie DE",
-          "x-ms-optionSetType": "Boolean"
-        },
-        "cr04e_fluxenvoiedename": {
-          "type": "string",
-          "title": "cr04e_fluxenvoiedename",
-          "x-ms-dataverse-attribute": "cr04e_fluxenvoiedename",
-          "x-ms-dataverse-type": "VirtualType",
-          "x-ms-schema-name": "cr04e_fluxenvoiedeName",
-          "x-ms-read-only": true
+          "maxLength": 100
         },
         "cr04e_fluxenvoiefl": {
           "type": "string",
           "title": "Flux envoie FL",
           "x-ms-dataverse-attribute": "cr04e_fluxenvoiefl",
-          "x-ms-dataverse-type": "BooleanType",
+          "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "cr04e_FluxenvoieFL",
-          "enum": [
-            "réussi",
-            "erreur"
-          ],
-          "x-ms-enum-values": [
-            0,
-            1
-          ],
-          "Color": [
-            null,
-            null
-          ],
-          "x-ms-optionsetmetadataid": "d835dae5-e19a-f111-b8db-002248388c0b",
-          "x-ms-isGlobal": false,
-          "x-ms-optionsetdisplayname": "Flux envoie FL",
-          "x-ms-optionSetType": "Boolean"
-        },
-        "cr04e_fluxenvoieflname": {
-          "type": "string",
-          "title": "cr04e_fluxenvoieflname",
-          "x-ms-dataverse-attribute": "cr04e_fluxenvoieflname",
-          "x-ms-dataverse-type": "VirtualType",
-          "x-ms-schema-name": "cr04e_fluxenvoieflName",
-          "x-ms-read-only": true
+          "maxLength": 100
         },
         "cr04e_formatdateetiquettecolis": {
           "type": "string",

@@ -327,13 +327,29 @@ describe('buildCreations', () => {
 });
 
 describe('fluxStatut', () => {
-  it('false -> réussi (option-set 0), true -> erreur (1)', () => {
+  it('texte écrit par le flux : réussi / erreur (insensible casse et espaces)', () => {
+    expect(fluxStatut('reussi')).toBe('reussi');
+    expect(fluxStatut('réussi')).toBe('reussi');
+    expect(fluxStatut('erreur')).toBe('erreur');
+    expect(fluxStatut('ERREUR')).toBe('erreur');
+    expect(fluxStatut(' erreur ')).toBe('erreur');
+  });
+  it('accepte aussi 0 = réussi, 1 = erreur', () => {
+    expect(fluxStatut('0')).toBe('reussi');
+    expect(fluxStatut('1')).toBe('erreur');
+  });
+  it('tolère un booléen (false = réussi, true = erreur)', () => {
     expect(fluxStatut(false)).toBe('reussi');
     expect(fluxStatut(true)).toBe('erreur');
   });
-  it('non renseigné (undefined/null) -> null', () => {
+  it('vide / non renseigné -> null', () => {
+    expect(fluxStatut('')).toBeNull();
+    expect(fluxStatut('   ')).toBeNull();
     expect(fluxStatut(undefined)).toBeNull();
     expect(fluxStatut(null)).toBeNull();
+  });
+  it('valeur inconnue -> null (pas de faux statut affiché)', () => {
+    expect(fluxStatut('bidon')).toBeNull();
   });
 });
 
@@ -344,18 +360,23 @@ describe('buildSuiviFlux', () => {
 
   it('ne garde que les projets ayant une valeur de flux (DE ou FL)', () => {
     const projets = [
-      { id: 'p1', code_chapeau: '810501', flux_envoi_de: true },
+      { id: 'p1', code_chapeau: '810501', flux_envoi_de: 'erreur' },
       { id: 'p2', code_chapeau: '900000' }, // aucune valeur -> exclu
-      { id: 'p3', code_chapeau: '900001', flux_envoi_fl: false },
+      { id: 'p3', code_chapeau: '900001', flux_envoi_fl: 'reussi' },
     ];
     const rows = buildSuiviFlux(projets, []);
     expect(rows.map((r) => r.id)).toEqual(['p1', 'p3']);
   });
 
+  it('un flux à chaîne vide ne suffit pas à afficher le projet', () => {
+    const projets = [{ id: 'p1', code_chapeau: '1', flux_envoi_de: '', flux_envoi_fl: '' }];
+    expect(buildSuiviFlux(projets, [])).toEqual([]);
+  });
+
   it('mappe fluxDe / fluxFl en réussi/erreur/null', () => {
     const projets = [
-      { id: 'p1', code_chapeau: '1', flux_envoi_de: false, flux_envoi_fl: true },
-      { id: 'p2', code_chapeau: '2', flux_envoi_de: true }, // fl non renseigné
+      { id: 'p1', code_chapeau: '1', flux_envoi_de: 'reussi', flux_envoi_fl: 'erreur' },
+      { id: 'p2', code_chapeau: '2', flux_envoi_de: 'erreur' }, // fl non renseigné
     ];
     const rows = buildSuiviFlux(projets, []);
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -366,21 +387,21 @@ describe('buildSuiviFlux', () => {
   });
 
   it('rattache la création d’erreurs par code chapeau (zéros de tête tolérés)', () => {
-    const projets = [{ id: 'p1', code_chapeau: '810501', flux_envoi_de: true }];
+    const projets = [{ id: 'p1', code_chapeau: '810501', flux_envoi_de: 'erreur' }];
     const rows = buildSuiviFlux(projets, creationsFixture);
     expect(rows[0].creation).toBe(creationsFixture[0]);
     expect(rows[0].creation.errors).toHaveLength(1);
   });
 
   it('creation = null quand aucun journal d’erreur ne correspond (réussi propre)', () => {
-    const projets = [{ id: 'p1', code_chapeau: '999', flux_envoi_de: false }];
+    const projets = [{ id: 'p1', code_chapeau: '999', flux_envoi_de: 'reussi' }];
     const rows = buildSuiviFlux(projets, creationsFixture);
     expect(rows[0].creation).toBeNull();
   });
 
   it('expose les métadonnées projet et traite une DS comme la DE (même colonne)', () => {
     const projets = [
-      { id: 'p1', code_chapeau: '810501', code_projet: 'PJ1', designation_article: 'Tarte', usine_validee: 'AGEN', demandeur: 'Alice', type_de: 'ds', flux_envoi_de: true },
+      { id: 'p1', code_chapeau: '810501', code_projet: 'PJ1', designation_article: 'Tarte', usine_validee: 'AGEN', demandeur: 'Alice', type_de: 'ds', flux_envoi_de: 'erreur' },
     ];
     const [row] = buildSuiviFlux(projets, []);
     expect(row).toMatchObject({
@@ -390,8 +411,8 @@ describe('buildSuiviFlux', () => {
 
   it('trie les plus récents d’abord (created_date desc)', () => {
     const projets = [
-      { id: 'old', code_chapeau: '1', flux_envoi_de: false, created_date: '2026-08-01T00:00:00Z' },
-      { id: 'new', code_chapeau: '2', flux_envoi_de: false, created_date: '2026-08-10T00:00:00Z' },
+      { id: 'old', code_chapeau: '1', flux_envoi_de: 'reussi', created_date: '2026-08-01T00:00:00Z' },
+      { id: 'new', code_chapeau: '2', flux_envoi_de: 'reussi', created_date: '2026-08-10T00:00:00Z' },
     ];
     const rows = buildSuiviFlux(projets, []);
     expect(rows.map((r) => r.id)).toEqual(['new', 'old']);

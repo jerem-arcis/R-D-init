@@ -301,14 +301,29 @@ export function buildCreations(rows = []) {
 }
 
 // ---------------------------------------------------------------------------
-// Statut d'un flux d'envoi SAP porté par le projet (colonnes Boolean posées par
-// le flux Power Automate : cr04e_fluxenvoiede / cr04e_fluxenvoiefl).
-// Option-set : 0 = réussi, 1 = erreur. En OData, l'attribut est ABSENT tant que
-// le flux n'a rien écrit -> undefined/null = « non renseigné » (pas affiché).
+// Statut d'un flux d'envoi SAP porté par le projet (colonnes TEXTE posées par le
+// flux Power Automate : cr04e_fluxenvoiede / cr04e_fluxenvoiefl).
+//
+// Le texte a été choisi car un Oui/Non Dataverse n'est jamais nul (défaut forcé),
+// ce qui interdit l'état « jamais envoyé ». Ici : vide/absent = non renseigné
+// (pas affiché), sinon on interprète la valeur écrite par le flux.
+//
+// Valeurs acceptées (tolérant : casse/espaces, 0/1, ou booléen historique) :
+//   réussi  <- 'reussi' | 'réussi' | 'ok' | 'success' | '0' | false
+//   erreur  <- 'erreur' | 'error' | 'ko' | 'echec' | 'échec' | '1' | true
+// Toute autre valeur non vide -> null (on préfère « — » à un statut faux).
 // ---------------------------------------------------------------------------
-export function fluxStatut(bool) {
-  if (bool === undefined || bool === null) return null;
-  return bool ? 'erreur' : 'reussi';
+const FLUX_REUSSI = new Set(['reussi', 'réussi', 'ok', 'success', '0', 'false']);
+const FLUX_ERREUR = new Set(['erreur', 'error', 'ko', 'echec', 'échec', '1', 'true']);
+
+export function fluxStatut(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'boolean') return value ? 'erreur' : 'reussi';
+  const v = String(value).trim().toLowerCase();
+  if (v === '') return null;
+  if (FLUX_REUSSI.has(v)) return 'reussi';
+  if (FLUX_ERREUR.has(v)) return 'erreur';
+  return null;
 }
 
 // ---------------------------------------------------------------------------

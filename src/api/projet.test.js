@@ -12,14 +12,14 @@ describe('toListShape — type DS', () => {
     expect(row.type_de).toBe('de');
   });
 
-  it('remonte les statuts de flux SAP en tri-état (undefined/false/true)', () => {
+  it('remonte les statuts de flux SAP (texte) en passe-plat', () => {
     const abs = listShapeForTest({ cr04e_projetid: '1' });
     expect(abs.flux_envoi_de).toBeUndefined();
     expect(abs.flux_envoi_fl).toBeUndefined();
 
-    const set = listShapeForTest({ cr04e_projetid: '2', cr04e_fluxenvoiede: false, cr04e_fluxenvoiefl: true });
-    expect(set.flux_envoi_de).toBe(false);
-    expect(set.flux_envoi_fl).toBe(true);
+    const set = listShapeForTest({ cr04e_projetid: '2', cr04e_fluxenvoiede: 'reussi', cr04e_fluxenvoiefl: 'erreur' });
+    expect(set.flux_envoi_de).toBe('reussi');
+    expect(set.flux_envoi_fl).toBe('erreur');
   });
 });
 

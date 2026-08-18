@@ -130,8 +130,8 @@ export const demoErreurRows = [
 
 // Projets de démo (rapprochés par code chapeau) — fournissent code projet, usine
 // validée, désignation et demandeur, comme la vraie table cr04e_projet.
-// `flux` = { de, fl } : statut Boolean posé par le flux (false = réussi, true =
-// erreur, absent = jamais envoyé). Reflète les colonnes cr04e_fluxenvoiede/fl.
+// `flux` = { de, fl } : statut TEXTE posé par le flux ('reussi' / 'erreur',
+// absent = jamais envoyé). Reflète les colonnes cr04e_fluxenvoiede/fl.
 const projet = (code_chapeau, code_projet, designation_article, usine_validee, demandeur, created_date, flux = {}) => ({
   id: `seed-p-${code_chapeau}`,
   type_de: 'de',
@@ -149,15 +149,15 @@ const projet = (code_chapeau, code_projet, designation_article, usine_validee, d
 
 export const demoProjets = [
   // Envois en erreur (ont aussi des lignes dans le journal d'erreurs).
-  projet('C809201', 'PJ5996', 'Cookie protéiné-PICARD', '2802', 'stephane.delcroix', '2026-08-01T09:00:00', { de: true }),
-  projet('C905414', 'PJ6002', 'Tartelette Rose St Valentin-PICARD', '2847', 'stephane.delcroix', '2026-08-01T09:00:00', { de: true }),
+  projet('C809201', 'PJ5996', 'Cookie protéiné-PICARD', '2802', 'stephane.delcroix', '2026-08-01T09:00:00', { de: 'erreur' }),
+  projet('C905414', 'PJ6002', 'Tartelette Rose St Valentin-PICARD', '2847', 'stephane.delcroix', '2026-08-01T09:00:00', { de: 'erreur' }),
   // Réussis côté DE (corrigés / ignorés).
-  projet('C404501', 'PJ5972', 'Tarte Rose Fête des mères-PICARD', '2833', 'yannick.trouvay', '2026-07-30T09:00:00', { de: false }),
-  projet('C404502', 'PJ5891', '2 x Tartelettes Tatin -U', '2802', 'yannick.trouvay', '2026-07-30T09:00:00', { de: false }),
+  projet('C404501', 'PJ5972', 'Tarte Rose Fête des mères-PICARD', '2833', 'yannick.trouvay', '2026-07-30T09:00:00', { de: 'reussi' }),
+  projet('C404502', 'PJ5891', '2 x Tartelettes Tatin -U', '2802', 'yannick.trouvay', '2026-07-30T09:00:00', { de: 'reussi' }),
   // DE réussie + FL réussie.
-  projet('C807710', 'PJ6022', 'Cookie Ube BVP pour Coop -COOP Suisse', '2886', 'daniel.deoliveira', '2026-07-29T09:00:00', { de: false, fl: false }),
+  projet('C807710', 'PJ6022', 'Cookie Ube BVP pour Coop -COOP Suisse', '2886', 'daniel.deoliveira', '2026-07-29T09:00:00', { de: 'reussi', fl: 'reussi' }),
   // Réussite 100% propre : AUCUNE ligne d'erreur, mais visible en vert (project-driven).
-  projet('C660120', 'PJ6050', 'Éclair Vanille bio -CARREFOUR', '2823', 'alice.martin', '2026-08-03T14:00:00', { de: false }),
+  projet('C660120', 'PJ6050', 'Éclair Vanille bio -CARREFOUR', '2823', 'alice.martin', '2026-08-03T14:00:00', { de: 'reussi' }),
   // FL en erreur, DE réussie.
-  projet('C660121', 'PJ6051', 'Financier Amande -CARREFOUR', '2823', 'alice.martin', '2026-08-03T15:00:00', { de: false, fl: true }),
+  projet('C660121', 'PJ6051', 'Financier Amande -CARREFOUR', '2823', 'alice.martin', '2026-08-03T15:00:00', { de: 'reussi', fl: 'erreur' }),
 ];
