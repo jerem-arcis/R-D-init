@@ -215,6 +215,11 @@ const toListShape = (p) => ({
   statut: p.cr04e_statut_en_cours || PROJET_STATUT.de_brouillon,
   code_chapeau: p.cr04e_codechapeau ?? '',
   created_date: p.createdon ?? null,
+  // Statuts d'envoi SAP posés par le flux Power Automate (Boolean : 0 = réussi,
+  // 1 = erreur). Tri-état volontaire : on NE coerce PAS en false, car l'attribut
+  // absent (jamais envoyé) doit rester `undefined` = « non renseigné ».
+  flux_envoi_de: p.cr04e_fluxenvoiede,
+  flux_envoi_fl: p.cr04e_fluxenvoiefl,
 });
 
 // Alias d'export pour les tests (la fonction reste interne par ailleurs).

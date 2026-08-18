@@ -126,8 +126,9 @@ export default function Admin() {
   const [selectedKey, setSelectedKey] = useState('reseaux');
   // Vue « Créations SAP » : null = éditeur de listes déroulantes, sinon 'suivi' | 'echec'.
   const [sapView, setSapView] = useState(null);
-  const { creations: sapCreations } = useErreursSap();
-  const sapEchecCount = sapCreations.filter((c) => c.resultat === 'echec').length;
+  const { suiviFlux, fluxKpis } = useErreursSap();
+  const sapSuiviCount = suiviFlux.length;
+  const sapEchecCount = fluxKpis.enErreur;
   const [newValue, setNewValue] = useState('');
   const [newDesignation, setNewDesignation] = useState('');
   const [toDelete, setToDelete] = useState(null);
@@ -350,7 +351,7 @@ export default function Admin() {
                 Créations SAP
               </div>
               {[
-                { key: 'suivi', label: 'Suivi', icon: Activity, count: sapCreations.length },
+                { key: 'suivi', label: 'Suivi', icon: Activity, count: sapSuiviCount },
                 { key: 'echec', label: 'En échec', icon: AlertTriangle, count: sapEchecCount },
               ].map(({ key, label, icon: Icon, count }) => {
                 const active = sapView === key;

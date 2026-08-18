@@ -301,6 +301,56 @@ export function buildCreations(rows = []) {
 }
 
 // ---------------------------------------------------------------------------
+// Statut d'un flux d'envoi SAP porté par le projet (colonnes Boolean posées par
+// le flux Power Automate : cr04e_fluxenvoiede / cr04e_fluxenvoiefl).
+// Option-set : 0 = réussi, 1 = erreur. En OData, l'attribut est ABSENT tant que
+// le flux n'a rien écrit -> undefined/null = « non renseigné » (pas affiché).
+// ---------------------------------------------------------------------------
+export function fluxStatut(bool) {
+  if (bool === undefined || bool === null) return null;
+  return bool ? 'erreur' : 'reussi';
+}
+
+// ---------------------------------------------------------------------------
+// Suivi par flux (Admin, vue project-driven) : à partir de TOUS les projets, on
+// ne garde que ceux ayant une valeur sur au moins un flux (DE ou FL), et on
+// rattache la « création » d'erreurs correspondante (jointure par code chapeau,
+// zéros de tête tolérés) pour que le panneau de détail rouge reste disponible.
+// Une DS écrit la même colonne que la DE (cr04e_fluxenvoiede) : rien de spécial.
+// ---------------------------------------------------------------------------
+export function buildSuiviFlux(projets = [], creations = []) {
+  const byChapeau = new Map();
+  for (const c of creations) {
+    const key = stripLeadingZeros(c.referenceRaw || c.reference);
+    if (key) byChapeau.set(key, c);
+  }
+
+  return projets
+    .map((p) => {
+      const fluxDe = fluxStatut(p.flux_envoi_de);
+      const fluxFl = fluxStatut(p.flux_envoi_fl);
+      if (fluxDe === null && fluxFl === null) return null;
+      const key = stripLeadingZeros(p.code_chapeau);
+      return {
+        id: p.id,
+        codeProjet: p.code_projet || '',
+        codeChapeau: p.code_chapeau || '',
+        reference: p.code_chapeau || '',
+        designation: p.designation_article || '',
+        usine: p.usine_validee || '',
+        demandeur: p.demandeur || '',
+        typeDe: p.type_de || '',
+        createdOn: p.created_date || null,
+        fluxDe,
+        fluxFl,
+        creation: (key && byChapeau.get(key)) || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.createdOn || '').localeCompare(a.createdOn || ''));
+}
+
+// ---------------------------------------------------------------------------
 // KPIs : créations sur les N derniers jours (par date de création), par résultat.
 // ---------------------------------------------------------------------------
 export function computeKpis(creations = [], { now = new Date(), days = 7 } = {}) {

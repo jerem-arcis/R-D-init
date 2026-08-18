@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listErreurs } from '@/api/gestionErreurs';
 import { listProjets } from '@/api/projet';
-import { buildCreations, computeKpis, joinCodeProjet } from '@/lib/erreursSap';
+import { buildCreations, computeKpis, joinCodeProjet, buildSuiviFlux } from '@/lib/erreursSap';
 // DEV uniquement : repli démo quand Dataverse ne renvoie rien (voir la page sans
 // publier). Jamais activé en prod (import.meta.env.DEV === false).
 import { demoErreurRows, demoProjets } from '@/dev/erreursSapDemo';
@@ -38,17 +38,28 @@ export function useErreursSap() {
     }
   }
 
-  const { creations, kpis } = useMemo(() => {
+  const { creations, kpis, suiviFlux, fluxKpis } = useMemo(() => {
     const base = buildCreations(rows ?? []);
     const enriched = joinCodeProjet(base, projets ?? []);
     // Tri : plus récentes d'abord.
     enriched.sort((a, b) => (b.createdOn || '').localeCompare(a.createdOn || ''));
-    return { creations: enriched, kpis: computeKpis(enriched) };
+    // Vue project-driven (statut par flux) : pilotée par les projets ayant une
+    // valeur de flux, avec le détail d'erreurs rattaché quand c'est rouge.
+    const suivi = buildSuiviFlux(projets ?? [], enriched);
+    const enErreur = suivi.filter((s) => s.fluxDe === 'erreur' || s.fluxFl === 'erreur').length;
+    return {
+      creations: enriched,
+      kpis: computeKpis(enriched),
+      suiviFlux: suivi,
+      fluxKpis: { total: suivi.length, enErreur, reussis: suivi.length - enErreur },
+    };
   }, [rows, projets]);
 
   return {
     creations,
     kpis,
+    suiviFlux,
+    fluxKpis,
     isLoading: erreursQ.isLoading || projetsQ.isLoading,
     // En repli démo, on masque l'erreur Dataverse pour afficher le jeu de démo.
     isError: demoActif ? false : erreursQ.isError,

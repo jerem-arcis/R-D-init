@@ -11,6 +11,16 @@ describe('toListShape — type DS', () => {
     const row = listShapeForTest({ cr04e_projetid: '2', cr04e_statut_en_cours: 'dl_attente_validation_cdg' });
     expect(row.type_de).toBe('de');
   });
+
+  it('remonte les statuts de flux SAP en tri-état (undefined/false/true)', () => {
+    const abs = listShapeForTest({ cr04e_projetid: '1' });
+    expect(abs.flux_envoi_de).toBeUndefined();
+    expect(abs.flux_envoi_fl).toBeUndefined();
+
+    const set = listShapeForTest({ cr04e_projetid: '2', cr04e_fluxenvoiede: false, cr04e_fluxenvoiefl: true });
+    expect(set.flux_envoi_de).toBe(false);
+    expect(set.flux_envoi_fl).toBe(true);
+  });
 });
 
 describe('toFormData — résolution des lookups à la réouverture', () => {

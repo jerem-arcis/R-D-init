@@ -18,22 +18,23 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { normalizeText } from '@/lib/utils';
-import { RESULTAT, buildChecklist, flattenParametre } from '@/lib/erreursSap';
+import { buildChecklist, flattenParametre } from '@/lib/erreursSap';
 import { useErreursSap } from '@/lib/useErreursSap';
 
-const TONE_BADGE = {
-  emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  amber: 'bg-amber-100 text-amber-700 border-amber-200',
-  red: 'bg-red-100 text-red-700 border-red-200',
+// Pastille de statut d'un flux (colonne Flux DE / Flux FL). null = non renseigné.
+const FLUX_PILL = {
+  reussi: { label: 'Réussi', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', Icon: CheckCircle2 },
+  erreur: { label: 'Erreur', cls: 'bg-red-100 text-red-700 border-red-200', Icon: AlertCircle },
 };
 
-function ResultatBadge({ resultat }) {
-  const meta = RESULTAT[resultat] || RESULTAT.echec;
+function FluxPill({ statut }) {
+  const meta = FLUX_PILL[statut];
+  if (!meta) return <span className="text-muted-foreground/40 text-sm">—</span>;
+  const { label, cls, Icon } = meta;
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${TONE_BADGE[meta.tone]}`}
-    >
-      {meta.label}
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {label}
     </span>
   );
 }
@@ -55,7 +56,7 @@ const fmtDateLong = (iso) => {
 // ---------------------------------------------------------------------------
 function KpiCard({ value, label, tone }) {
   const valueColor =
-    tone === 'red' ? 'text-red-600' : tone === 'amber' ? 'text-amber-600' : 'text-foreground';
+    tone === 'red' ? 'text-red-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-foreground';
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm px-5 py-4">
       <div className={`text-3xl font-bold leading-none ${valueColor}`}>{value}</div>
@@ -122,7 +123,28 @@ function ErrorCard({ err }) {
   );
 }
 
-function CreationDetail({ creation }) {
+// En-tête commun aux panneaux détail (erreur ou réussite).
+function DetailHeader({ row }) {
+  return (
+    <div className="border-b border-border px-5 py-3 flex items-center justify-between gap-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-foreground truncate">
+        {row.codeProjet && <span>{row.codeProjet} · </span>}
+        <span>Article {row.reference || '-'}</span>
+        {row.designation && (
+          <span className="text-muted-foreground normal-case font-normal"> · {row.designation}</span>
+        )}
+        {row.usine && <span className="text-muted-foreground"> · {row.usine}</span>}
+      </div>
+      <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+        {fmtDateLong(row.createdOn)}
+      </div>
+    </div>
+  );
+}
+
+// Panneau détail des erreurs jointes (journal cr04e_gestiondeserreurs).
+function CreationDetail({ row }) {
+  const { creation } = row;
   const steps = useMemo(() => buildChecklist(creation.errors), [creation]);
   const [selectedStepKey, setSelectedStepKey] = useState(null);
 
@@ -137,19 +159,7 @@ function CreationDetail({ creation }) {
 
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-      <div className="border-b border-border px-5 py-3 flex items-center justify-between gap-4">
-        <div className="text-xs font-semibold uppercase tracking-wide text-foreground truncate">
-          {creation.codeProjet && <span>{creation.codeProjet} · </span>}
-          <span>Article {creation.reference}</span>
-          {creation.designation && (
-            <span className="text-muted-foreground normal-case font-normal"> · {creation.designation}</span>
-          )}
-          {creation.usine && <span className="text-muted-foreground"> · {creation.usine}</span>}
-        </div>
-        <div className="text-[11px] text-muted-foreground whitespace-nowrap">
-          {fmtDateLong(creation.createdOn)}
-        </div>
-      </div>
+      <DetailHeader row={row} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,300px)_1fr]">
         {/* Checklist des vues SAP — cliquez une vue en erreur pour voir ses messages */}
@@ -203,47 +213,75 @@ function CreationDetail({ creation }) {
   );
 }
 
+// Panneau détail sans journal d'erreurs rattaché : réussite propre, ou flux en
+// erreur mais sans ligne dans le journal (message générique).
+function StatusDetail({ row }) {
+  const anyError = row.fluxDe === 'erreur' || row.fluxFl === 'erreur';
+  return (
+    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <DetailHeader row={row} />
+      <div className="px-5 py-6 flex items-center gap-2 text-sm">
+        {anyError ? (
+          <>
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <span className="text-foreground">
+              Flux en erreur, mais aucun détail dans le journal d’erreurs. Relancez l’envoi depuis la page de création.
+            </span>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="text-foreground">Envoi réussi — rien à corriger.</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Vue principale
+// Vue principale — pilotée par les projets ayant un statut de flux (DE / FL).
+// filter = 'suivi' (tout) | 'echec' (seulement les flux en erreur).
 // ---------------------------------------------------------------------------
 export default function SuiviCreationsSap({ filter = 'suivi' }) {
-  const { creations, kpis, isLoading, isError, error, isDemo } = useErreursSap();
+  const { suiviFlux, fluxKpis, isLoading, isError, error, isDemo } = useErreursSap();
   const [search, setSearch] = useState('');
-  const [selectedRef, setSelectedRef] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   const scoped = useMemo(
-    () => (filter === 'echec' ? creations.filter((c) => c.resultat === 'echec') : creations),
-    [creations, filter],
+    () =>
+      filter === 'echec'
+        ? suiviFlux.filter((r) => r.fluxDe === 'erreur' || r.fluxFl === 'erreur')
+        : suiviFlux,
+    [suiviFlux, filter],
   );
 
   const filtered = useMemo(() => {
     const q = normalizeText(search).trim();
     if (!q) return scoped;
-    return scoped.filter((c) =>
+    return scoped.filter((r) =>
       normalizeText(
-        [c.codeProjet, c.reference, c.designation, c.demandeur, c.usine].join(' '),
+        [r.codeProjet, r.reference, r.designation, r.demandeur, r.usine].join(' '),
       ).includes(q),
     );
   }, [scoped, search]);
 
-  const selected =
-    filtered.find((c) => c.reference === selectedRef) || filtered[0] || null;
+  const selected = filtered.find((r) => r.id === selectedId) || filtered[0] || null;
 
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard value={kpis.total} label="Créations · 7 jours" />
-        <KpiCard value={kpis.reussies} label="Réussies" tone="emerald" />
-        <KpiCard value={kpis.partielle} label="Partielle" tone="amber" />
-        <KpiCard value={kpis.echec} label="En échec" tone="red" />
+      <div className="grid grid-cols-3 gap-4">
+        <KpiCard value={fluxKpis.total} label="Projets suivis" />
+        <KpiCard value={fluxKpis.reussis} label="Réussis" tone="emerald" />
+        <KpiCard value={fluxKpis.enErreur} label="En erreur" tone="red" />
       </div>
 
       {/* Tableau de suivi */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="border-b border-border px-5 py-3 flex items-center justify-between gap-4">
           <h2 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2">
-            {filter === 'echec' ? 'Créations en échec' : 'Suivi des créations SAP'}
+            {filter === 'echec' ? 'Flux en erreur' : 'Suivi des envois SAP'}
             {isDemo && (
               <span className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 normal-case tracking-normal">
                 données de démo
@@ -274,11 +312,11 @@ export default function SuiviCreationsSap({ filter = 'suivi' }) {
           </div>
         ) : isError ? (
           <div className="px-5 py-12 text-center text-sm text-red-600">
-            {error?.message || 'Impossible de charger les créations SAP.'}
+            {error?.message || 'Impossible de charger les envois SAP.'}
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Aucune création à afficher.
+            Aucun envoi à afficher.
           </div>
         ) : (
           <Table>
@@ -290,29 +328,29 @@ export default function SuiviCreationsSap({ filter = 'suivi' }) {
                 <TableHead className="text-[11px] uppercase tracking-wide">Usine</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wide">Demandeur</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wide">Date</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wide">Résultat</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide">Flux DE</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wide">Flux FL</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((c) => (
+              {filtered.map((r) => (
                 <TableRow
-                  key={c.reference || c.referenceRaw}
-                  onClick={() => setSelectedRef(c.reference)}
+                  key={r.id}
+                  onClick={() => setSelectedId(r.id)}
                   className={`cursor-pointer ${
-                    selected && selected.reference === c.reference ? 'bg-primary/5' : ''
+                    selected && selected.id === r.id ? 'bg-primary/5' : ''
                   }`}
                 >
-                  <TableCell className="text-sm text-muted-foreground">{c.codeProjet || '-'}</TableCell>
-                  <TableCell className="text-sm font-semibold">{c.reference || '-'}</TableCell>
-                  <TableCell className="text-sm max-w-[280px] truncate">{c.designation || '-'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.usine || '-'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{c.demandeur || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.codeProjet || '-'}</TableCell>
+                  <TableCell className="text-sm font-semibold">{r.reference || '-'}</TableCell>
+                  <TableCell className="text-sm max-w-[280px] truncate">{r.designation || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.usine || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.demandeur || '-'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {fmtDate(c.createdOn)}
+                    {fmtDate(r.createdOn)}
                   </TableCell>
-                  <TableCell>
-                    <ResultatBadge resultat={c.resultat} />
-                  </TableCell>
+                  <TableCell><FluxPill statut={r.fluxDe} /></TableCell>
+                  <TableCell><FluxPill statut={r.fluxFl} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -320,8 +358,10 @@ export default function SuiviCreationsSap({ filter = 'suivi' }) {
         )}
       </div>
 
-      {/* Détail de la création sélectionnée */}
-      {!isLoading && !isError && selected && <CreationDetail creation={selected} />}
+      {/* Détail de l'envoi sélectionné : erreurs jointes, sinon statut simple */}
+      {!isLoading && !isError && selected && (
+        selected.creation ? <CreationDetail row={selected} /> : <StatusDetail row={selected} />
+      )}
     </div>
   );
 }
