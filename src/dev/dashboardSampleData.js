@@ -45,12 +45,14 @@ const PRODUITS = [
 // Statuts pondérés (répartition « réaliste » : plus de validées/en cours que de refus).
 const DE_STATUTS = [
   ['de_brouillon', 3], ['de_attente_cc', 3], ['dl_attente_validation_cdg', 3],
-  ['dl_validee', 6], ['dl_refusee', 1],
+  ['dl_validee', 6], ['fl_sap_cree', 4], ['dl_refusee', 1],
 ];
 const DS_STATUTS = [['ds_brouillon', 2], ['ds_attente_cc', 3], ['ds_validee', 6]];
 
 // Le code chapeau n'est attribué qu'à partir de l'attente de validation CDG.
-const A_CODE_CHAPEAU = new Set(['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee', 'ds_validee']);
+const A_CODE_CHAPEAU = new Set([
+  'dl_attente_validation_cdg', 'dl_validee', 'fl_sap_cree', 'dl_refusee', 'ds_validee',
+]);
 
 // Poids par mois (2026-01 → 2026-08) : montée en charge vers les mois récents.
 const MONTH_WEIGHTS = [6, 7, 8, 9, 10, 12, 13, 8];

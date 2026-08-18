@@ -34,14 +34,28 @@ describe('filterProjets', () => {
 });
 
 describe('computeKpis', () => {
-  it('compte en cours / validées / refusées / attente CC + taux', () => {
+  it('compte en cours / validées DE-DS / refusées / attente CC', () => {
     const k = computeKpis(P);
     expect(k.total).toBe(5);
     expect(k.enCours).toBe(2); // de_attente_cc + ds_attente_cc
     expect(k.validees).toBe(2); // dl_validee + ds_validee
     expect(k.refusees).toBe(1);
     expect(k.attenteCC).toBe(2);
-    expect(k.tauxValidation).toBe(67); // 2 / (2+1)
+  });
+
+  it('compte les créées SAP (fl_sap_cree), distinctes des validées', () => {
+    const data = [
+      { statut: 'dl_validee' },
+      { statut: 'fl_sap_cree' },
+      { statut: 'fl_sap_cree' },
+    ];
+    const k = computeKpis(data);
+    expect(k.validees).toBe(1); // fl_sap_cree n'entre PAS dans validées
+    expect(k.creesSap).toBe(2);
+  });
+
+  it('ne renvoie plus de tauxValidation (KPI retiré)', () => {
+    expect(computeKpis(P)).not.toHaveProperty('tauxValidation');
   });
 });
 

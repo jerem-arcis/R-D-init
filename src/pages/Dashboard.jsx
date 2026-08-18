@@ -6,7 +6,7 @@ import { createPageUrl } from '@/utils';
 import {
   Loader2, Radar, Hourglass, CheckCircle2, XCircle, Inbox,
   FlaskConical, Database, TrendingUp, Building2, Factory, PieChart as PieIcon,
-  Layers, Percent, X,
+  Layers, X,
 } from 'lucide-react';
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -258,9 +258,9 @@ export default function Dashboard() {
               <Kpi icon={Layers} value={kpis.total} label="Total demandes" tone="primary" />
               <Kpi icon={Hourglass} value={kpis.enCours} label="En cours" tone="blue" />
               <Kpi icon={Inbox} value={kpis.attenteCC} label="Attente code chapeau" tone="amber" />
-              <Kpi icon={CheckCircle2} value={kpis.validees} label="Validées" tone="emerald" />
+              <Kpi icon={CheckCircle2} value={kpis.validees} label="Validées DE/DS" tone="emerald" />
+              <Kpi icon={Database} value={kpis.creesSap} label="Créées SAP" tone="indigo" />
               <Kpi icon={XCircle} value={kpis.refusees} label="Refusées" tone="red" />
-              <Kpi icon={Percent} value={kpis.tauxValidation} suffix="%" label="Taux de validation" tone="indigo" />
             </div>
 
             {/* --- Graphiques --- */}
