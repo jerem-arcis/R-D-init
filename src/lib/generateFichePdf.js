@@ -24,24 +24,43 @@ async function buildPdfDocument(fiche, de) {
     import('html2canvas'),
   ]);
 
-  // Conteneur de rendu à la largeur A4 « web » (794px ≈ 210mm @96dpi).
-  // Placé à l'ORIGINE de l'écran (et non à left:-10000px) puis masqué derrière la
-  // page : html2canvas positionne ses éléments à partir de coordonnées viewport,
-  // et un hôte très loin hors-champ décale le rendu du texte. z-index négatif +
-  // pointer-events:none le rendent invisible et inerte pour l'utilisateur.
-  const host = document.createElement('div');
-  host.style.cssText =
-    'position:fixed;left:0;top:0;width:794px;background:#ffffff;z-index:-9999;pointer-events:none;';
-  host.innerHTML = buildFichePdfHtml(fiche, de);
-  document.body.appendChild(host);
+  // Rendu dans une IFRAME ISOLÉE (largeur A4 « web » 794px ≈ 210mm @96dpi).
+  //
+  // html2canvas CLONE l'élément cible dans le document HÔTE et hérite donc de SA
+  // cascade CSS. Rendu directement dans la page de l'app, le CSS global (Tailwind
+  // preflight : line-height/vertical-align, + police Inter) contaminait les
+  // métriques de texte du gabarit et décalait le contenu (cases EAN remontées,
+  // valeurs collées en haut de leurs boîtes). Une iframe vierge ne porte QUE le
+  // <style> autonome du gabarit -> le rendu redevient fidèle au navigateur.
+  // (Cause racine reproduite au pixel près : sans isolation = décalé, avec = OK.)
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText =
+    'position:fixed;left:0;top:0;width:794px;height:10px;border:0;visibility:hidden;z-index:-9999;pointer-events:none;';
+  document.body.appendChild(iframe);
 
   try {
-    const canvas = await html2canvas(host, {
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(
+      `<!doctype html><html><head><meta charset="utf-8"></head>` +
+        `<body style="margin:0;background:#ffffff">${buildFichePdfHtml(fiche, de)}</body></html>`,
+    );
+    doc.close();
+
+    const sheet = doc.querySelector('.fl-pdf-sheet');
+    // L'iframe doit être assez haute pour contenir toute la fiche (sinon layout tronqué).
+    iframe.style.height = `${sheet.scrollHeight + 40}px`;
+    // Attendre les polices du document de l'iframe (data URI logo déjà décodé ;
+    // pas de webfont ici, mais garantit une mise en page stable avant capture).
+    if (doc.fonts && doc.fonts.ready) {
+      await doc.fonts.ready;
+    }
+
+    const canvas = await html2canvas(sheet, {
       scale: 2,            // netteté
       useCORS: true,
       backgroundColor: '#ffffff',
-      // Pas de windowWidth/scroll forcés : l'hôte est déjà à 794px à l'origine,
-      // et surcharger la fenêtre désynchronise le repère de html2canvas.
       scrollX: 0,
       scrollY: 0,
     });
@@ -58,7 +77,7 @@ async function buildPdfDocument(fiche, de) {
     pdf.addImage(canvas, 'PNG', x, y, w, h, undefined, 'FAST');
     return pdf;
   } finally {
-    document.body.removeChild(host);
+    document.body.removeChild(iframe);
   }
 }
 
