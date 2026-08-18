@@ -30,6 +30,9 @@ export const STATUTS = {
   dl_validee: { key: "dl_validee", label: "Validée", tone: "emerald", order: 4 },
   ds_validee: { key: "ds_validee", label: "DS validée", tone: "emerald", order: 4 },
   dl_refusee: { key: "dl_refusee", label: "Refusée", tone: "red", order: 5 },
+  // Phase FL : article créé dans SAP (cr04e_statut_en_cours = 'fl_sap_cree').
+  // Sans cette entrée, getStatutMeta retombait sur de_brouillon = « Brouillon ».
+  fl_sap_cree: { key: "fl_sap_cree", label: "Article créé dans SAP", tone: "emerald", order: 6 },
 };
 
 export const STATUT_ORDER = Object.values(STATUTS)

@@ -415,3 +415,83 @@ export const getFieldState = (fieldName, fiche) => {
   if (fiche.statut_sap === 'Création SAP effectuée') return 'validated';
   return fiche[OWNER_META[owner].visaField] ? 'validated' : 'editable';
 };
+
+// Champs retirés de la FL (réduction Commerce/Industriel/Supply Chain + suppression
+// de la section Gestion du besoin). Source unique : consommé par FicheDetailV2
+// (masquage) ET par getMissingVisaFields (un champ retiré n'est jamais requis).
+export const REMOVED_FIELDS = new Set([
+  'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
+  'specificite_produit', 'sites_stockage', 'groupe_marchandises', 'groupement_articles',
+  // `ancien_numero_article` reste visible : c'est MARA-BISMT / ProductOldID côté SAP.
+  'vl', 'article_prix', 'biv', 'dluc_dluo_critique', 'gestion_par_lots',
+  'ean_carton', 'ean_couche', 'ean_palette', 'ean_manuel',
+  'cle_calcul_lot_usine', 'cle_calcul_lot_stockiste',
+  'profil_couverture_usine', 'profil_couverture_stockiste',
+  'delai_securite_usine', 'delai_securite_stockiste',
+  'delai_securite_couv_reelle_usine', 'delai_securite_couv_reelle_stockiste',
+  'type_approvisionnement_usine', 'type_approvisionnement_stockiste',
+  'appro_special', 'delai_previsionnel_livraison', 'temps_reception_stockiste',
+  'unite_duree_vie',
+]);
+
+// Tableau « Emballages » (5 blocs) : exempté du contrôle « tous les champs remplis »
+// pour la validation d'un visa — dimensions ET GTIN peuvent rester vides (demande métier).
+export const EMBALLAGE_BLOCK_FIELDS = [
+  'uvc_block', 'element_block', 'couche_block', 'colis_block', 'palette_block',
+];
+
+// Libellés lisibles des champs contrôlés au visa (pour le message « champs manquants »).
+export const FIELD_LABELS = {
+  // SC
+  groupe_article: "Groupe d'article",
+  groupe_ristourne: 'Groupe de ristournes',
+  groupe_imputation: 'Groupe imputation article',
+  groupe_statistique_article: 'Groupe statistique article',
+  // IND
+  libelle_etiquette_colis: 'Libellé étiquette colis',
+  masque_etiquette_colis: 'Masque étiquette colis',
+  designation_client_colis: 'Désignation client colis',
+  eclatement_groupe_marchandise: 'Éclatement groupe marchandise',
+  type_usine: "Type d'usine",
+  type_palette: 'Type de palette',
+  duree_vie: 'Durée de vie',
+  temps_reception_usine: 'Temps de réception usine',
+  format_date_etiquette_colis: 'Format date étiquette colis',
+  format_dluo_etiquette_colis: 'Format DLUO étiquette colis',
+  type_magasin: 'Type de magasin',
+  ancien_numero_article: 'Ancien n° article',
+  // COM
+  design_normalisee: 'Désignation normalisée',
+  libelle_long_40: 'Libellé long 40',
+  libelle_caisse: 'Libellé article caisse',
+  libelle_par_pays: 'Libellé par pays',
+  hierarchie_produit: 'Hiérarchie produit',
+  origine_fabrication: 'Origine de fabrication',
+  canaux_distribution: 'Canaux de distribution',
+  secteur_activite: "Secteur d'activité",
+  marque: 'Marque',
+  nomenclature_douaniere: 'Nomenclature douanière',
+};
+
+// Une valeur est « remplie » : chaîne non vide, tableau non vide (multi-select /
+// libellés par pays), ou tout scalaire non nul.
+const isFilled = (v) => {
+  if (Array.isArray(v)) return v.length > 0;
+  if (v === undefined || v === null) return false;
+  if (typeof v === 'string') return v.trim() !== '';
+  return true;
+};
+
+// Champs vides mais requis pour poser le visa d'une section (`owner` = sc | ind | com).
+// Exclut les champs retirés et les 5 blocs d'emballage (exemptés). Renvoie une liste
+// de { name, label } — vide si tout est rempli (ou fiche/section absente).
+export function getMissingVisaFields(fiche, owner) {
+  if (!fiche || !owner) return [];
+  return Object.entries(FIELD_OWNERS)
+    .filter(([name, o]) =>
+      o === owner &&
+      !REMOVED_FIELDS.has(name) &&
+      !EMBALLAGE_BLOCK_FIELDS.includes(name))
+    .filter(([name]) => !isFilled(fiche[name]))
+    .map(([name]) => ({ name, label: FIELD_LABELS[name] || name }));
+}

@@ -13,10 +13,12 @@ const VISAS = [
   { key: 'commerce', label: 'Commerce', short: 'COM' },
 ];
 
-function VisaPill({ visa, fiche, onVisa, onRefus }) {
+function VisaPill({ visa, fiche, onVisa, onRefus, blockers = [] }) {
   const [open, setOpen] = useState(false);
   const [showRefus, setShowRefus] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [motif, setMotif] = useState('');
+  const bloque = blockers.length > 0;
 
   const validated = fiche[`visa_${visa.key}`];
   const refused = fiche[`refus_${visa.key}`];
@@ -44,8 +46,18 @@ function VisaPill({ visa, fiche, onVisa, onRefus }) {
     setOpen(false);
   };
 
+  // Fermeture du popover : on remet les sous-étapes à zéro (confirmation / refus).
+  const handleOpenChange = (o) => {
+    setOpen(o);
+    if (!o) {
+      setShowRefus(false);
+      setShowConfirm(false);
+      setMotif('');
+    }
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -74,28 +86,59 @@ function VisaPill({ visa, fiche, onVisa, onRefus }) {
             </p>
           )}
 
-          {!validated && !showRefus && (
-            <div className="flex gap-2 pt-1">
-              <Button
-                size="sm"
-                onClick={() => {
-                  onVisa();
-                  setOpen(false);
-                }}
-                className="flex-1 h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
-              >
-                <Check className="w-3 h-3 mr-1" />
-                Viser
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowRefus(true)}
-                className="flex-1 h-8 border-red-300 text-red-600 hover:bg-red-50 text-xs"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Refuser
-              </Button>
+          {!validated && !showRefus && !showConfirm && (
+            <div className="space-y-2 pt-1">
+              {bloque && (
+                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                  <strong>Champs à remplir ({blockers.length}) :</strong>{' '}
+                  {blockers.map((b) => b.label).join(', ')}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={bloque}
+                  onClick={() => setShowConfirm(true)}
+                  className="flex-1 h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  Viser
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowRefus(true)}
+                  className="flex-1 h-8 border-red-300 text-red-600 hover:bg-red-50 text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Refuser
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {showConfirm && (
+            <div className="space-y-2 pt-1">
+              <p className="text-xs text-slate-700">
+                Confirmer le visa <strong>{visa.label}</strong> ? Cette action verrouille les champs de la section.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)} className="flex-1 h-7 text-xs">
+                  Annuler
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onVisa();
+                    setShowConfirm(false);
+                    setOpen(false);
+                  }}
+                  className="flex-1 h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  Confirmer
+                </Button>
+              </div>
             </div>
           )}
 
@@ -129,7 +172,7 @@ function VisaPill({ visa, fiche, onVisa, onRefus }) {
   );
 }
 
-export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers }) {
+export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers, blockers = {} }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1">
@@ -142,6 +185,7 @@ export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers }) 
           fiche={fiche}
           onVisa={onVisaHandlers[v.key]}
           onRefus={onRefusHandlers[v.key]}
+          blockers={blockers[v.key] || []}
         />
       ))}
     </div>

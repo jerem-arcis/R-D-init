@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getFicheById, updateFiche } from '@/api/fiche';
 import { useSapOptions } from '@/lib/sapLists';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import {
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
   GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
+  REMOVED_FIELDS, getMissingVisaFields,
 } from '@/lib/ficheSchema';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
@@ -44,24 +45,8 @@ const GROUPS = [
   { id: 'appro_stock', title: 'Approvisionnement & stock' },
 ];
 
-// Champs retirés de la FL (réduction Commerce/Industriel/Supply Chain + suppression
-// de la section Gestion du besoin). Les GTIN se saisissent désormais dans le tableau
-// Emballages (colonne GTIN/EAN), plus dans des champs EAN dédiés.
-const REMOVED_FIELDS = new Set([
-  'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
-  'specificite_produit', 'sites_stockage', 'groupe_marchandises', 'groupement_articles',
-  // `ancien_numero_article` reste visible : c'est MARA-BISMT / ProductOldID côté SAP.
-  'vl', 'article_prix', 'biv', 'dluc_dluo_critique', 'gestion_par_lots',
-  'ean_carton', 'ean_couche', 'ean_palette', 'ean_manuel',
-  'cle_calcul_lot_usine', 'cle_calcul_lot_stockiste',
-  'profil_couverture_usine', 'profil_couverture_stockiste',
-  'delai_securite_usine', 'delai_securite_stockiste',
-  'delai_securite_couv_reelle_usine', 'delai_securite_couv_reelle_stockiste',
-  'type_approvisionnement_usine', 'type_approvisionnement_stockiste',
-  'appro_special', 'delai_previsionnel_livraison', 'temps_reception_stockiste',
-  'unite_duree_vie',
-]);
-// Groupes entièrement vidés par la réduction → masqués.
+// REMOVED_FIELDS vit désormais dans ficheSchema.js (source unique, partagée avec
+// getMissingVisaFields). Groupes entièrement vidés par la réduction → masqués.
 const HIDDEN_GROUPS = new Set(['statut', 'codes_barres']);
 
 // Composants définis au niveau module — sinon React démonte/remonte les inputs à chaque frappe
@@ -111,9 +96,21 @@ export default function FicheDetailV2() {
   const sap = useSapOptions();
   const adminOptions = useAdminOptions();
 
+  // Édition débouncée (canaux) : accumulateur d'updates non encore enregistrées et
+  // état « sauvegarde en vol ». Tant que l'un des deux est actif, on NE resynchronise
+  // PAS depuis le serveur — un refetch en retard ferait « sauter » des coches.
+  const pendingRef = useRef(null);
+  const savingRef = useRef(false);
+  const timerRef = useRef(null);
+
   useEffect(() => {
-    if (fiche) setLocalFiche(fiche);
+    if (fiche && pendingRef.current === null && !savingRef.current) {
+      setLocalFiche(fiche);
+    }
   }, [fiche]);
+
+  // Nettoyage : annule un enregistrement programmé si le composant est démonté.
+  useEffect(() => () => timerRef.current && clearTimeout(timerRef.current), []);
 
   const updateMutation = useMutation({
     mutationFn: (data) => updateFiche(ficheId, data, { sapOptions: sap }),
@@ -138,6 +135,35 @@ export default function FicheDetailV2() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Enregistre les updates accumulées (débounce des canaux). Les clics rapides se
+  // regroupent en UN seul updateFiche au lieu d'un aller-retour réseau par coche.
+  const flushPending = async () => {
+    timerRef.current = null;
+    const updates = pendingRef.current;
+    pendingRef.current = null;
+    if (!updates) return;
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      await updateMutation.mutateAsync(updates);
+    } catch (err) {
+      console.error('[FL canaux]', err);
+      toast({ variant: 'destructive', title: 'Enregistrement échoué', description: err?.message });
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
+
+  // Maj locale INSTANTANÉE (affichage des coches immédiat), écriture différée ~500 ms
+  // après le dernier clic. Utilisé par le multi-select Canaux de distribution.
+  const handleUpdateDebounced = (updates) => {
+    setLocalFiche((prev) => ({ ...prev, ...updates }));
+    pendingRef.current = { ...(pendingRef.current || {}), ...updates };
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(flushPending, 500);
   };
 
   const handleExportPdf = async () => {
@@ -185,6 +211,14 @@ export default function FicheDetailV2() {
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
     industriel: (m) => handleUpdate(refusPatch('visa_industriel', 'refus_industriel', m)),
     commerce: (m) => handleUpdate(refusPatch('visa_commerce', 'refus_commerce', m)),
+  };
+
+  // Champs manquants qui bloquent chaque visa (tableau Emballages exempté). Clés
+  // alignées sur VisaToolbar (supply_chain / industriel / commerce → sc / ind / com).
+  const visaBlockers = {
+    supply_chain: getMissingVisaFields(localFiche, 'sc'),
+    industriel: getMissingVisaFields(localFiche, 'ind'),
+    commerce: getMissingVisaFields(localFiche, 'com'),
   };
 
   const isLocked = localFiche.statut_sap === 'Création SAP effectuée';
@@ -254,6 +288,7 @@ export default function FicheDetailV2() {
               fiche={localFiche}
               onVisaHandlers={visaHandlers}
               onRefusHandlers={refusHandlers}
+              blockers={visaBlockers}
             />
           </div>
         </div>
@@ -275,7 +310,7 @@ export default function FicheDetailV2() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('fabrication_negoce')}><SelectField label="Fabrication ou négoce" {...fld('fabrication_negoce')} options={FABRICATION_NEGOCE} /></Fld>
             <Fld visible={showField('origine_fabrication')}><SelectField label="Origine de fabrication" {...fld('origine_fabrication')} options={origineFabOptions} fromSAP /></Fld>
-            <Fld visible={showField('canaux_distribution')}><MultiSelectField label="Canaux de distribution" {...fld('canaux_distribution')} options={canauxOptions} /></Fld>
+            <Fld visible={showField('canaux_distribution')}><MultiSelectField label="Canaux de distribution" {...fld('canaux_distribution')} onChange={(v) => handleUpdateDebounced({ canaux_distribution: v })} options={canauxOptions} /></Fld>
             <Fld visible={showField('secteur_activite')}><SelectField label="Secteur d'activité" {...fld('secteur_activite')} options={SECTEURS_ACTIVITE} /></Fld>
             <Fld visible={showField('marque')}><SelectField label="Marque" {...fld('marque')} options={MARQUES} fromSAP /></Fld>
             <Fld visible={showField('mention_produit')}><SelectField label="Mention produit" {...fld('mention_produit')} options={MENTIONS_PRODUIT} /></Fld>

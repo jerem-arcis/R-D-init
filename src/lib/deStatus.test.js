@@ -29,12 +29,17 @@ describe("STATUTS", () => {
       "dl_validee",
       "ds_validee",
       "dl_refusee",
+      "fl_sap_cree",
     ]);
   });
   it("chaque statut a un libellé", () => {
     expect(STATUTS.de_attente_cc.label).toBe("En attente de code chapeau");
     expect(STATUTS.dl_attente_validation_cdg.label).toBe("Projet qualifié et en cours d'étude");
     expect(STATUTS.dl_validee.label).toBe("Validée");
+  });
+  it("fl_sap_cree = article créé dans SAP (plus de repli « Brouillon »)", () => {
+    expect(getStatutMeta("fl_sap_cree").label).toBe("Article créé dans SAP");
+    expect(getStatutMeta("fl_sap_cree").key).toBe("fl_sap_cree");
   });
   it("getStatutMeta retombe sur de_brouillon si clé inconnue", () => {
     expect(getStatutMeta("xxx").key).toBe("de_brouillon");
