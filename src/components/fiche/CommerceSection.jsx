@@ -12,6 +12,7 @@ import {
   SECTEURS_ACTIVITE,
   MARQUES,
   NOMENCLATURES_DOUANIERES,
+  SITES_STOCKAGE,
 } from '@/lib/ficheSchema';
 import { useSapOptions } from '@/lib/sapLists';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
@@ -96,6 +97,15 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           onChange={set('canaux_distribution')}
           disabled={disabled}
           options={canauxOptions}
+        />
+        <MultiSelectField
+          label="Sites de stockage"
+          required
+          value={fiche.sites_stockage}
+          onChange={set('sites_stockage')}
+          disabled={disabled}
+          options={SITES_STOCKAGE}
+          fromSAP
         />
         <SelectField
           label="Secteur d'activité"

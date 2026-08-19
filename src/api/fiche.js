@@ -11,6 +11,7 @@ import { withQueue } from '@/api/_serialize';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
 import { listForProjet as listEmballages, syncForProjet as syncEmballages, blocsFromRows } from '@/api/ficheEmballages';
 import { listValuesForProjet as listCanaux, syncForProjet as syncCanaux } from '@/api/ficheCanaux';
+import { listValuesForProjet as listSitesStockage, syncForProjet as syncSitesStockage } from '@/api/ficheSitesStockage';
 
 // Clés des 5 blocs emballage (tables filles) : jamais envoyées au payload parent.
 const BLOC_KEYS = ['uvc_block', 'element_block', 'couche_block', 'colis_block', 'palette_block'];
@@ -217,6 +218,7 @@ export async function getFicheById(id) {
   const fiche = toFicheShape(p);
   fiche.libelle_par_pays = await listLibellePays(id);
   fiche.canaux_distribution = await listCanaux(id);
+  fiche.sites_stockage = await listSitesStockage(id);
   Object.assign(fiche, blocsFromRows(await listEmballages(id)));
   return fiche;
 }
@@ -258,6 +260,9 @@ async function writeFiche(id, patch, { sapOptions }) {
   }
   if (Array.isArray(patch?.canaux_distribution)) {
     await syncCanaux(id, patch.canaux_distribution);
+  }
+  if (Array.isArray(patch?.sites_stockage)) {
+    await syncSitesStockage(id, patch.sites_stockage);
   }
   // Emballages : EmballagesTable n'envoie qu'un bloc à la fois. On fusionne le(s)
   // bloc(s) du patch avec les blocs existants (relus) avant de synchroniser, sinon

@@ -8,6 +8,7 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { BONCOLAC_LOGO_DATA_URI } from '@/assets/boncolacLogo';
+import { siteStockageLabel } from '@/lib/ficheSchema';
 import {
   val, dims, dureeVie, eanChars, visaInfo, pillsList, formatDateShort, DASH,
 } from './fichePdfData';
@@ -215,7 +216,7 @@ export function FichePdfDocument({ fiche = {}, de = null }) {
           {/* Réseaux / Stockage */}
           <View style={s.row}>
             <View style={[s.card, { flexGrow: 1, flexBasis: 0 }]}><Text style={s.cardH}>Réseaux</Text><View style={s.inner}><Pills items={fiche.reseaux} /></View></View>
-            <View style={[s.card, { flexGrow: 1, flexBasis: 0 }]}><Text style={s.cardH}>Stockage</Text><View style={s.inner}><Pills items={fiche.sites_stockage} /></View></View>
+            <View style={[s.card, { flexGrow: 1, flexBasis: 0 }]}><Text style={s.cardH}>Stockage</Text><View style={s.inner}><Pills items={(fiche.sites_stockage || []).map(siteStockageLabel)} /></View></View>
           </View>
 
           {/* Durée / Contrat / Ancien code */}

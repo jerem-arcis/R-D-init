@@ -32,6 +32,7 @@ const filledFiche = {
   secteur_activite: 'x',
   marque: 'x',
   nomenclature_douaniere: 'x',
+  sites_stockage: ['2820'],
 };
 
 describe('getMissingVisaFields', () => {

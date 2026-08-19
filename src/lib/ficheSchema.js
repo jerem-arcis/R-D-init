@@ -12,15 +12,30 @@ export const CENTRES_PROFIT = [
   '0000NE001 - Négoce',
 ];
 
+// Sites de stockage = référentiel « DivprincStockage » du fichier FM (feuille
+// SupplyChain -> plage nommée « Entrepôt » -> ListesSAP!D2:D12). La valeur stockée
+// est le CODE division nu (ex. « 2820 »), écrit tel quel dans cr04e_division (lignes
+// STOCK de cr04e_divisionprojets, cf. api/ficheSitesStockage.js) — cohérent avec les
+// lignes PROD. Le libellé n'est qu'un affichage.
 export const SITES_STOCKAGE = [
-  '2820 - Boncolac Négoce',
-  '2825 - Olano Montauban',
-  '2824 - Olano Wasens',
-  '2847 - Agen',
-  '2859 - Aire',
-  '2866 - Rivesaltes',
-  '2886 - Bonloc',
+  { value: '2820', label: '2820 - Olano Montauban' },
+  { value: '2821', label: '2821 - Olano St Jean de Luz' },
+  { value: '2822', label: '2822 - Olano Aurillac' },
+  { value: '2823', label: '2823 - STEF Agen' },
+  { value: '2824', label: '2824 - Olano Wissous' },
+  { value: '2825', label: '2825 - Débord' },
+  { value: '2827', label: '2827 - Seafrigo' },
+  { value: '2828', label: '2828 - Artipolis' },
+  { value: '2829', label: '2829 - Mutual Ligistic' },
+  { value: '2830', label: '2830 - Nordfrost' },
+  { value: '2860', label: '2860 - Olano Carvin' },
 ];
+
+// Code site de stockage -> libellé lisible (pour l'affichage : PDF, synthèse). Repli
+// sur le code brut si inconnu (site historique retiré du référentiel).
+const SITE_STOCKAGE_LABELS = new Map(SITES_STOCKAGE.map((s) => [s.value, s.label]));
+export const siteStockageLabel = (code) =>
+  SITE_STOCKAGE_LABELS.get((code ?? '').toString().trim()) || (code ?? '').toString();
 
 // OC2 — Groupe d'article. Valeurs du fichier FM (feuille ListesSAP, plage
 // GroupeArticle). À terme : dropdown alimenté par une table Dataverse (copie SAP).
@@ -421,7 +436,9 @@ export const getFieldState = (fieldName, fiche) => {
 // (masquage) ET par getMissingVisaFields (un champ retiré n'est jamais requis).
 export const REMOVED_FIELDS = new Set([
   'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
-  'specificite_produit', 'sites_stockage', 'groupe_marchandises', 'groupement_articles',
+  // `sites_stockage` : réactivé (multi-select alimentant les lignes STOCK de
+  // cr04e_divisionprojets). Requis pour le visa Commerce (owner 'com').
+  'specificite_produit', 'groupe_marchandises', 'groupement_articles',
   // `ancien_numero_article` reste visible : c'est MARA-BISMT / ProductOldID côté SAP.
   'vl', 'article_prix', 'biv', 'dluc_dluo_critique', 'gestion_par_lots',
   'ean_carton', 'ean_couche', 'ean_palette', 'ean_manuel',
@@ -471,6 +488,7 @@ export const FIELD_LABELS = {
   secteur_activite: "Secteur d'activité",
   marque: 'Marque',
   nomenclature_douaniere: 'Nomenclature douanière',
+  sites_stockage: 'Sites de stockage',
 };
 
 // Une valeur est « remplie » : chaîne non vide, tableau non vide (multi-select /
