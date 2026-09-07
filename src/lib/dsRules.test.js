@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   codeDivisionOrigine,
   codeDivisionFabrication,
+  computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
   computeCentreProfitDS,
@@ -87,6 +88,22 @@ describe('codeDivisionFabrication', () => {
   it('autres usines -> leur code', () => {
     expect(codeDivisionFabrication({ type_demande: '1', usine: 'Bonloc' })).toBe('2886');
     expect(codeDivisionFabrication({ type_demande: '6', usine: 'Aire' })).toBe('2859');
+  });
+});
+
+describe('computeTypeProduitDS', () => {
+  it('Aire -> NEGO', () => {
+    expect(computeTypeProduitDS('Aire')).toBe('NEGO');
+  });
+  it('toute autre usine -> PFIN', () => {
+    expect(computeTypeProduitDS('Bonloc')).toBe('PFIN');
+    expect(computeTypeProduitDS('Rivesaltes')).toBe('PFIN');
+    expect(computeTypeProduitDS('Agen')).toBe('PFIN');
+  });
+  it('valeur vide / absente -> PFIN', () => {
+    expect(computeTypeProduitDS('')).toBe('PFIN');
+    expect(computeTypeProduitDS(undefined)).toBe('PFIN');
+    expect(computeTypeProduitDS(null)).toBe('PFIN');
   });
 });
 

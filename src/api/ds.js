@@ -3,6 +3,7 @@ import { lookupBind, codeFromLookupValue } from '@/api/sapLists';
 import {
   codeDivisionOrigine,
   codeDivisionFabrication,
+  computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
   computeCentreProfitDS,
@@ -55,6 +56,8 @@ export function computeDsValues(formData) {
     classeValo: computeClasseValoDS(),
     centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
     secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
+    // TypeProduit SAP : Aire → NEGO, sinon PFIN (usine de fabrication).
+    typeProduit: computeTypeProduitDS(ctx.usine),
   };
 }
 
@@ -78,10 +81,10 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
     // secteur d'activité. Permet de recalculer la hiérarchie à la réouverture.
     cr04e_activite_ds: trimOrUndef(formData.autre_activite),
     cr04e_statut_en_cours: trimOrUndef(statut),
-    // Type de produit SAP : une DS est toujours du NÉGOCE. Constante et non
-    // saisissable — même valeur que le champ TypeProduit du payload SAP_SEND.
-    // Le pendant DE (produit fini) vaut PFIN, cf. buildProjetPayload.
-    cr04e_typedeproduit: 'NEGO',
+    // Type de produit SAP : « Aire » → NEGO (négoce), sinon PFIN (produit fini) —
+    // même valeur que le champ TypeProduit du payload SAP_SEND. La règle est portée
+    // par computeTypeProduitDS (cf. dsRules) ; le pendant DE vaut toujours PFIN.
+    cr04e_typedeproduit: c.typeProduit,
   };
 
   const divBind = lookupBind('divisions', c.divisionFab, sapOptions.divisions);

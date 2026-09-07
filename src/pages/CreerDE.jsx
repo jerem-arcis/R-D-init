@@ -69,6 +69,7 @@ import {
   codeDivisionOrigine,
   LABEL_DIVISION_ORIGINE_NEGOCE,
   codeDivisionFabrication,
+  computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
   computeCentreProfitDS,
@@ -1013,6 +1014,12 @@ export default function CreerDE() {
   const triggerSapSendDs = async (effectiveCode, projetId) => {
     // EAN calculés à l'envoi (idem DE) : toujours transmis, bloc masqué ou non.
     const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
+    // Type de produit : « Aire » → NEGO (négoce), sinon PFIN. Dès qu'une DS est
+    // PFIN, elle doit partir EXACTEMENT comme un produit fini de DE : mêmes valeurs
+    // de GroupeAutorisation (PFIN), GroupeFraisGeneraux (FG) et TypeProduit (PFIN).
+    // Une seule condition « Aire » pilote les 3 champs pour garantir leur cohérence.
+    const dsTypeProduit = computeTypeProduitDS(formData.autre_usine_fab);
+    const dsNegoce = dsTypeProduit === 'NEGO';
     const body = {
       // GUID de la ligne cr04e_projet (DS déjà créée) : permet au flux de relire
       // la ligne au lieu de se limiter aux champs. Toujours présent ici (le bouton
@@ -1028,10 +1035,11 @@ export default function CreerDE() {
       DivisionUsine: dsDivisionFab || '',
       ClasseValorisation: dsClasseValo || '',
       CentreProfit: dsCentreProfit || '',
-      GroupeAutorisation: 'NEGO', // DS : toujours NEGO
-      GroupeFraisGeneraux: 'NEGO', // DS : toujours NEGO
+      // Négoce (Aire) → NEGO/NEGO ; sinon on envoie comme un PFIN de DE → PFIN/FG.
+      GroupeAutorisation: dsNegoce ? 'NEGO' : 'PFIN',
+      GroupeFraisGeneraux: dsNegoce ? 'NEGO' : 'FG',
       GroupeArticleDivision: 'PF', // DS : toujours PF (règle métier)
-      TypeProduit: 'NEGO',
+      TypeProduit: dsTypeProduit,
       'ProfilFabricRépét': dsProfilFabricRepet,
       // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
       // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
