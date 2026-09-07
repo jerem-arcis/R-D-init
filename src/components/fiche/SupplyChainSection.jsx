@@ -11,15 +11,15 @@ import {
   GROUPES_STATISTIQUE,
 } from '@/lib/ficheSchema';
 
-export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
+export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
 
   return (
     <SectionShell
       id="supply-chain"
-      title="Supply Chain"
-      subtitle="Renseigné par l'ADV - service Supply Chain"
+      title="ADV"
+      subtitle="Renseigné par l'ADV"
       icon={Truck}
       accentColor="sky"
       isLocked={isLocked}
@@ -31,7 +31,8 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
       refusMotif={fiche.refus_supply_chain_motif}
       onVisa={onVisa}
       onRefus={onRefus}
-      visaLabel="Visa Supply Chain"
+      visaLabel="Visa ADV"
+      visaBlockers={visaBlockers}
     >
       <FieldGrid title="Groupements" cols={2}>
         <SelectField

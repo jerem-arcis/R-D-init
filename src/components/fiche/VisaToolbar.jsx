@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const VISAS = [
-  { key: 'supply_chain', label: 'Supply Chain', short: 'SC' },
+  { key: 'supply_chain', label: 'ADV', short: 'ADV' },
   { key: 'industriel', label: 'Industriel', short: 'IND' },
   { key: 'commerce', label: 'Commerce', short: 'COM' },
 ];

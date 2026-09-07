@@ -13,12 +13,16 @@ import {
   ECLATEMENTS_GROUPE_MARCHANDISE,
   TYPES_USINE,
   TYPES_PALETTE,
+  TYPES_MAGASIN_EM,
   DUREES_VIE,
 } from '@/lib/ficheSchema';
 
-export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
+export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
+  // Saisie du tableau Emballages : écriture différée (les cellules quittées en
+  // rafale sont regroupées en un seul enregistrement au lieu d'un PATCH par cellule).
+  const onUpdateTable = onUpdateDebounced || onUpdate;
 
   return (
     <SectionShell
@@ -37,7 +41,11 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
       onVisa={onVisa}
       onRefus={onRefus}
       visaLabel="Visa Industriel"
+      visaBlockers={visaBlockers}
     >
+      {/* Ordre aligné sur la capture FL « Industriel » : étiquette colis →
+          éclatement/usine/ancien/palette → tableau emballages → durée de vie &
+          réception → formats d'étiquette & type de magasin. */}
       <FieldGrid title="Étiquette colis" cols={3}>
         <TextField
           label="Libellé produit sur étiquette colis"
@@ -56,26 +64,6 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           label="Désignation client sur colis"
           value={fiche.designation_client_colis}
           onChange={set('designation_client_colis')}
-          disabled={disabled}
-        />
-        <SelectField
-          label="Format date étiquette colis"
-          value={fiche.format_date_etiquette_colis}
-          onChange={set('format_date_etiquette_colis')}
-          disabled={disabled}
-          options={FORMATS_DATE_ETIQUETTE}
-        />
-        <SelectField
-          label="Format DLUO étiquette colis"
-          value={fiche.format_dluo_etiquette_colis}
-          onChange={set('format_dluo_etiquette_colis')}
-          disabled={disabled}
-          options={FORMATS_DATE_ETIQUETTE}
-        />
-        <TextField
-          label="Type de magasin EM"
-          value={fiche.type_magasin}
-          onChange={set('type_magasin')}
           disabled={disabled}
         />
       </FieldGrid>
@@ -97,20 +85,6 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           options={TYPES_USINE}
           fromSAP
         />
-        <SelectField
-          label="Type de support / palette"
-          value={fiche.type_palette}
-          onChange={set('type_palette')}
-          disabled={disabled}
-          options={TYPES_PALETTE}
-        />
-        <SelectField
-          label="Temps de réception (usine, j)"
-          value={fiche.temps_reception_usine}
-          onChange={set('temps_reception_usine')}
-          disabled={disabled}
-          options={TEMPS_RECEPTION_USINE}
-        />
         {/* MARA-BISMT / ProductOldID : n° de l'article remplacé, saisie libre. */}
         <TextField
           label="Ancien n° article"
@@ -118,9 +92,22 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           onChange={set('ancien_numero_article')}
           disabled={disabled}
         />
+        <SelectField
+          label="Type de support / palette"
+          value={fiche.type_palette}
+          onChange={set('type_palette')}
+          disabled={disabled}
+          options={TYPES_PALETTE}
+        />
       </FieldGrid>
 
-      <FieldGrid title="Durée de vie" cols={2}>
+      <EmballagesTable
+        fiche={fiche}
+        onUpdate={onUpdateTable}
+        isEditable={() => isEditable}
+      />
+
+      <FieldGrid title="Durée de vie & réception" cols={2}>
         <SelectField
           label="Durée de vie (jours)"
           value={fiche.duree_vie}
@@ -129,13 +116,38 @@ export default function IndustrielSection({ fiche, de, onUpdate, onVisa, onRefus
           options={DUREES_VIE}
           crossRef="vu en Commerce"
         />
+        <SelectField
+          label="Temps de réception (usine, j)"
+          value={fiche.temps_reception_usine}
+          onChange={set('temps_reception_usine')}
+          disabled={disabled}
+          options={TEMPS_RECEPTION_USINE}
+        />
       </FieldGrid>
 
-      <EmballagesTable
-        fiche={fiche}
-        onUpdate={onUpdate}
-        isEditable={() => isEditable}
-      />
+      <FieldGrid title="Étiquette : formats & magasin" cols={3}>
+        <SelectField
+          label="Format date étiquette colis"
+          value={fiche.format_date_etiquette_colis}
+          onChange={set('format_date_etiquette_colis')}
+          disabled={disabled}
+          options={FORMATS_DATE_ETIQUETTE}
+        />
+        <SelectField
+          label="Format DLUO étiquette colis"
+          value={fiche.format_dluo_etiquette_colis}
+          onChange={set('format_dluo_etiquette_colis')}
+          disabled={disabled}
+          options={FORMATS_DATE_ETIQUETTE}
+        />
+        <SelectField
+          label="Type de magasin EM"
+          value={fiche.type_magasin}
+          onChange={set('type_magasin')}
+          disabled={disabled}
+          options={TYPES_MAGASIN_EM}
+        />
+      </FieldGrid>
     </SectionShell>
   );
 }

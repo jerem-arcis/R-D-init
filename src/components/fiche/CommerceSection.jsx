@@ -18,8 +18,13 @@ import { useSapOptions } from '@/lib/sapLists';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
 
-export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable }) {
+export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
+  // Écriture différée (canaux / sites de stockage) : affichage instantané des
+  // coches, un seul enregistrement réseau après le dernier clic. Repli sur onUpdate
+  // si le parent ne fournit pas de version débouncée.
+  const setDebounced = (field) => (value) =>
+    (onUpdateDebounced || onUpdate)?.({ [field]: value });
   const disabled = !isEditable;
 
   // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
@@ -51,15 +56,12 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
       onVisa={onVisa}
       onRefus={onRefus}
       visaLabel="Visa Commerce"
+      visaBlockers={visaBlockers}
     >
-      <FieldGrid title="Libellés" cols={2}>
-        <TextField
-          label="Désign. normalisée"
-          maxLength={18}
-          value={fiche.design_normalisee}
-          onChange={set('design_normalisee')}
-          disabled={disabled}
-        />
+      {/* Ordre aligné sur la capture FL « Commerce » : libellé long + origine +
+          canaux + secteur/marque en tête, puis libellés normalisés & langues,
+          puis hiérarchie / douane / sites de stockage, puis GTIN. */}
+      <FieldGrid title="Classification & distribution" cols={2}>
         <TextField
           label="Libellé long 40 caractères"
           value={fiche.libelle_long_40}
@@ -68,21 +70,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           maxLength={40}
           placeholder="Libellé français"
         />
-        <TextField
-          label="Libellé article caisse"
-          value={fiche.libelle_caisse}
-          onChange={set('libelle_caisse')}
-          disabled={disabled}
-        />
-      </FieldGrid>
-
-      <LibelleParPaysTable
-        value={fiche.libelle_par_pays}
-        onChange={set('libelle_par_pays')}
-        disabled={disabled}
-      />
-
-      <FieldGrid title="Origine & distribution" cols={2}>
         <SelectField
           label="Origine de fabrication"
           value={fiche.origine_fabrication}
@@ -94,18 +81,9 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
         <MultiSelectField
           label="Canaux de distribution"
           value={fiche.canaux_distribution}
-          onChange={set('canaux_distribution')}
+          onChange={setDebounced('canaux_distribution')}
           disabled={disabled}
           options={canauxOptions}
-        />
-        <MultiSelectField
-          label="Sites de stockage"
-          required
-          value={fiche.sites_stockage}
-          onChange={set('sites_stockage')}
-          disabled={disabled}
-          options={SITES_STOCKAGE}
-          fromSAP
         />
         <SelectField
           label="Secteur d'activité"
@@ -122,6 +100,31 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           options={MARQUES}
           fromSAP
         />
+      </FieldGrid>
+
+      <FieldGrid title="Libellés normalisés" cols={2}>
+        <TextField
+          label="Désign. normalisée"
+          maxLength={18}
+          value={fiche.design_normalisee}
+          onChange={set('design_normalisee')}
+          disabled={disabled}
+        />
+        <TextField
+          label="Libellé article caisse"
+          value={fiche.libelle_caisse}
+          onChange={set('libelle_caisse')}
+          disabled={disabled}
+        />
+      </FieldGrid>
+
+      <LibelleParPaysTable
+        value={fiche.libelle_par_pays}
+        onChange={set('libelle_par_pays')}
+        disabled={disabled}
+      />
+
+      <FieldGrid title="Hiérarchie, douane & stockage" cols={2}>
         <TextField
           label="Hiérarchie produit"
           value={fiche.hierarchie_produit}
@@ -136,6 +139,15 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
           options={NOMENCLATURES_DOUANIERES}
           fromSAP
         />
+        <MultiSelectField
+          label="Sites de stockage"
+          required
+          value={fiche.sites_stockage}
+          onChange={setDebounced('sites_stockage')}
+          disabled={disabled}
+          options={SITES_STOCKAGE}
+          fromSAP
+        />
       </FieldGrid>
 
       <div className="space-y-1">
@@ -146,7 +158,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onVisa, onRefus, 
         <EmballagesTable
           label="Saisie des GTIN (par emballage)"
           fiche={fiche}
-          onUpdate={onUpdate}
+          onUpdate={onUpdateDebounced || onUpdate}
           isEditable={() => false}
           showGtin
           gtinEditable={isEditable}

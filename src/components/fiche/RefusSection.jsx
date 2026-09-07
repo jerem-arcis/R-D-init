@@ -4,12 +4,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { XCircle, Check } from 'lucide-react';
 
-export default function RefusSection({ 
-  onVisa, 
-  onRefus, 
+export default function RefusSection({
+  onVisa,
+  onRefus,
   visaLabel,
-  isVisible 
+  isVisible,
+  blockers = [], // champs vides bloquant le visa ({ name, label })
 }) {
+  const bloque = blockers.length > 0;
   const [showRefus, setShowRefus] = useState(false);
   const [motifRefus, setMotifRefus] = useState('');
 
@@ -67,22 +69,31 @@ export default function RefusSection({
   }
 
   return (
-    <div className="pt-6 border-t border-border flex justify-between">
-      <Button
-        variant="outline"
-        onClick={() => setShowRefus(true)}
-        className="border-red-300 text-red-600 hover:bg-red-50"
-      >
-        <XCircle className="w-4 h-4 mr-2" />
-        Refuser l'étape
-      </Button>
-      <Button
-        onClick={onVisa}
-        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 h-11"
-      >
-        <Check className="w-4 h-4 mr-2" />
-        {visaLabel}
-      </Button>
+    <div className="pt-6 border-t border-border space-y-3">
+      {bloque && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2.5">
+          <strong>Champs à remplir avant de viser ({blockers.length}) :</strong>{' '}
+          {blockers.map((b) => b.label).join(', ')}
+        </p>
+      )}
+      <div className="flex justify-between">
+        <Button
+          variant="outline"
+          onClick={() => setShowRefus(true)}
+          className="border-red-300 text-red-600 hover:bg-red-50"
+        >
+          <XCircle className="w-4 h-4 mr-2" />
+          Refuser l'étape
+        </Button>
+        <Button
+          onClick={onVisa}
+          disabled={bloque}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 h-11 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Check className="w-4 h-4 mr-2" />
+          {visaLabel}
+        </Button>
+      </div>
     </div>
   );
 }

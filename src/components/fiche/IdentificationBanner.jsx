@@ -40,7 +40,7 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           onChange={set('centre_profit')}
           disabled={disabled}
           options={CENTRES_PROFIT}
-          fromSAP
+          fromDE
         />
         <TextField
           label="Libellé article"

@@ -23,6 +23,7 @@ export default function FieldShell({
   highlight,
   owner,
   ownerLabel,
+  ownerShort, // libellé court du chip (ex. « ADV ») ; défaut = owner en majuscules
   fieldState, // 'editable' | 'validated' | 'future'
   children,
   className = '',
@@ -48,7 +49,7 @@ export default function FieldShell({
           >
             {fieldState === 'validated' && <Check className="w-2.5 h-2.5" />}
             {fieldState === 'future' && <Lock className="w-2.5 h-2.5" />}
-            {owner.toUpperCase()}
+            {ownerShort || owner.toUpperCase()}
           </span>
         )}
         {fromDE && (

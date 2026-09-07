@@ -20,6 +20,7 @@ export default function SectionShell({
   onVisa,
   onRefus,
   visaLabel,
+  visaBlockers = [], // champs vides bloquant le visa de la section
   children,
 }) {
   const accent = {
@@ -60,6 +61,7 @@ export default function SectionShell({
             onVisa={onVisa}
             onRefus={onRefus}
             visaLabel={visaLabel}
+            blockers={visaBlockers}
             isVisible={true}
           />
         )}

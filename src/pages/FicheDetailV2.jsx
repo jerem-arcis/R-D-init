@@ -24,7 +24,7 @@ import {
   SITES_STOCKAGE, GROUPES_ARTICLE,
   GROUPES_RISTOURNE, GROUPES_IMPUTATION, CLES_CALCUL_LOT, PROFILS_COUVERTURE,
   TYPES_APPROVISIONNEMENT, ECLATEMENTS_GROUPE_MARCHANDISE, TYPES_USINE, TYPES_PALETTE,
-  MASQUES_ETIQUETTE_COLIS, FORMATS_DATE_ETIQUETTE, TEMPS_RECEPTION_USINE,
+  MASQUES_ETIQUETTE_COLIS, FORMATS_DATE_ETIQUETTE, TEMPS_RECEPTION_USINE, TYPES_MAGASIN_EM,
   STATUTS_LANCEMENT, FABRICATION_NEGOCE,
   SECTEURS_ACTIVITE, MARQUES,
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
@@ -197,6 +197,7 @@ export default function FicheDetailV2() {
       disabled: !isFieldEditable(name, localFiche),
       owner,
       ownerLabel: meta?.label,
+      ownerShort: meta?.short,
       fieldState: state,
       ...extra,
     };
@@ -222,6 +223,12 @@ export default function FicheDetailV2() {
   };
 
   const isLocked = localFiche.statut_sap === 'Création SAP effectuée';
+
+  // Export réservé aux fiches complètes : les 3 visas doivent être posés.
+  const allVisaDone =
+    localFiche.visa_supply_chain &&
+    localFiche.visa_industriel &&
+    localFiche.visa_commerce;
 
   // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
   // restreinte aux sites de fabrication — identique à « Division (Usine) » de la DE.
@@ -256,10 +263,11 @@ export default function FicheDetailV2() {
                   {localFiche.code_article || 'Nouvelle fiche'}
                   {localFiche.libelle_article && ` - ${localFiche.libelle_article}`}
                 </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  ID: {ficheId?.slice(0, 8)}…
-                  {localFiche.code_etude_rd && <span className="ml-3">DE: {localFiche.code_etude_rd}</span>}
-                </p>
+                {localFiche.code_etude_rd && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    DE: {localFiche.code_etude_rd}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -273,8 +281,9 @@ export default function FicheDetailV2() {
                 variant="outline"
                 size="sm"
                 onClick={handleExportPdf}
-                disabled={isExporting}
-                className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                disabled={isExporting || !allVisaDone}
+                title={!allVisaDone ? 'Export possible une fois les 3 visas signés' : undefined}
+                className="gap-2 border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
                 {isExporting ? 'Génération…' : 'Exporter PDF'}
@@ -331,7 +340,7 @@ export default function FicheDetailV2() {
             <Fld visible={showField('masque_etiquette_colis')}><ComboField label="Masque de l'étiquette colis" {...fld('masque_etiquette_colis')} options={MASQUES_ETIQUETTE_COLIS} /></Fld>
             <Fld visible={showField('format_date_etiquette_colis')}><SelectField label="Format date étiquette" {...fld('format_date_etiquette_colis')} options={FORMATS_DATE_ETIQUETTE} /></Fld>
             <Fld visible={showField('format_dluo_etiquette_colis')}><SelectField label="Format DLUO étiquette" {...fld('format_dluo_etiquette_colis')} options={FORMATS_DATE_ETIQUETTE} /></Fld>
-            <Fld visible={showField('type_magasin')}><TextField label="Type de magasin EM" {...fld('type_magasin')} /></Fld>
+            <Fld visible={showField('type_magasin')}><SelectField label="Type de magasin EM" {...fld('type_magasin')} options={TYPES_MAGASIN_EM} /></Fld>
           </div>
           <Fld visible={showField('libelle_par_pays')}>
             <LibelleParPaysTable
@@ -352,7 +361,7 @@ export default function FicheDetailV2() {
           <Fld visible={showField('uvc_block')}>
             <EmballagesTable
               fiche={localFiche}
-              onUpdate={handleUpdate}
+              onUpdate={handleUpdateDebounced}
               isEditable={(name) => isFieldEditable(name, localFiche)}
               showGtin
               gtinEditable={!isLocked && !localFiche.visa_commerce}
@@ -410,7 +419,8 @@ export default function FicheDetailV2() {
           </div>
         </Group>
 
-        {/* ----- Synthèse FL + création SAP (même bloc que la Vue par service) ----- */}
+        {/* ----- Barre de création SAP (le récap de synthèse a été retiré ; seul
+                 le bouton « Créer l'article dans SAP » subsiste, cf. FLSynthesisSection) ----- */}
         <FLSynthesisSection fiche={localFiche} />
       </main>
     </div>

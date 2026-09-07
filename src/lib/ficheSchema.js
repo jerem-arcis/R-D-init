@@ -108,6 +108,10 @@ export const TYPES_PALETTE = [
   'SMN10 - Palette 100 x 120 NIMP 15',
 ];
 
+// Type de magasin EM (SAP) — valeurs autorisées 001 / 002 / 003 (cf. capture FL
+// Industriel « Type magasin EM »). Passé en liste déroulante fermée.
+export const TYPES_MAGASIN_EM = ['001', '002', '003'];
+
 // Masque de l'étiquette colis. Valeurs du fichier FM (plage Atelier). Le champ
 // autorise en plus la saisie d'un code custom (masque non présent dans la liste).
 export const MASQUES_ETIQUETTE_COLIS = [
@@ -325,7 +329,7 @@ export const IDENTIFICATION_FIELDS = [
 export const WORKFLOW_ORDER = ['sc', 'gb', 'ind', 'com'];
 
 export const OWNER_META = {
-  sc: { label: 'Supply Chain', short: 'SC', color: 'sky', visaField: 'visa_supply_chain' },
+  sc: { label: 'ADV', short: 'ADV', color: 'sky', visaField: 'visa_supply_chain' },
   gb: { label: 'Gestion Besoin', short: 'GB', color: 'emerald', visaField: 'visa_gestion_besoin' },
   ind: { label: 'Industriel', short: 'IND', color: 'amber', visaField: 'visa_industriel' },
   com: { label: 'Commerce', short: 'COM', color: 'rose', visaField: 'visa_commerce' },
