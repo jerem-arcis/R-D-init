@@ -3,6 +3,8 @@
 // auparavant inline dans CreerDE (classe valo / centre profit / secteur) + ajoute
 // les regles du scope Commerce/Marketing (usines origine/fabrication, Agen).
 
+import { computeGroupeArticleDE } from './deRules';
+
 export const ACTIVITES = ['PATISSERIES', 'TRAITEUR', 'MOCHIS'];
 export const TYPES_MARQUE = ['Marque Nationale RHF / Export', 'Marque Nationale GMS', 'Marque distributeur'];
 export const AGEN_TYPES = ['Surgelé', 'Faux Frais STEF', 'Faux Frais Autre'];
@@ -42,6 +44,13 @@ export const codeDivisionFabrication = ({ type_demande, usine, agen_type } = {})
   if (usine === 'Agen') return agen_type === 'Faux Frais STEF' ? '2823' : '2847';
   return DIVISION_ORIGINE[usine] || '';
 };
+
+// Groupe article (division) d'une DS : même règle usine que la DE (Bonloc → PF-B,
+// Rivesaltes → PF-F, Agen → PF-AS), avec REPLI « PF » pour les cas non couverts
+// (Aire, Agen Faux Frais STEF, négoce). Sert au lookup Dataverse ET au flux SAP —
+// les deux doivent porter la même valeur.
+export const computeGroupeArticleDS = (divisionFab) =>
+  computeGroupeArticleDE(divisionFab) || 'PF';
 
 // Type de produit SAP (TypeProduit / cr04e_typedeproduit) d'une DS : « Aire » est
 // du négoce (NEGO), tout le reste est du produit fini (PFIN). Miroir de la règle

@@ -3,6 +3,7 @@ import { lookupBind, codeFromLookupValue } from '@/api/sapLists';
 import {
   codeDivisionOrigine,
   codeDivisionFabrication,
+  computeGroupeArticleDS,
   computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
@@ -17,7 +18,6 @@ import {
   agenChoixFromCentre,
 } from '@/lib/dsRules';
 
-import { computeGroupeArticleDE } from '@/lib/deRules';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
 export const DS_STATUTS = ['ds_brouillon', 'ds_attente_cc', 'ds_validee'];
@@ -62,9 +62,9 @@ export function computeDsValues(formData) {
     // TypeProduit SAP : Aire → NEGO, sinon PFIN (usine de fabrication).
     typeProduit: computeTypeProduitDS(ctx.usine),
     // Groupe article (division) : déduit de l'usine de fabrication, comme la DE
-    // (Bonloc → PF-B, Rivesaltes → PF-F, Agen → PF-AS). Aire / Agen FF STEF / négoce
-    // → vide (pas de valeur automatique). Override manuel prioritaire.
-    groupeArticle: ovr('_ds_groupe_article_ovr', computeGroupeArticleDE(divisionFab)),
+    // (Bonloc → PF-B, Rivesaltes → PF-F, Agen → PF-AS) ; repli « PF » pour les cas
+    // sans règle (Aire, Agen FF STEF, négoce). Override manuel prioritaire.
+    groupeArticle: ovr('_ds_groupe_article_ovr', computeGroupeArticleDS(divisionFab)),
   };
 }
 
@@ -104,7 +104,8 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
   if (cpBind) payload['cr04e_Centredeprofit@odata.bind'] = cpBind;
   // Groupe article (division) : MÊME lookup Dataverse que la DE
   // (cr04e_Groupearticledivision) — auparavant non écrit côté DS, d'où l'absence en
-  // base. Non résolu (Aire / négoce / code inconnu) -> omis.
+  // base. Repli « PF » pour Aire / négoce ; bind omis si le code n'existe pas dans
+  // le référentiel groupes_article.
   const gaBind = lookupBind('groupes_article', c.groupeArticle, sapOptions.groupes_article);
   if (gaBind) payload['cr04e_Groupearticledivision@odata.bind'] = gaBind;
 

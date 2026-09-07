@@ -69,6 +69,7 @@ import {
   codeDivisionOrigine,
   LABEL_DIVISION_ORIGINE_NEGOCE,
   codeDivisionFabrication,
+  computeGroupeArticleDS,
   computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
@@ -1038,8 +1039,8 @@ export default function CreerDE() {
       // Négoce (Aire) → NEGO/NEGO ; sinon on envoie comme un PFIN de DE → PFIN/FG.
       GroupeAutorisation: dsNegoce ? 'NEGO' : 'PFIN',
       GroupeFraisGeneraux: dsNegoce ? 'NEGO' : 'FG',
-      // = valeur enregistrée en BDD (lookup Groupe article déduit de l'usine).
-      // Vide pour Aire / Agen FF STEF / négoce (pas de règle) -> envoyé « null ».
+      // = valeur enregistrée en BDD (lookup Groupe article déduit de l'usine) ;
+      // repli « PF » pour Aire / Agen FF STEF / négoce (cas sans règle).
       GroupeArticleDivision: dsGroupeArticle,
       TypeProduit: dsTypeProduit,
       'ProfilFabricRépét': dsProfilFabricRepet,
@@ -1410,7 +1411,7 @@ export default function CreerDE() {
   // Groupe article (division) : déduit de l'usine de fabrication (comme la DE),
   // surchargeable et repli sur la valeur persistée. IDENTIQUE au lookup écrit en
   // BDD (cf. api/ds.js) — c'est cette valeur qui part dans le flux SAP.
-  const dsGroupeArticle = dsOvr('_ds_groupe_article_ovr', computeGroupeArticleDE(dsDivisionFab), '_ds_groupe_article');
+  const dsGroupeArticle = dsOvr('_ds_groupe_article_ovr', computeGroupeArticleDS(dsDivisionFab), '_ds_groupe_article');
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
   const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
   // DS créée et en attente du code chapeau : c'est l'ÉTAPE SUIVANTE (réouverture

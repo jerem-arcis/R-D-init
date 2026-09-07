@@ -6,7 +6,7 @@ const sapOptions = {
   classes_valorisation: [{ id: 'c7012', value: '7012' }, { id: 'c2038', value: '2038' }],
   familles_produit: [{ id: 'h22', value: '22\tDE\tDE' }],
   centres_profit: [{ id: 'cp22', value: '22PF' }],
-  groupes_article: [{ id: 'gPFB', value: 'PF-B' }, { id: 'gPFAS', value: 'PF-AS' }],
+  groupes_article: [{ id: 'gPFB', value: 'PF-B' }, { id: 'gPFAS', value: 'PF-AS' }, { id: 'gPF', value: 'PF' }],
 };
 
 const base = {
@@ -97,11 +97,11 @@ describe('groupe article (division) — lookup déduit de l\'usine (comme la DE)
     const p = buildDsPayload({ ...base, autre_usine_fab: 'Agen', autre_type_demande: '1' }, { sapOptions, statut: 'ds_attente_cc' });
     expect(p['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPFAS)');
   });
-  it('Aire / négoce → pas de valeur déduite → lookup omis', () => {
+  it('Aire / négoce (pas de règle) → repli PF', () => {
     const aire = buildDsPayload({ ...base, autre_usine_fab: 'Aire' }, { sapOptions, statut: 'ds_attente_cc' });
-    expect(aire['cr04e_Groupearticledivision@odata.bind']).toBeUndefined();
+    expect(aire['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPF)');
     const negoce = buildDsPayload({ ...base, autre_type_demande: '4' }, { sapOptions, statut: 'ds_attente_cc' });
-    expect(negoce['cr04e_Groupearticledivision@odata.bind']).toBeUndefined();
+    expect(negoce['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPF)');
   });
   it('override manuel _ds_groupe_article_ovr prioritaire', () => {
     const p = buildDsPayload({ ...base, autre_usine_fab: 'Aire', _ds_groupe_article_ovr: 'PF-AS' }, { sapOptions, statut: 'ds_attente_cc' });

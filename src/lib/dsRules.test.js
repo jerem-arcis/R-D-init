@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   codeDivisionOrigine,
   codeDivisionFabrication,
+  computeGroupeArticleDS,
   computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
@@ -88,6 +89,21 @@ describe('codeDivisionFabrication', () => {
   it('autres usines -> leur code', () => {
     expect(codeDivisionFabrication({ type_demande: '1', usine: 'Bonloc' })).toBe('2886');
     expect(codeDivisionFabrication({ type_demande: '6', usine: 'Aire' })).toBe('2859');
+  });
+});
+
+describe('computeGroupeArticleDS', () => {
+  it('règle usine (comme la DE)', () => {
+    expect(computeGroupeArticleDS('2886')).toBe('PF-B'); // Bonloc
+    expect(computeGroupeArticleDS('2866')).toBe('PF-F'); // Rivesaltes
+    expect(computeGroupeArticleDS('2847')).toBe('PF-AS'); // Agen
+  });
+  it('repli « PF » pour les cas sans règle (Aire / Agen FF STEF / négoce / vide)', () => {
+    expect(computeGroupeArticleDS('2859')).toBe('PF'); // Aire
+    expect(computeGroupeArticleDS('2823')).toBe('PF'); // Agen Faux Frais STEF
+    expect(computeGroupeArticleDS('2820')).toBe('PF'); // négoce
+    expect(computeGroupeArticleDS('')).toBe('PF');
+    expect(computeGroupeArticleDS(undefined)).toBe('PF');
   });
 });
 
