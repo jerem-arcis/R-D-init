@@ -1400,10 +1400,9 @@ export default function CreerDE() {
     codeDivisionFabrication({ usine: dsCtx.usine, agen_type: dsCtx.agen_type }),
   );
   const dsHierarchie = dsOvr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite), '_ds_hierarchie');
-  // Classe de valorisation DS : FIGÉE à 2038 (cf. dsRules). Ni override manuel ni
-  // repli sur la valeur persistée d'une DS rouverte — le champ est verrouillé dans
-  // le formulaire tant que le mapping négoce SAP n'est pas arbitré.
-  const dsClasseValo = computeClasseValoDS();
+  // Classe de valorisation DS : calcul usine/activité (cf. dsRules), surchargeable
+  // manuellement et repli sur la valeur persistée d'une DS rouverte — champ débloqué.
+  const dsClasseValo = dsOvr('_ds_classe_valo_ovr', computeClasseValoDS(dsCtx), '_ds_classe_valo');
   const dsCentreProfit = dsOvr('_ds_centre_profit_ovr', computeCentreProfitDS(dsCtx), '_ds_centre_profit');
   const dsSecteur = dsOvr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque), '_ds_secteur');
   // DS validée : fiche en lecture seule (consultation, aucune modification possible).
@@ -2464,11 +2463,12 @@ export default function CreerDE() {
 
                 <FormSection title="Champs calculés (SAP)" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Verrouillée : pas d'onChange -> champ grisé, non modifiable. */}
                     <ReadOnlyField
                       label="Classe de valorisation"
                       value={dsClasseValo}
-                      hint="Figée pour les tests — en attente du mapping négoce sur SAP"
+                      onChange={(v) => handleChange('_ds_classe_valo_ovr', v)}
+                      options={sapOptions.classes_valorisation}
+                      hint="Aire → 2038, Production (Rivesaltes/Bonloc/Agen) → 7012"
                     />
                     <ReadOnlyField label="Centre de profit" value={dsCentreProfit} onChange={(v) => handleChange('_ds_centre_profit_ovr', v)} options={sapOptions.centres_profit} hint="Selon usine / activité" />
                   </div>

@@ -111,21 +111,22 @@ export const computeHierarchieDS = (activite) => {
   return '';
 };
 
-// Classe de valorisation DS — PROVISOIRE : toujours 2038.
-//
-// Le mapping negoce doit etre entierement repris (decision metier du 14/08/2026).
-// En attendant, toute DS part avec 2038, quelles que soient l'usine, le type de
-// demande et l'activite. Aucun cas ne renvoie plus de valeur vide : une DS avait
-// jusqu'ici une classe valo absente en negoce Mochis.
-//
-// Regle d'origine, a restaurer une fois le remapping arbitre :
-//   Rivesaltes / Bonloc / Agen        -> 7012
+// Classe de valorisation DS selon l'usine de fabrication et, en négoce (type 4/5),
+// l'activité :
 //   Aire                              -> 2038
-//   negoce (type 4/5) + TRAITEUR      -> 2038
-//   negoce (type 4/5) + PATISSERIES   -> 2030
-//   sinon                             -> ''
-export const CLASSE_VALO_DS_PROVISOIRE = '2038';
-export const computeClasseValoDS = () => CLASSE_VALO_DS_PROVISOIRE;
+//   Rivesaltes / Bonloc / Agen        -> 7012
+//   négoce (type 4/5) + TRAITEUR      -> 2038
+//   négoce (type 4/5) + PATISSERIES   -> 2030
+//   sinon                             -> '' (surchargeable manuellement côté formulaire)
+export const computeClasseValoDS = ({ usine, type_demande, activite } = {}) => {
+  if (usine === 'Aire') return '2038';
+  if (usine === 'Rivesaltes' || usine === 'Bonloc' || usine === 'Agen') return '7012';
+  if (isTypeNegoce(type_demande)) {
+    if (activite === 'TRAITEUR') return '2038';
+    if (activite === 'PATISSERIES') return '2030';
+  }
+  return '';
+};
 
 export const computeCentreProfitDS = ({ usine, activite, type_demande, agen_choix } = {}) => {
   if (activite === 'MOCHIS') return '21PF';

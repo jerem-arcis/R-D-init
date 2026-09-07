@@ -49,9 +49,8 @@ describe('buildDsPayload', () => {
     expect(p.cr04e_activite_ds).toBe('PATISSERIES');
     // lookups résolus
     expect(p['cr04e_DivisionUsine@odata.bind']).toBe('/cr04e_divisionusines(dBon)'); // fab Bonloc
-    // Classe valo DS provisoirement figée à 2038 (remapping négoce en attente),
-    // alors que l'usine de fabrication Bonloc donnait 7012 avec l'ancienne règle.
-    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)');
+    // Classe valo DS selon l'usine de fabrication : Bonloc (production) → 7012.
+    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c7012)');
     expect(p['cr04e_Hierarchieproduitfamille@odata.bind']).toBe('/cr04e_hierarchieproduitfamilles(h22)');
     expect(p['cr04e_Centredeprofit@odata.bind']).toBe('/cr04e_centredeprofitcepcts(cp22)'); // Bonloc → 22PF
   });
@@ -77,20 +76,21 @@ describe('buildDsPayload', () => {
   });
 
   it('un override manuel (_ds_*_ovr) gagne sur la valeur calculée', () => {
-    // Phase de dev : champ auto-calculé débloqué puis saisi à la main.
+    // Phase de dev : champ auto-calculé débloqué puis saisi à la main. Base = Bonloc
+    // (calcul 7012), on force 2038 → l'override doit primer.
     const p = buildDsPayload(
       { ...base, _ds_secteur_ovr: '99', _ds_classe_valo_ovr: '2038' },
       { sapOptions, statut: 'ds_attente_cc' },
     );
     expect(p.cr04e_secteurdactivite).toBe('99'); // override, pas le '12' calculé
-    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // 2038 forcé
+    expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // override
   });
 });
 
-describe('classe de valorisation figée (mapping négoce en attente)', () => {
-  it("ignore l'override manuel et la persistance : toujours 2038", () => {
+describe('classe de valorisation (débloquée : usine/activité, surchargeable)', () => {
+  it('usine de fabrication Aire → 2038', () => {
     const p = buildDsPayload(
-      { ...base, _ds_classe_valo_ovr: '7012', _ds_classe_valo: '2030' },
+      { ...base, autre_usine_fab: 'Aire' },
       { sapOptions, statut: 'ds_attente_cc' },
     );
     expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)');
