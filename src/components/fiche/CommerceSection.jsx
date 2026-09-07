@@ -13,6 +13,7 @@ import {
   MARQUES,
   NOMENCLATURES_DOUANIERES,
   SITES_STOCKAGE,
+  hierarchieActivite,
 } from '@/lib/ficheSchema';
 import { useSapOptions } from '@/lib/sapLists';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
@@ -33,6 +34,18 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
   // Canaux de distribution : options « code - désignation » issues de la catégorie
   // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
   const canauxOptions = buildOptions(useAdminOptions().canaux_distrib);
+
+  // Hiérarchie produit : liste déroulante du référentiel SAP (familles_produit),
+  // FILTRÉE sur le code activité (2 premiers chiffres) de la valeur héritée de la
+  // DE — « 27 DE DE » -> uniquement les familles 27…. Champ vide (activité inconnue)
+  // -> liste complète. La valeur courante est toujours conservée dans les options.
+  const activiteHierarchie = hierarchieActivite(fiche.hierarchie_produit);
+  const hierarchieOptions = buildOptions(
+    (sap.familles_produit || []).filter(
+      (o) => !activiteHierarchie || String(o.value).startsWith(activiteHierarchie),
+    ),
+    fiche.hierarchie_produit,
+  );
 
   return (
     <SectionShell
@@ -120,11 +133,13 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
       />
 
       <FieldGrid title="Hiérarchie, douane & stockage" cols={2}>
-        <TextField
+        <SearchableSelectField
           label="Hiérarchie produit"
           value={fiche.hierarchie_produit}
           onChange={set('hierarchie_produit')}
           disabled={disabled}
+          options={hierarchieOptions}
+          fromSAP
         />
         <SearchableSelectField
           label="Nomenclature douanière"

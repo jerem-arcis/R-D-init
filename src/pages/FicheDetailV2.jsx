@@ -30,7 +30,7 @@ import {
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
   GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
-  REMOVED_FIELDS, getMissingVisaFields,
+  REMOVED_FIELDS, getMissingVisaFields, hierarchieActivite,
 } from '@/lib/ficheSchema';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
@@ -241,6 +241,16 @@ export default function FicheDetailV2() {
   // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
   const canauxOptions = buildOptions(adminOptions.canaux_distrib);
 
+  // Hiérarchie produit : liste déroulante du référentiel SAP filtrée sur le code
+  // activité (2 premiers chiffres) de la valeur héritée de la DE ; vide -> complète.
+  const activiteHierarchie = hierarchieActivite(localFiche.hierarchie_produit);
+  const hierarchieOptions = buildOptions(
+    (sap.familles_produit || []).filter(
+      (o) => !activiteHierarchie || String(o.value).startsWith(activiteHierarchie),
+    ),
+    localFiche.hierarchie_produit,
+  );
+
   // Écriture simultanée : les champs restants sont visibles en permanence.
   // Les champs retirés de la FL (REMOVED_FIELDS) et les groupes vidés (HIDDEN_GROUPS)
   // sont masqués.
@@ -324,7 +334,7 @@ export default function FicheDetailV2() {
             <Fld visible={showField('marque')}><SelectField label="Marque" {...fld('marque')} options={MARQUES} fromSAP /></Fld>
             <Fld visible={showField('mention_produit')}><SelectField label="Mention produit" {...fld('mention_produit')} options={MENTIONS_PRODUIT} /></Fld>
             <Fld visible={showField('specificite_produit')}><SelectField label="Spécificité produits" {...fld('specificite_produit')} options={SPECIFICITES_PRODUIT} /></Fld>
-            <Fld visible={showField('hierarchie_produit')}><TextField label="Hiérarchie produit" {...fld('hierarchie_produit')} /></Fld>
+            <Fld visible={showField('hierarchie_produit')}><SearchableSelectField label="Hiérarchie produit" {...fld('hierarchie_produit')} options={hierarchieOptions} fromSAP /></Fld>
           </div>
         </Group>
 

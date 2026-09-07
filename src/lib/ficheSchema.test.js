@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { getMissingVisaFields, EMBALLAGE_BLOCK_FIELDS } from './ficheSchema';
+import {
+  getMissingVisaFields,
+  EMBALLAGE_BLOCK_FIELDS,
+  hierarchieActivite,
+  isHierarchiePlaceholder,
+} from './ficheSchema';
 
 // Champs visibles (non retirés, hors blocs emballage) par section, tous remplis.
 const filledFiche = {
@@ -78,5 +83,46 @@ describe('getMissingVisaFields', () => {
   it('fiche ou section absente -> []', () => {
     expect(getMissingVisaFields(null, 'sc')).toEqual([]);
     expect(getMissingVisaFields({}, null)).toEqual([]);
+  });
+
+  it('COM : hiérarchie encore au gabarit « XX DE DE » compte comme manquant', () => {
+    for (const h of ['27 DE DE DE', '22\tDE\tDE', '21 DE']) {
+      const m = getMissingVisaFields({ ...filledFiche, hierarchie_produit: h }, 'com')
+        .find((f) => f.name === 'hierarchie_produit');
+      expect(m, `placeholder ${JSON.stringify(h)}`).toBeTruthy();
+      expect(m.label).toMatch(/à préciser/);
+    }
+    // Une vraie famille (segments ≠ DE) ne bloque pas.
+    const ok = getMissingVisaFields({ ...filledFiche, hierarchie_produit: '27 D4 10 DM' }, 'com')
+      .map((f) => f.name);
+    expect(ok).not.toContain('hierarchie_produit');
+  });
+});
+
+describe('hierarchieActivite', () => {
+  it('renvoie les 2 chiffres de tête', () => {
+    expect(hierarchieActivite('27 DE DE DE')).toBe('27');
+    expect(hierarchieActivite('21\tDE\tDE')).toBe('21');
+    expect(hierarchieActivite('22 D4 10 DM')).toBe('22');
+  });
+  it('vide / sans code -> chaîne vide', () => {
+    expect(hierarchieActivite('')).toBe('');
+    expect(hierarchieActivite(null)).toBe('');
+    expect(hierarchieActivite('DE DE')).toBe('');
+  });
+});
+
+describe('isHierarchiePlaceholder', () => {
+  it('vrai pour un gabarit « XX DE DE » (tabulations, \\t littéraux ou espaces)', () => {
+    expect(isHierarchiePlaceholder('27 DE DE DE')).toBe(true);
+    expect(isHierarchiePlaceholder('22\tDE\tDE')).toBe(true);
+    expect(isHierarchiePlaceholder('21\\tDE\\tDE')).toBe(true);
+    expect(isHierarchiePlaceholder('27 de')).toBe(true); // insensible à la casse
+  });
+  it('faux pour une vraie famille ou une valeur vide/partielle', () => {
+    expect(isHierarchiePlaceholder('27 D4 10 DM')).toBe(false);
+    expect(isHierarchiePlaceholder('27')).toBe(false); // activité seule
+    expect(isHierarchiePlaceholder('')).toBe(false);
+    expect(isHierarchiePlaceholder(null)).toBe(false);
   });
 });

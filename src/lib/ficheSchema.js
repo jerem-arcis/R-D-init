@@ -504,6 +504,21 @@ const isFilled = (v) => {
   return true;
 };
 
+// Code activité (2 chiffres de tête) d'une hiérarchie produit : « 27 DE DE » -> « 27 ».
+// Sert à filtrer la liste des familles produit (on ne propose que la même activité).
+export const hierarchieActivite = (v) => {
+  const m = String(v ?? '').trim().match(/^(\d{2})/);
+  return m ? m[1] : '';
+};
+
+// Hiérarchie encore au gabarit hérité de la DE (« XX DE DE DE ») : elle doit être
+// précisée (choix d'une vraie famille) avant de viser — tous les segments après
+// l'activité valent « DE ». Sépare sur tabulations réelles, « \t » littéraux ou espaces.
+export const isHierarchiePlaceholder = (v) => {
+  const tokens = String(v ?? '').trim().split(/(?:\\t|\s)+/).filter(Boolean);
+  return tokens.length >= 2 && tokens.slice(1).every((t) => t.toUpperCase() === 'DE');
+};
+
 // Champs vides mais requis pour poser le visa d'une section (`owner` = sc | ind | com).
 // Exclut les champs retirés et les 5 blocs d'emballage (exemptés). Renvoie une liste
 // de { name, label } — vide si tout est rempli (ou fiche/section absente).
@@ -514,6 +529,16 @@ export function getMissingVisaFields(fiche, owner) {
       o === owner &&
       !REMOVED_FIELDS.has(name) &&
       !EMBALLAGE_BLOCK_FIELDS.includes(name))
-    .filter(([name]) => !isFilled(fiche[name]))
-    .map(([name]) => ({ name, label: FIELD_LABELS[name] || name }));
+    // Bloquant si non rempli — OU, pour la hiérarchie produit, si elle est encore
+    // au gabarit « XX DE DE » hérité de la DE (il faut choisir une vraie famille).
+    .filter(([name]) =>
+      !isFilled(fiche[name]) ||
+      (name === 'hierarchie_produit' && isHierarchiePlaceholder(fiche[name])))
+    .map(([name]) => ({
+      name,
+      label:
+        name === 'hierarchie_produit' && isHierarchiePlaceholder(fiche[name])
+          ? 'Hiérarchie produit (à préciser, pas « DE DE »)'
+          : FIELD_LABELS[name] || name,
+    }));
 }
