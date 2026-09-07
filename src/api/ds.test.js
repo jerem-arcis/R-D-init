@@ -6,6 +6,7 @@ const sapOptions = {
   classes_valorisation: [{ id: 'c7012', value: '7012' }, { id: 'c2038', value: '2038' }],
   familles_produit: [{ id: 'h22', value: '22\tDE\tDE' }],
   centres_profit: [{ id: 'cp22', value: '22PF' }],
+  groupes_article: [{ id: 'gPFB', value: 'PF-B' }, { id: 'gPFAS', value: 'PF-AS' }],
 };
 
 const base = {
@@ -84,6 +85,27 @@ describe('buildDsPayload', () => {
     );
     expect(p.cr04e_secteurdactivite).toBe('99'); // override, pas le '12' calculé
     expect(p['cr04e_Classedevalorisation@odata.bind']).toBe('/cr04e_classedevalorisations(c2038)'); // override
+  });
+});
+
+describe('groupe article (division) — lookup déduit de l\'usine (comme la DE)', () => {
+  it('Bonloc → PF-B, lié sur le lookup Dataverse cr04e_Groupearticledivision', () => {
+    const p = buildDsPayload(base, { sapOptions, statut: 'ds_attente_cc' }); // base = Bonloc
+    expect(p['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPFB)');
+  });
+  it('Agen → PF-AS', () => {
+    const p = buildDsPayload({ ...base, autre_usine_fab: 'Agen', autre_type_demande: '1' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPFAS)');
+  });
+  it('Aire / négoce → pas de valeur déduite → lookup omis', () => {
+    const aire = buildDsPayload({ ...base, autre_usine_fab: 'Aire' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(aire['cr04e_Groupearticledivision@odata.bind']).toBeUndefined();
+    const negoce = buildDsPayload({ ...base, autre_type_demande: '4' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(negoce['cr04e_Groupearticledivision@odata.bind']).toBeUndefined();
+  });
+  it('override manuel _ds_groupe_article_ovr prioritaire', () => {
+    const p = buildDsPayload({ ...base, autre_usine_fab: 'Aire', _ds_groupe_article_ovr: 'PF-AS' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p['cr04e_Groupearticledivision@odata.bind']).toBe('/cr04e_groupearticledivisions(gPFAS)');
   });
 });
 

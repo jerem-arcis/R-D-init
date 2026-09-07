@@ -17,6 +17,7 @@ import {
   agenChoixFromCentre,
 } from '@/lib/dsRules';
 
+import { computeGroupeArticleDE } from '@/lib/deRules';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
 export const DS_STATUTS = ['ds_brouillon', 'ds_attente_cc', 'ds_validee'];
@@ -44,8 +45,11 @@ export function computeDsValues(formData) {
   // En négoce (usine d'origine = « Produit négoce »), pas de code division
   // d'origine : forcé vide, un éventuel override est ignoré (rien n'est poussé).
   const origineNegoce = formData.autre_usine_origine === 'Produit négoce';
+  // Division de fabrication (override manuel prioritaire) : sert de base à plusieurs
+  // valeurs SAP dont le groupe article.
+  const divisionFab = ovr('_ds_division_fab_ovr', codeDivisionFabrication(ctx));
   return {
-    divisionFab: ovr('_ds_division_fab_ovr', codeDivisionFabrication(ctx)),
+    divisionFab,
     divisionOrigine: origineNegoce
       ? ''
       : ovr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine)),
@@ -57,6 +61,10 @@ export function computeDsValues(formData) {
     secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
     // TypeProduit SAP : Aire → NEGO, sinon PFIN (usine de fabrication).
     typeProduit: computeTypeProduitDS(ctx.usine),
+    // Groupe article (division) : déduit de l'usine de fabrication, comme la DE
+    // (Bonloc → PF-B, Rivesaltes → PF-F, Agen → PF-AS). Aire / Agen FF STEF / négoce
+    // → vide (pas de valeur automatique). Override manuel prioritaire.
+    groupeArticle: ovr('_ds_groupe_article_ovr', computeGroupeArticleDE(divisionFab)),
   };
 }
 
@@ -94,6 +102,11 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
   if (hierBind) payload['cr04e_Hierarchieproduitfamille@odata.bind'] = hierBind;
   const cpBind = lookupBind('centres_profit', c.centreProfit, sapOptions.centres_profit);
   if (cpBind) payload['cr04e_Centredeprofit@odata.bind'] = cpBind;
+  // Groupe article (division) : MÊME lookup Dataverse que la DE
+  // (cr04e_Groupearticledivision) — auparavant non écrit côté DS, d'où l'absence en
+  // base. Non résolu (Aire / négoce / code inconnu) -> omis.
+  const gaBind = lookupBind('groupes_article', c.groupeArticle, sapOptions.groupes_article);
+  if (gaBind) payload['cr04e_Groupearticledivision@odata.bind'] = gaBind;
 
   return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined));
 }
