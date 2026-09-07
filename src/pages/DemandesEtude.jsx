@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FluxStatutBadge from '@/components/FluxStatutBadge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   FileText,
@@ -575,6 +576,7 @@ export default function DemandesEtude() {
                   <SortHead sortId="demandeur">Demandeur</SortHead>
                   <SortHead sortId="usine">Usine</SortHead>
                   <SortHead sortId="statut">Statut</SortHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Flux envoi DE</TableHead>
                   <SortHead sortId="created_date">Date création</SortHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -606,6 +608,9 @@ export default function DemandesEtude() {
                     </TableCell>
                     <TableCell>
                       {getStatutBadge(de.statut)}
+                    </TableCell>
+                    <TableCell>
+                      <FluxStatutBadge value={de.flux_envoi_de} />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">

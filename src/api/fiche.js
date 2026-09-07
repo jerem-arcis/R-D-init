@@ -189,6 +189,10 @@ export function toFicheListShape(p) {
     statut_sap: p.cr04e_statut_en_cours === SAP_STATUT ? SAP_LABEL : '',
     visas_valides: visas.filter((v) => v === true).length,
     created_date: p.createdon ?? null,
+    // Statuts d'envoi SAP posés par le flux Power Automate (TEXTE brut ; vide =
+    // jamais envoyé). Interprétés via `fluxStatut` (erreursSap.js) à l'affichage.
+    flux_envoi_de: p.cr04e_fluxenvoiede,
+    flux_envoi_fl: p.cr04e_fluxenvoiefl,
   };
 }
 

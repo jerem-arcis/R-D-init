@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FluxStatutBadge from '@/components/FluxStatutBadge';
 import {
   Select,
   SelectContent,
@@ -330,6 +331,7 @@ export default function Accueil() {
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Libellé article</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Avancement</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">État</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Flux envoi FL</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Usine de prod</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Date création</TableHead>
                   <TableHead className="w-12"></TableHead>
@@ -355,6 +357,9 @@ export default function Accueil() {
                     </TableCell>
                     <TableCell>
                       {getEtatBadge(fiche)}
+                    </TableCell>
+                    <TableCell>
+                      <FluxStatutBadge value={fiche.flux_envoi_fl} />
                     </TableCell>
                     <TableCell className="text-foreground/80 text-sm">
                       {fiche.usine || <span className="text-muted-foreground/60">-</span>}
