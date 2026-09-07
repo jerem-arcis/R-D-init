@@ -20,11 +20,6 @@ import { buildOptions, useAdminOptions } from '@/lib/adminLists';
 
 export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
-  // Écriture différée (canaux / sites de stockage) : affichage instantané des
-  // coches, un seul enregistrement réseau après le dernier clic. Repli sur onUpdate
-  // si le parent ne fournit pas de version débouncée.
-  const setDebounced = (field) => (value) =>
-    (onUpdateDebounced || onUpdate)?.({ [field]: value });
   const disabled = !isEditable;
 
   // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
@@ -81,7 +76,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
         <MultiSelectField
           label="Canaux de distribution"
           value={fiche.canaux_distribution}
-          onChange={setDebounced('canaux_distribution')}
+          onChange={set('canaux_distribution')}
           disabled={disabled}
           options={canauxOptions}
         />
@@ -143,7 +138,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           label="Sites de stockage"
           required
           value={fiche.sites_stockage}
-          onChange={setDebounced('sites_stockage')}
+          onChange={set('sites_stockage')}
           disabled={disabled}
           options={SITES_STOCKAGE}
           fromSAP

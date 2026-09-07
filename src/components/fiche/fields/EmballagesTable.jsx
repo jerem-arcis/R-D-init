@@ -9,7 +9,10 @@ import BufferedInput from './BufferedInput';
 // `gtinKey` = niveau correspondant dans buildGtinSet (calcul depuis le code article).
 const ROWS = [
   { key: 'uvc_block', label: 'UVC - Unité de vente', required: true, gtinKey: 'uvc' },
-  { key: 'element_block', label: 'Unité d\'élément', gtinKey: 'element' },
+  // U.élém : côté SAP l'unité « UE » ne porte QU'un compteur (nb d'éléments par
+  // UVC). Aucun poids / volume / dimension n'y est stocké → ces colonnes sont
+  // grisées (une saisie ne serait pas persistée). Cf. emballagesSap.js (ligne UE).
+  { key: 'element_block', label: 'Unité d\'élément', gtinKey: 'element', dimsNA: true },
   { key: 'couche_block', label: 'Couche', gtinKey: 'couche' },
   { key: 'colis_block', label: 'Colis', gtinKey: 'colis' },
   { key: 'palette_block', label: 'Palette', gtinKey: 'palette' },
@@ -112,18 +115,31 @@ export default function EmballagesTable({
                     {row.label}
                     {row.required && <span className="text-red-500 ml-0.5">*</span>}
                   </td>
-                  {COLS.map((c) => (
-                    <td key={c.sub} className="px-1.5 py-1.5">
-                      <BufferedInput
-                        type="number"
-                        step={c.type === 'int' ? '1' : '0.001'}
-                        value={block[c.sub] ?? ''}
-                        onCommit={(raw) => setCell(row.key, c.sub, c.type, raw)}
-                        disabled={!editable}
-                        className={`h-8 text-xs text-right ${!editable ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
-                      />
-                    </td>
-                  ))}
+                  {COLS.map((c) => {
+                    // U.élém : seul le compteur « unité » s'applique ; les colonnes
+                    // dimensions/poids/volume ne sont pas gérées par SAP → grisées.
+                    const dimNA = row.dimsNA && c.sub !== 'unite';
+                    const cellEditable = editable && !dimNA;
+                    return (
+                      <td key={c.sub} className="px-1.5 py-1.5">
+                        <BufferedInput
+                          type="number"
+                          step={c.type === 'int' ? '1' : '0.001'}
+                          value={dimNA ? '' : (block[c.sub] ?? '')}
+                          onCommit={(raw) => setCell(row.key, c.sub, c.type, raw)}
+                          disabled={!cellEditable}
+                          title={dimNA ? "Non géré par SAP pour l'unité d'élément" : undefined}
+                          className={`h-8 text-xs text-right ${
+                            dimNA
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                              : !cellEditable
+                              ? 'bg-slate-50 text-slate-500 cursor-not-allowed'
+                              : ''
+                          }`}
+                        />
+                      </td>
+                    );
+                  })}
                   {showGtin && (
                     <td className="px-1.5 py-1.5">
                       <BufferedInput

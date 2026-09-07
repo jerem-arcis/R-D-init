@@ -319,7 +319,7 @@ export default function FicheDetailV2() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('fabrication_negoce')}><SelectField label="Fabrication ou négoce" {...fld('fabrication_negoce')} options={FABRICATION_NEGOCE} /></Fld>
             <Fld visible={showField('origine_fabrication')}><SelectField label="Origine de fabrication" {...fld('origine_fabrication')} options={origineFabOptions} fromSAP /></Fld>
-            <Fld visible={showField('canaux_distribution')}><MultiSelectField label="Canaux de distribution" {...fld('canaux_distribution')} onChange={(v) => handleUpdateDebounced({ canaux_distribution: v })} options={canauxOptions} /></Fld>
+            <Fld visible={showField('canaux_distribution')}><MultiSelectField label="Canaux de distribution" {...fld('canaux_distribution')} onChange={(v) => handleUpdate({ canaux_distribution: v })} options={canauxOptions} /></Fld>
             <Fld visible={showField('secteur_activite')}><SelectField label="Secteur d'activité" {...fld('secteur_activite')} options={SECTEURS_ACTIVITE} /></Fld>
             <Fld visible={showField('marque')}><SelectField label="Marque" {...fld('marque')} options={MARQUES} fromSAP /></Fld>
             <Fld visible={showField('mention_produit')}><SelectField label="Mention produit" {...fld('mention_produit')} options={MENTIONS_PRODUIT} /></Fld>
@@ -399,7 +399,7 @@ export default function FicheDetailV2() {
         {/* ----- 8. Appro & stock ----- */}
         <Group visible={showGroup('appro_stock')} id="appro_stock" title="Approvisionnement & stock">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdateDebounced({ sites_stockage: v })} options={SITES_STOCKAGE} fromSAP /></Fld>
+            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdate({ sites_stockage: v })} options={SITES_STOCKAGE} fromSAP /></Fld>
             <Fld visible={showField('dluc_dluo_critique')}><TextField label="DLC/DLUO critique (j)" type="number" {...fld('dluc_dluo_critique')} /></Fld>
             <Fld visible={showField('gestion_par_lots')}><SelectField label="Gestion par lots" {...fld('gestion_par_lots')} options={GESTION_PAR_LOTS} /></Fld>
             <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot - usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
