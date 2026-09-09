@@ -108,18 +108,21 @@ describe('computeGroupeArticleDS', () => {
 });
 
 describe('computeTypeProduitDS', () => {
-  it('Aire -> NEGO', () => {
-    expect(computeTypeProduitDS('Aire')).toBe('NEGO');
+  it('types 4 et 5 (négoce) -> NEGO, quelle que soit l’usine d’origine', () => {
+    expect(computeTypeProduitDS({ type_demande: '4' })).toBe('NEGO');
+    expect(computeTypeProduitDS({ type_demande: '5', usine_origine: 'Bonloc' })).toBe('NEGO');
   });
-  it('toute autre usine -> PFIN', () => {
-    expect(computeTypeProduitDS('Bonloc')).toBe('PFIN');
-    expect(computeTypeProduitDS('Rivesaltes')).toBe('PFIN');
-    expect(computeTypeProduitDS('Agen')).toBe('PFIN');
+  it('autres types : NEGO si l’usine de fabrication d’origine contient « Aire »', () => {
+    expect(computeTypeProduitDS({ type_demande: '1', usine_origine: 'Aire' })).toBe('NEGO');
   });
-  it('valeur vide / absente -> PFIN', () => {
-    expect(computeTypeProduitDS('')).toBe('PFIN');
+  it('autres types + origine hors Aire -> PFIN', () => {
+    expect(computeTypeProduitDS({ type_demande: '1', usine_origine: 'Bonloc' })).toBe('PFIN');
+    expect(computeTypeProduitDS({ type_demande: '2', usine_origine: 'Agen' })).toBe('PFIN');
+    expect(computeTypeProduitDS({ type_demande: '3', usine_origine: 'Faux frais STEF Agen' })).toBe('PFIN');
+  });
+  it('valeurs vides / absentes -> PFIN', () => {
+    expect(computeTypeProduitDS({})).toBe('PFIN');
     expect(computeTypeProduitDS(undefined)).toBe('PFIN');
-    expect(computeTypeProduitDS(null)).toBe('PFIN');
   });
 });
 

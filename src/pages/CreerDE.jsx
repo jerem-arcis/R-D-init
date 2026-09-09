@@ -16,8 +16,8 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE, updateProjetFromDE, getProjetById, createDivisionProjet, PROJET_STATUT } from '@/api/projet';
-import { createDsFromForm, updateDsFromForm, getDsById, DS_STATUTS } from '@/api/ds';
+import { createProjetFromDE, updateProjetFromDE, getProjetById, createDivisionProjet, ensureDivisionProjet, PROJET_STATUT } from '@/api/projet';
+import { createDsFromForm, updateDsFromForm, getDsById, computeDsValues, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
@@ -1020,6 +1020,23 @@ export default function CreerDE() {
         const created = await createDsFromForm(dsData, ctx);
         projetId = created?.cr04e_projetid || '';
       }
+      // Ligne cr04e_divisionprojet rattachée au projet (comme la DE) : division de
+      // fabrication, type PROD — ou STOCK pour les types 4/5 (site de stockage,
+      // négoce). Idempotent (ensureDivisionProjet) : pas de doublon au ré-enregistrement.
+      // Non bloquant : la DS est déjà écrite, un échec ici ne l'annule pas.
+      if (projetId) {
+        const divisionFab = computeDsValues(dsData).divisionFab;
+        const typeDivision = isTypeNegoce(formData.autre_type_demande) ? 'STOCK' : 'PROD';
+        try {
+          await ensureDivisionProjet({ projetId, division: divisionFab, type: typeDivision });
+        } catch (err) {
+          toast({
+            title: 'Division-projet non enregistrée',
+            description: `La DS est enregistrée, mais l'écriture cr04e_divisionprojet a échoué : ${err?.message || 'erreur inconnue'}.`,
+            variant: 'destructive',
+          });
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['projets-de'] });
       toast({ title: 'DS enregistrée', description: statut === 'ds_brouillon' ? 'Brouillon enregistré.' : 'DS créée - en attente de création de code chapeau.' });
       navigate(createPageUrl('DemandesEtude'));
@@ -1037,7 +1054,10 @@ export default function CreerDE() {
     // PFIN, elle doit partir EXACTEMENT comme un produit fini de DE : mêmes valeurs
     // de GroupeAutorisation (PFIN), GroupeFraisGeneraux (FG) et TypeProduit (PFIN).
     // Une seule condition « Aire » pilote les 3 champs pour garantir leur cohérence.
-    const dsTypeProduit = computeTypeProduitDS(formData.autre_usine_fab);
+    const dsTypeProduit = computeTypeProduitDS({
+      type_demande: formData.autre_type_demande,
+      usine_origine: formData.autre_usine_origine,
+    });
     const dsNegoce = dsTypeProduit === 'NEGO';
     const body = {
       // GUID de la ligne cr04e_projet (DS déjà créée) : permet au flux de relire
@@ -2287,7 +2307,13 @@ export default function CreerDE() {
                   </Field>
                 </FormSection>
 
-                <FormSection title="Code d'origine" icon={Layers}>
+                {/* Négoce (types 4/5) : pas de « Code d'origine » (produit acheté,
+                    aucune usine de fabrication d'origine). On masque la grille ; le
+                    bloc « code chapeau » (obtention ADV) reste, d'où le titre dynamique
+                    et l'affichage de la section uniquement si elle a du contenu. */}
+                {(!isTypeNegoce(formData.autre_type_demande) || dsAttenteCode || codeChapeau || formData.code_chapeau) && (
+                <FormSection title={isTypeNegoce(formData.autre_type_demande) ? 'Code chapeau' : "Code d'origine"} icon={Layers}>
+                  {!isTypeNegoce(formData.autre_type_demande) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Usine de fabrication d'origine" required>
                       <Select
@@ -2322,6 +2348,7 @@ export default function CreerDE() {
                       />
                     )}
                   </div>
+                  )}
                   {/* Obtention du code chapeau : réservée à l'étape d'après (DS
                       créée, rouverte par l'ADV). Masqué pendant la création. */}
                   {dsAttenteCode && (
@@ -2403,6 +2430,7 @@ export default function CreerDE() {
                     </div>
                   )}
                 </FormSection>
+                )}
 
                 <FormSection title="Produit" icon={Settings2}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -2419,9 +2447,9 @@ export default function CreerDE() {
 
                     {isTypeNegoce(formData.autre_type_demande) ? (
                       <ReadOnlyField
-                        label="Usine de fabrication"
+                        label="Site de stockage"
                         value="Produit négoce (2820)"
-                        hint="Forcé pour les types 4 et 5"
+                        hint="Types 4 et 5 : site de stockage (pas de fabrication), division 2820"
                       />
                     ) : (
                       <Field label="Usine de fabrication" required>

@@ -32,6 +32,7 @@ export const DS_STATUTS = ['ds_brouillon', 'ds_attente_cc', 'ds_validee'];
 export function computeDsValues(formData) {
   const ctx = {
     usine: formData.autre_usine_fab,
+    usine_origine: formData.autre_usine_origine,
     type_demande: formData.autre_type_demande,
     activite: formData.autre_activite,
     agen_type: formData.autre_agen_type,
@@ -60,7 +61,7 @@ export function computeDsValues(formData) {
     centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
     secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
     // TypeProduit SAP : Aire → NEGO, sinon PFIN (usine de fabrication).
-    typeProduit: computeTypeProduitDS(ctx.usine),
+    typeProduit: computeTypeProduitDS({ type_demande: ctx.type_demande, usine_origine: ctx.usine_origine }),
     // Groupe article (division) : déduit de l'usine de fabrication, comme la DE
     // (Bonloc → PF-B, Rivesaltes → PF-F, Agen → PF-AS) ; repli « PF » pour les cas
     // sans règle (Aire, Agen FF STEF, négoce). Override manuel prioritaire.

@@ -56,17 +56,19 @@ describe('toFormData — résolution des lookups à la réouverture', () => {
 });
 
 describe('type de produit SAP (cr04e_typedeproduit)', () => {
-  it('une DE est toujours PFIN ; une DS suit la règle Aire→NEGO / sinon PFIN', () => {
+  it('une DE est toujours PFIN ; une DS = NEGO si type 4/5 ou usine d’origine contient Aire', () => {
     expect(buildProjetPayload({}).cr04e_typedeproduit).toBe('PFIN');
-    // Usine de fabrication = Aire → négoce.
-    expect(buildDsPayload({ autre_usine_fab: 'Aire' }).cr04e_typedeproduit).toBe('NEGO');
-    // Toute autre usine (ou aucune) → produit fini.
-    expect(buildDsPayload({ autre_usine_fab: 'Agen' }).cr04e_typedeproduit).toBe('PFIN');
+    // Types 4/5 (négoce) → NEGO, quelle que soit l'usine.
+    expect(buildDsPayload({ autre_type_demande: '4' }).cr04e_typedeproduit).toBe('NEGO');
+    // Usine de fabrication d'origine contenant « Aire » → NEGO.
+    expect(buildDsPayload({ autre_usine_origine: 'Aire' }).cr04e_typedeproduit).toBe('NEGO');
+    // Autre type + origine hors Aire (ou rien) → produit fini.
+    expect(buildDsPayload({ autre_type_demande: '1', autre_usine_origine: 'Agen' }).cr04e_typedeproduit).toBe('PFIN');
     expect(buildDsPayload({}).cr04e_typedeproduit).toBe('PFIN');
   });
 
   it('la valeur est posée quel que soit le statut (dont validation)', () => {
     expect(buildProjetPayload({}, { statut: 'dl_attente_validation_cdg' }).cr04e_typedeproduit).toBe('PFIN');
-    expect(buildDsPayload({ autre_usine_fab: 'Aire' }, { statut: 'ds_validee' }).cr04e_typedeproduit).toBe('NEGO');
+    expect(buildDsPayload({ autre_type_demande: '5' }, { statut: 'ds_validee' }).cr04e_typedeproduit).toBe('NEGO');
   });
 });

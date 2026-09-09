@@ -52,12 +52,14 @@ export const codeDivisionFabrication = ({ type_demande, usine, agen_type } = {})
 export const computeGroupeArticleDS = (divisionFab) =>
   computeGroupeArticleDE(divisionFab) || 'PF';
 
-// Type de produit SAP (TypeProduit / cr04e_typedeproduit) d'une DS : « Aire » est
-// du négoce (NEGO), tout le reste est du produit fini (PFIN). Miroir de la règle
-// DE Aire→NEGO/sinon PFIN (cf. computeGroupeAutorisationDE dans deRules.js), mais
-// clé sur le NOM de l'usine de fabrication et non sur la division.
-export const computeTypeProduitDS = (usineFab) =>
-  String(usineFab ?? '').trim() === 'Aire' ? 'NEGO' : 'PFIN';
+// Type de produit SAP (TypeProduit / cr04e_typedeproduit) d'une DS : NEGO (négoce)
+// dès que la demande est un type 4/5, OU que l'« Usine de fabrication d'origine »
+// contient « Aire » ; sinon PFIN (produit fini). GroupeAutorisation /
+// GroupeFraisGeneraux suivent cette même bascule (cf. triggerSapSendDs).
+export const computeTypeProduitDS = ({ type_demande, usine_origine } = {}) =>
+  isTypeNegoce(type_demande) || String(usine_origine ?? '').includes('Aire')
+    ? 'NEGO'
+    : 'PFIN';
 
 // ---- Re-déduction inverse (réouverture d'une DS depuis Dataverse) ----
 // On ne persiste que les valeurs SAP calculées : on retrouve les saisies à partir

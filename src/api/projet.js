@@ -121,6 +121,28 @@ export async function createDivisionProjet({ projetId, division, type } = {}) {
   return unwrap(result, 'Création division-projet');
 }
 
+// Écrit une ligne cr04e_divisionprojet SEULEMENT si elle n'existe pas déjà pour ce
+// projet (même division ET même type) — idempotent, évite les doublons quand la DS
+// est ré-enregistrée / renvoyée. Division vide -> no-op (rien à écrire).
+export async function ensureDivisionProjet({ projetId, division, type } = {}) {
+  if (!projetId) return null;
+  const div = trimOrUndef(division);
+  const t = trimOrUndef(type);
+  if (div === undefined) return null;
+  const safeDiv = div.replace(/'/g, "''");
+  const filter =
+    `_cr04e_projet_value eq ${projetId} and cr04e_division eq '${safeDiv}'` +
+    (t ? ` and cr04e_type eq '${t.replace(/'/g, "''")}'` : '');
+  const existing = await Cr04e_divisionprojetsService.getAll({
+    filter,
+    select: ['cr04e_divisionprojetid'],
+    top: 1,
+  });
+  const rows = unwrap(existing, 'Lecture division-projet') ?? [];
+  if (rows.length) return null; // déjà présente : on ne recrée pas
+  return createDivisionProjet({ projetId, division: div, type: t });
+}
+
 // Mappe une ligne cr04e_projet (Dataverse) vers la forme formData attendue par le
 // formulaire DE. Sert à rouvrir une DE préremplie depuis Dataverse (redirection
 // mail « en attente de code chapeau », ou reprise sur un autre poste).
