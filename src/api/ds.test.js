@@ -4,7 +4,7 @@ import { buildDsPayload, DS_STATUTS } from './ds';
 const sapOptions = {
   divisions: [{ id: 'dBon', value: '2886' }, { id: 'dAire', value: '2859' }],
   classes_valorisation: [{ id: 'c7012', value: '7012' }, { id: 'c2038', value: '2038' }],
-  familles_produit: [{ id: 'h22', value: '22\tDE\tDE\tDE' }],
+  familles_produit: [{ id: 'h22', value: '22\tDE\tDE' }],
   centres_profit: [{ id: 'cp22', value: '22PF' }],
   groupes_article: [{ id: 'gPFB', value: 'PF-B' }, { id: 'gPFAS', value: 'PF-AS' }, { id: 'gPF', value: 'PF' }],
 };

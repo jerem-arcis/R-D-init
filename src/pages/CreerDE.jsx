@@ -24,12 +24,12 @@ import { decimalStr, toNumber } from '@/api/_odata';
 
 // Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
 // (formData.famille_produit / dsHierarchie) comme source, mais on normalise les
-// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE   DE", pas des
+// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE", pas des
 // tabulations (confirmé par le payload SAP CreateEntry qui aboutit). Le référentiel
 // Dataverse (cr04e_hierarchieproduits) reste stocké en tabulations pour le dropdown /
 // lookup ; seul le payload sortant change. On découpe sur les séparateurs (tabulations
 // réelles OU "\t" littéraux, ou espaces déjà présents) puis on rejoint par 3 espaces.
-// Idempotent sur une valeur déjà formatée. Le nombre de « DE » (3) vient de la source
+// Idempotent sur une valeur déjà formatée. Le nombre de « DE » (2) vient de la source
 // (computeHierarchieDE/DS) ; ici on ne touche qu'aux séparateurs.
 const hierarchieToSpaces = (v) =>
   String(v ?? '')

@@ -637,7 +637,10 @@ export default function DemandesEtude() {
                         const localId = localIdFor(de);
                         // Cible d'ouverture de la ligne, selon le statut :
                         //  - Brouillon : édition de la DE locale (si présente dans ce
-                        //    navigateur), sinon formulaire vierge.
+                        //    navigateur), SINON chargement Dataverse par projet_id — la
+                        //    ligne cr04e_projet existe déjà (ex. envoi SAP échoué, ou
+                        //    reprise sur un autre poste). Repartir de cette ligne évite
+                        //    de recréer un doublon au renvoi (le projet_id est réutilisé).
                         //  - DS (brouillon / attente CC / validée) : chargement par
                         //    projet_id depuis Dataverse.
                         //  - « En attente de code chapeau » : formulaire DE prérempli
@@ -648,7 +651,7 @@ export default function DemandesEtude() {
                         //    (évite un détournement vers un brouillon local obsolète).
                         const target =
                           de.statut === 'de_brouillon'
-                            ? localId ? `CreerDE?id=${localId}` : 'CreerDE'
+                            ? localId ? `CreerDE?id=${localId}` : `CreerDE?projet_id=${de.id}`
                             : de.statut === 'ds_brouillon' || de.statut === 'ds_attente_cc' || de.statut === 'ds_validee'
                               ? `CreerDE?projet_id=${de.id}`
                               : de.statut === 'de_attente_cc'
