@@ -22,21 +22,6 @@ import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
 
-// Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
-// (formData.famille_produit / dsHierarchie) comme source, mais on normalise les
-// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE", pas des
-// tabulations (confirmé par le payload SAP CreateEntry qui aboutit). Le référentiel
-// Dataverse (cr04e_hierarchieproduits) reste stocké en tabulations pour le dropdown /
-// lookup ; seul le payload sortant change. On découpe sur les séparateurs (tabulations
-// réelles OU "\t" littéraux, ou espaces déjà présents) puis on rejoint par 3 espaces.
-// Idempotent sur une valeur déjà formatée. Le nombre de « DE » (2) vient de la source
-// (computeHierarchieDE/DS) ; ici on ne touche qu'aux séparateurs.
-const hierarchieToSpaces = (v) =>
-  String(v ?? '')
-    .trim()
-    .split(/(?:\\t|\s)+/)
-    .filter(Boolean)
-    .join('   ');
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -71,7 +56,6 @@ import {
   LABEL_DIVISION_ORIGINE_NEGOCE,
   codeDivisionFabrication,
   computeGroupeArticleDS,
-  computeTypeProduitDS,
   computeHierarchieDS,
   computeClasseValoDS,
   computeCentreProfitDS,
@@ -1054,55 +1038,18 @@ export default function CreerDE() {
   };
 
   const triggerSapSendDs = async (effectiveCode, projetId) => {
-    // EAN calculés à l'envoi (idem DE) : toujours transmis, bloc masqué ou non.
-    const eans = buildEANSet(effectiveCode || codeChapeau || formData.code_chapeau);
-    // Type de produit : « Aire » → NEGO (négoce), sinon PFIN. Dès qu'une DS est
-    // PFIN, elle doit partir EXACTEMENT comme un produit fini de DE : mêmes valeurs
-    // de GroupeAutorisation (PFIN), GroupeFraisGeneraux (FG) et TypeProduit (PFIN).
-    // Une seule condition « Aire » pilote les 3 champs pour garantir leur cohérence.
-    const dsTypeProduit = computeTypeProduitDS({
-      type_demande: formData.autre_type_demande,
-      usine_origine: formData.autre_usine_origine,
-    });
-    const dsNegoce = dsTypeProduit === 'NEGO';
+    // Le flux relit TOUTE la ligne cr04e_projet dans Dataverse à partir de l'ID
+    // (division, EAN, profil, type produit… déjà écrits à la création de la DS).
+    // Seul le POIDS NET reste dans le payload : décimal à POINT ("1.598"), car une
+    // virgule fait échouer SAP (cf. mémo décimal / Accept-Language).
     const body = {
-      // GUID de la ligne cr04e_projet (DS déjà créée) : permet au flux de relire
-      // la ligne au lieu de se limiter aux champs. Toujours présent ici (le bouton
-      // d'envoi SAP n'apparaît que pour une DS ayant un projet_id).
       ID: projetId || '',
-      CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
-      CodePJ: null, // DS : toujours null (demande métier — traité côté flux/SAP)
-      NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
-      SecteurActivite: dsSecteur || '',
       PoidsNet: decimalStr(formData.autre_poids_net_uv),
-      ZUG: dsZug === '' ? '' : String(dsZug),
-      DivisionUsine: dsDivisionFab || '',
-      ClasseValorisation: dsClasseValo || '',
-      CentreProfit: dsCentreProfit || '',
-      // Négoce (Aire) → NEGO/NEGO ; sinon on envoie comme un PFIN de DE → PFIN/FG.
-      GroupeAutorisation: dsNegoce ? 'NEGO' : 'PFIN',
-      GroupeFraisGeneraux: dsNegoce ? 'NEGO' : 'FG',
-      // = valeur enregistrée en BDD (lookup Groupe article déduit de l'usine) ;
-      // repli « PF » pour Aire / Agen FF STEF / négoce (cas sans règle).
-      GroupeArticleDivision: dsGroupeArticle,
-      TypeProduit: dsTypeProduit,
-      'ProfilFabricRépét': dsProfilFabricRepet,
-      // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
-      // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
-      EANCAR: eans.ean_carton || formData.ean_carton || '',
-      EANZCO: eans.ean_couche || formData.ean_couche || '',
-      EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
-    // Power Automate n'aime pas les chaînes vides : on remplace toute valeur
-    // vide/absente par le TEXTE « null » pour envoyer un objet complet.
-    const bodyComplet = Object.fromEntries(
-      Object.entries(body).map(([k, v]) => [k, v === '' || v == null ? 'null' : v]),
-    );
     // Même contrat que la DE (triggerSapSend) : ne lève pas, renvoie
     // { ok, title, message } pour piloter la pop-up centrale.
     try {
-      const res = await postFlowRaw(FLUX.SAP_SEND, bodyComplet);
+      const res = await postFlowRaw(FLUX.SAP_SEND, body);
       if (res.status === 200) {
         return {
           ok: true,
@@ -1367,33 +1314,13 @@ export default function CreerDE() {
   //  - ZUG : entier (poids × 1000) sans bruit flottant.
   // Non bloquant : un échec n'annule pas la validation.
   const triggerSapSend = async (codeChapeau, projetId) => {
-    // EAN calculés à l'envoi (325151 + 4 chiffres du code chapeau) : toujours
-    // transmis, même si le bloc « Besoin des codes EAN » est masqué/inactif.
-    const eans = buildEANSet(codeChapeau);
+    // Le flux relit TOUTE la ligne cr04e_projet dans Dataverse à partir de l'ID
+    // (division, EAN, profil, hiérarchie… déjà écrits avant l'envoi). Seul le POIDS
+    // NET reste dans le payload : envoyé en décimal à POINT ("1.598"), car une
+    // virgule fait échouer SAP (cf. mémo décimal / Accept-Language).
     const body = {
-      // GUID de la ligne cr04e_projet écrite juste avant (étape bloquante) :
-      // permet au flux de relire la ligne au lieu de se limiter aux champs.
       ID: projetId || '',
-      CodeChapeau: codeChapeau || '',
-      CodePJ: formData.code_projet || '',
-      NomProduit: formData.designation_article || '',
-      HierarchieProduitFamille: hierarchieToSpaces(formData.famille_produit),
-      SecteurActivite: formData.marque || '',
       PoidsNet: decimalStr(formData.poids_net),
-      ZUG: zug === '' || zug == null ? '' : String(Math.round(Number(zug))),
-      DivisionUsine: formData.division || '',
-      ClasseValorisation: formData.classe_valorisation || '',
-      CentreProfit: formData.centre_profit || '',
-      GroupeAutorisation: formData.groupe_autorisation || '',
-      GroupeFraisGeneraux: formData.groupe_frais_generaux || '',
-      GroupeArticleDivision: formData.groupe_article || '',
-      TypeProduit: 'PFIN',
-      'ProfilFabricRépét': computeProfilFabricRepetDE(formData.division),
-      // Codes EAN (CAR = carton, ZCO = couche, PAL = palette) calculés depuis le
-      // code chapeau. Repli sur formData si le calcul est vide (< 4 chiffres).
-      EANCAR: eans.ean_carton || formData.ean_carton || '',
-      EANZCO: eans.ean_couche || formData.ean_couche || '',
-      EANPAL: eans.ean_palette || formData.ean_palette || '',
     };
     // Renvoie { ok, title, message } — le pilotage de la pop-up (loading/vert/
     // rouge) est fait par handleSubmit, pas ici.
@@ -1443,13 +1370,6 @@ export default function CreerDE() {
     (formData[ovrKey] || '') || computed || formData[snapKey] || '';
   const dsDivisionOrigine = dsOvr('_ds_division_origine_ovr', codeDivisionOrigine(formData.autre_usine_origine), '_ds_division_origine');
   const dsDivisionFab = dsOvr('_ds_division_fab_ovr', codeDivisionFabrication(dsCtx), '_ds_division_fab');
-  // Profil fabric répét (DS) : même règle que la DE, mais calculée depuis la
-  // division de fabrication RÉELLE de l'usine (Agen→Z006, Bonloc→Z008,
-  // Rivesaltes→Z010). On omet type_demande pour éviter la bascule négoce 2820
-  // (qui ne mappe aucun profil et renverrait vide).
-  const dsProfilFabricRepet = computeProfilFabricRepetDE(
-    codeDivisionFabrication({ usine: dsCtx.usine, agen_type: dsCtx.agen_type }),
-  );
   const dsHierarchie = dsOvr('_ds_hierarchie_ovr', computeHierarchieDS(formData.autre_activite), '_ds_hierarchie');
   // Classe de valorisation DS : calcul usine/activité (cf. dsRules), surchargeable
   // manuellement et repli sur la valeur persistée d'une DS rouverte — champ débloqué.
@@ -1522,11 +1442,6 @@ export default function CreerDE() {
   const zugAuto = poidsNetNum == null ? '' : Math.round(poidsNetNum * 1000);
   const zugManuel = toNumber(formData.zug);
   const zug = formData.zug === '' || formData.zug == null ? zugAuto : (zugManuel ?? '');
-
-  // ZUG côté DS : basé sur le poids net UV de la DS (autre_poids_net_uv, en kg),
-  // même règle que la DE (× 1000, arrondi). La DS n'a pas de champ poids_net.
-  const dsPoidsNum = toNumber(formData.autre_poids_net_uv);
-  const dsZug = dsPoidsNum == null ? '' : Math.round(dsPoidsNum * 1000);
 
   // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
   // Liste Division restreinte aux 4 sites de fabrication.
