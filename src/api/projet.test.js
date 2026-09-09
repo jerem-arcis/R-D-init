@@ -72,3 +72,24 @@ describe('type de produit SAP (cr04e_typedeproduit)', () => {
     expect(buildDsPayload({ autre_type_demande: '5' }, { statut: 'ds_validee' }).cr04e_typedeproduit).toBe('NEGO');
   });
 });
+
+describe('codes EAN écrits dans les colonnes projet (cr04e_eancar/eanzco/eanpal)', () => {
+  it('DE : EAN calculés depuis le code chapeau (ctx.codeChapeau)', () => {
+    const p = buildProjetPayload({}, { codeChapeau: '1124' });
+    expect(p.cr04e_eancar).toBe('03251511124014'); // carton
+    expect(p.cr04e_eanzco).toBe('03251511124021'); // couche
+    expect(p.cr04e_eanpal).toBe('03251511124038'); // palette
+  });
+  it('DS : EAN calculés depuis le code chapeau (formData.code_chapeau)', () => {
+    const p = buildDsPayload({ code_chapeau: '1124', autre_designation: 'X' });
+    expect(p.cr04e_eancar).toBe('03251511124014');
+    expect(p.cr04e_eanzco).toBe('03251511124021');
+    expect(p.cr04e_eanpal).toBe('03251511124038');
+  });
+  it('sans code chapeau exploitable : colonnes EAN omises', () => {
+    const p = buildProjetPayload({});
+    expect('cr04e_eancar' in p).toBe(false);
+    expect('cr04e_eanzco' in p).toBe(false);
+    expect('cr04e_eanpal' in p).toBe(false);
+  });
+});

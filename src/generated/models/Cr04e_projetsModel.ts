@@ -34,6 +34,9 @@ export interface Cr04e_projetsBase {
   cr04e_divisionimport?: string;
   "cr04e_DivisionUsine@odata.bind"?: string;
   cr04e_dureedevie?: string;
+  cr04e_eancar?: string;
+  cr04e_eanpal?: string;
+  cr04e_eanzco?: string;
   cr04e_eclatementgroupedemarchandise?: string;
   cr04e_fluxenvoiede?: string;
   cr04e_fluxenvoiefl?: string;
@@ -59,6 +62,7 @@ export interface Cr04e_projetsBase {
   cr04e_oc2groupestatistiquearticle?: string;
   cr04e_originedefabrication?: string;
   cr04e_poidsnet?: number;
+  cr04e_profildefabricationrepetitive?: string;
   cr04e_projetid: string;
   cr04e_qteprevisionnelleannuelle?: number;
   cr04e_reseau?: string;

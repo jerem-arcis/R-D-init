@@ -2,6 +2,7 @@ import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated'
 import { lookupBind, codeFromLookupValue } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
 import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
+import { buildEANSet } from '@/lib/ean';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
 // Suffixe d'annotation OData portant le libellé lisible d'un lookup (ex.
@@ -67,6 +68,14 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
     // Le pendant DS (négoce) vaut NEGO, cf. buildDsPayload.
     cr04e_typedeproduit: 'PFIN',
   };
+
+  // Codes EAN (GS1) déduits du code chapeau, écrits dans les colonnes dédiées de
+  // cr04e_projet pour que le flux les relise depuis Dataverse (au lieu du payload).
+  // Repli sur formData si le calcul est vide (< 4 chiffres). Vides -> omis.
+  const eans = buildEANSet(codeChapeau);
+  payload.cr04e_eancar = trimOrUndef(eans.ean_carton || formData.ean_carton);
+  payload.cr04e_eanzco = trimOrUndef(eans.ean_couche || formData.ean_couche);
+  payload.cr04e_eanpal = trimOrUndef(eans.ean_palette || formData.ean_palette);
 
   for (const [key, field, bindProp] of PROJET_LOOKUPS) {
     const bind = lookupBind(key, trimOrUndef(formData[field]), sapOptions[key]);

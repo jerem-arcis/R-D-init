@@ -191,6 +191,30 @@
           "x-ms-schema-name": "cr04e_Dureedevie",
           "maxLength": 100
         },
+        "cr04e_eancar": {
+          "type": "string",
+          "title": "EAN CAR",
+          "x-ms-dataverse-attribute": "cr04e_eancar",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_EANCAR",
+          "maxLength": 100
+        },
+        "cr04e_eanpal": {
+          "type": "string",
+          "title": "EAN PAL",
+          "x-ms-dataverse-attribute": "cr04e_eanpal",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_EANPAL",
+          "maxLength": 100
+        },
+        "cr04e_eanzco": {
+          "type": "string",
+          "title": "EAN ZCO",
+          "x-ms-dataverse-attribute": "cr04e_eanzco",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_EANZCO",
+          "maxLength": 100
+        },
         "cr04e_eclatementgroupedemarchandise": {
           "type": "string",
           "title": "Éclatement groupe de marchandise",
@@ -405,6 +429,14 @@
           "x-ms-dataverse-attribute": "cr04e_poidsnet",
           "x-ms-dataverse-type": "DecimalType",
           "x-ms-schema-name": "cr04e_Poidsnet"
+        },
+        "cr04e_profildefabricationrepetitive": {
+          "type": "string",
+          "title": "Profil de fabrication répétitive",
+          "x-ms-dataverse-attribute": "cr04e_profildefabricationrepetitive",
+          "x-ms-dataverse-type": "StringType",
+          "x-ms-schema-name": "cr04e_Profildefabricationrepetitive",
+          "maxLength": 100
         },
         "cr04e_projetid": {
           "type": "string",

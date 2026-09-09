@@ -18,6 +18,7 @@ import {
   agenChoixFromCentre,
 } from '@/lib/dsRules';
 
+import { buildEANSet } from '@/lib/ean';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
 export const DS_STATUTS = ['ds_brouillon', 'ds_attente_cc', 'ds_validee'];
@@ -94,6 +95,14 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
     // par computeTypeProduitDS (cf. dsRules) ; le pendant DE vaut toujours PFIN.
     cr04e_typedeproduit: c.typeProduit,
   };
+
+  // Codes EAN (GS1) déduits du code chapeau, écrits dans les colonnes dédiées de
+  // cr04e_projet (comme la DE) pour que le flux les relise depuis Dataverse. Repli
+  // sur formData si le calcul est vide (< 4 chiffres). Vides -> omis.
+  const eans = buildEANSet(formData.code_chapeau);
+  payload.cr04e_eancar = trimOrUndef(eans.ean_carton || formData.ean_carton);
+  payload.cr04e_eanzco = trimOrUndef(eans.ean_couche || formData.ean_couche);
+  payload.cr04e_eanpal = trimOrUndef(eans.ean_palette || formData.ean_palette);
 
   const divBind = lookupBind('divisions', c.divisionFab, sapOptions.divisions);
   if (divBind) payload['cr04e_DivisionUsine@odata.bind'] = divBind;
