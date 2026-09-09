@@ -23,19 +23,17 @@ import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
 
 // Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
-// (formData.famille_produit / dsHierarchie) comme source, mais on normalise les
-// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE", pas des
-// tabulations. La valeur du référentiel Dataverse (cr04e_hierarchieproduits) reste
-// stockée en tabulations pour le dropdown / lookup ; seul le payload sortant change.
-// On découpe sur les séparateurs (tabulations réelles OU "\t" littéraux, ou espaces
-// déjà présents) puis on rejoint par 3 espaces. Idempotent sur une valeur déjà
-// formatée.
-const hierarchieToSpaces = (v) =>
+// (formData.famille_produit / dsHierarchie) comme source. SAP attend des
+// TABULATIONS entre les segments ("22\tDE\tDE\tDE") — comme le référentiel
+// Dataverse (cr04e_hierarchieproduits). On normalise malgré tout les séparateurs
+// (tabulations réelles, "\t" littéraux ou espaces d'anciens brouillons) puis on
+// rejoint par une VRAIE tabulation. Idempotent sur une valeur déjà formatée.
+const hierarchieToTabs = (v) =>
   String(v ?? '')
     .trim()
     .split(/(?:\\t|\s)+/)
     .filter(Boolean)
-    .join('   ');
+    .join('\t');
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -1046,7 +1044,7 @@ export default function CreerDE() {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       CodePJ: null, // DS : toujours null (demande métier — traité côté flux/SAP)
       NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
+      HierarchieProduitFamille: hierarchieToTabs(dsHierarchie),
       SecteurActivite: dsSecteur || '',
       PoidsNet: decimalStr(formData.autre_poids_net_uv),
       ZUG: dsZug === '' ? '' : String(dsZug),
@@ -1346,7 +1344,7 @@ export default function CreerDE() {
       CodeChapeau: codeChapeau || '',
       CodePJ: formData.code_projet || '',
       NomProduit: formData.designation_article || '',
-      HierarchieProduitFamille: hierarchieToSpaces(formData.famille_produit),
+      HierarchieProduitFamille: hierarchieToTabs(formData.famille_produit),
       SecteurActivite: formData.marque || '',
       PoidsNet: decimalStr(formData.poids_net),
       ZUG: zug === '' || zug == null ? '' : String(Math.round(Number(zug))),
