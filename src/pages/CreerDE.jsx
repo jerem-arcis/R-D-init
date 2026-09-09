@@ -1027,8 +1027,14 @@ export default function CreerDE() {
       if (projetId) {
         const divisionFab = computeDsValues(dsData).divisionFab;
         const typeDivision = isTypeNegoce(formData.autre_type_demande) ? 'STOCK' : 'PROD';
+        // Profil fabric répét : calculé sur la division de fabrication RÉELLE de
+        // l'usine (Agen→Z006, Bonloc→Z008, Rivesaltes→Z010), y compris en négoce —
+        // d'où codeDivisionFabrication SANS type_demande (sinon 2820 → profil vide).
+        const profil = computeProfilFabricRepetDE(
+          codeDivisionFabrication({ usine: formData.autre_usine_fab, agen_type: formData.autre_agen_type }),
+        );
         try {
-          await ensureDivisionProjet({ projetId, division: divisionFab, type: typeDivision });
+          await ensureDivisionProjet({ projetId, division: divisionFab, type: typeDivision, profilFabricRepet: profil });
         } catch (err) {
           toast({
             title: 'Division-projet non enregistrée',
@@ -1744,7 +1750,12 @@ export default function CreerDE() {
       // le projet est déjà enregistré, un échec ici ne stoppe pas l'envoi SAP.
       if (projetId) {
         try {
-          await createDivisionProjet({ projetId, division: formData.division, type: 'PROD' });
+          await createDivisionProjet({
+            projetId,
+            division: formData.division,
+            type: 'PROD',
+            profilFabricRepet: computeProfilFabricRepetDE(formData.division),
+          });
         } catch (err) {
           toast({
             title: 'Division-projet non enregistrée',

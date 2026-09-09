@@ -106,17 +106,20 @@ export async function createProjetFromDE(formData, ctx) {
 
 // Crée une ligne cr04e_divisionprojet rattachée au projet via la relation lookup
 // cr04e_Projet. `division` = code Division (Usine) ; `type` = rôle de la ligne
-// (ex. « PROD »). À écrire APRÈS la création du projet (le lookup a besoin du GUID).
-// Les champs vides sont omis. Lève en cas d'échec (l'appelant décide si bloquant).
-export async function createDivisionProjet({ projetId, division, type } = {}) {
+// (ex. « PROD ») ; `profilFabricRepet` = profil de fabrication répétitive SAP
+// (Z006/Z008/Z010) porté par la division. À écrire APRÈS la création du projet
+// (le lookup a besoin du GUID). Les champs vides sont omis. Lève en cas d'échec.
+export async function createDivisionProjet({ projetId, division, type, profilFabricRepet } = {}) {
   if (!projetId) return null;
   const payload = {
     'cr04e_Projet@odata.bind': `/cr04e_projets(${projetId})`,
   };
   const div = trimOrUndef(division);
   const t = trimOrUndef(type);
+  const profil = trimOrUndef(profilFabricRepet);
   if (div !== undefined) payload.cr04e_division = div;
   if (t !== undefined) payload.cr04e_type = t;
+  if (profil !== undefined) payload.cr04e_profilfabricrepet = profil;
   const result = await Cr04e_divisionprojetsService.create(payload);
   return unwrap(result, 'Création division-projet');
 }
@@ -124,7 +127,7 @@ export async function createDivisionProjet({ projetId, division, type } = {}) {
 // Écrit une ligne cr04e_divisionprojet SEULEMENT si elle n'existe pas déjà pour ce
 // projet (même division ET même type) — idempotent, évite les doublons quand la DS
 // est ré-enregistrée / renvoyée. Division vide -> no-op (rien à écrire).
-export async function ensureDivisionProjet({ projetId, division, type } = {}) {
+export async function ensureDivisionProjet({ projetId, division, type, profilFabricRepet } = {}) {
   if (!projetId) return null;
   const div = trimOrUndef(division);
   const t = trimOrUndef(type);
@@ -140,7 +143,7 @@ export async function ensureDivisionProjet({ projetId, division, type } = {}) {
   });
   const rows = unwrap(existing, 'Lecture division-projet') ?? [];
   if (rows.length) return null; // déjà présente : on ne recrée pas
-  return createDivisionProjet({ projetId, division: div, type: t });
+  return createDivisionProjet({ projetId, division: div, type: t, profilFabricRepet });
 }
 
 // Mappe une ligne cr04e_projet (Dataverse) vers la forme formData attendue par le

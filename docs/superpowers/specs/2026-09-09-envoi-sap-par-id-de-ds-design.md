@@ -33,6 +33,11 @@ Pour la DE et la DS :
      `ds_attente_cc` au moment de l'envoi ADV.
    - Tables annexes : `cr04e_divisionprojet` (PROD, ou STOCK pour DS 4/5), et toute
      autre table annexe déjà gérée (libellés pays, canaux, sites… selon le cas).
+     La ligne `cr04e_divisionprojet` porte aussi le **`ProfilFabricRépét`**
+     (`cr04e_profilfabricrepet` : Z006/Z008/Z010 selon la division, cf.
+     `computeProfilFabricRepetDE`) — pour DE ET DS, afin que le flux le relise depuis
+     la table division. La table expose aussi `cr04e_nomnclntarifdouan` et
+     `cr04e_tempsdereception` (à alimenter au besoin, hors périmètre actuel).
    - Les champs calculés sont persistés via `buildProjetPayload` / `buildDsPayload`
      (inchangé).
 3. **Envoi** : `postFlowRaw(FLUX.SAP_SEND, { ID: projetId })` — plus de gros payload.
