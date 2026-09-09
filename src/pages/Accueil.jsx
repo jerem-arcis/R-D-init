@@ -326,7 +326,6 @@ export default function Accueil() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary border-b-2 border-primary">
-                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Identifiant</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code article</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Libellé article</TableHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Avancement</TableHead>
@@ -343,9 +342,6 @@ export default function Accueil() {
                     key={fiche.id}
                     className="hover:bg-secondary/50 transition-colors cursor-pointer group border-b border-border"
                   >
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {fiche.id?.slice(0, 8)}...
-                    </TableCell>
                     <TableCell className="font-semibold text-foreground">
                       {fiche.code_article || <span className="text-muted-foreground/60">-</span>}
                     </TableCell>
