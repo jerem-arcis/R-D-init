@@ -23,17 +23,20 @@ import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
 import { decimalStr, toNumber } from '@/api/_odata';
 
 // Hiérarchie produit vers SAP : on GARDE la valeur du champ Dataverse
-// (formData.famille_produit / dsHierarchie) comme source. SAP attend des
-// TABULATIONS entre les segments ("22\tDE\tDE\tDE") — comme le référentiel
-// Dataverse (cr04e_hierarchieproduits). On normalise malgré tout les séparateurs
-// (tabulations réelles, "\t" littéraux ou espaces d'anciens brouillons) puis on
-// rejoint par une VRAIE tabulation. Idempotent sur une valeur déjà formatée.
-const hierarchieToTabs = (v) =>
+// (formData.famille_produit / dsHierarchie) comme source, mais on normalise les
+// séparateurs en TROIS ESPACES à l'envoi — SAP attend "22   DE   DE   DE", pas des
+// tabulations (confirmé par le payload SAP CreateEntry qui aboutit). Le référentiel
+// Dataverse (cr04e_hierarchieproduits) reste stocké en tabulations pour le dropdown /
+// lookup ; seul le payload sortant change. On découpe sur les séparateurs (tabulations
+// réelles OU "\t" littéraux, ou espaces déjà présents) puis on rejoint par 3 espaces.
+// Idempotent sur une valeur déjà formatée. Le nombre de « DE » (3) vient de la source
+// (computeHierarchieDE/DS) ; ici on ne touche qu'aux séparateurs.
+const hierarchieToSpaces = (v) =>
   String(v ?? '')
     .trim()
     .split(/(?:\\t|\s)+/)
     .filter(Boolean)
-    .join('\t');
+    .join('   ');
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
@@ -1044,7 +1047,7 @@ export default function CreerDE() {
       CodeChapeau: effectiveCode || codeChapeau || formData.code_chapeau || '',
       CodePJ: null, // DS : toujours null (demande métier — traité côté flux/SAP)
       NomProduit: formData.autre_designation || '',
-      HierarchieProduitFamille: hierarchieToTabs(dsHierarchie),
+      HierarchieProduitFamille: hierarchieToSpaces(dsHierarchie),
       SecteurActivite: dsSecteur || '',
       PoidsNet: decimalStr(formData.autre_poids_net_uv),
       ZUG: dsZug === '' ? '' : String(dsZug),
@@ -1185,6 +1188,10 @@ export default function CreerDE() {
   // (l'utilisateur voit le message vert). Le payload en attente est mémorisé ici.
   const [sapModal, setSapModal] = useState(null);
   const pendingSaveRef = useRef(null);
+  // Id du brouillon LOCAL (DemandeEtude/localStorage) en cours d'édition. Initialisé
+  // depuis l'URL (?id), puis réutilisé pour toutes les sauvegardes locales — y compris
+  // le miroir écrit quand l'envoi SAP échoue — afin de ne pas dupliquer la ligne.
+  const localDeIdRef = useRef(editId);
   // Action différée au clic du bouton vert de la pop-up (utilisée par la DS :
   // passage en « DS validée » + navigation). La DE utilise pendingSaveRef.
   const pendingSuccessRef = useRef(null);
@@ -1344,7 +1351,7 @@ export default function CreerDE() {
       CodeChapeau: codeChapeau || '',
       CodePJ: formData.code_projet || '',
       NomProduit: formData.designation_article || '',
-      HierarchieProduitFamille: hierarchieToTabs(formData.famille_produit),
+      HierarchieProduitFamille: hierarchieToSpaces(formData.famille_produit),
       SecteurActivite: formData.marque || '',
       PoidsNet: decimalStr(formData.poids_net),
       ZUG: zug === '' || zug == null ? '' : String(Math.round(Number(zug))),
@@ -1452,15 +1459,34 @@ export default function CreerDE() {
 
   const saveMutation = useMutation({
     mutationFn: (data) =>
-      editId
-        ? base44.entities.DemandeEtude.update(editId, data)
+      localDeIdRef.current
+        ? base44.entities.DemandeEtude.update(localDeIdRef.current, data)
         : base44.entities.DemandeEtude.create(data),
-    onSuccess: () => {
+    onSuccess: (row) => {
+      if (row?.id) localDeIdRef.current = row.id; // réutilise la même ligne locale ensuite
       queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
       queryClient.invalidateQueries({ queryKey: ['projets-de'] });
       navigate(createPageUrl('DemandesEtude'));
     }
   });
+
+  // Écrit le brouillon LOCAL (données complètes du formulaire) sans navigation.
+  // Utilisé quand l'envoi SAP échoue : la ligne cr04e_projet porte déjà les données,
+  // mais la liste rouvre un `de_brouillon` depuis le local — il faut donc que le local
+  // reflète AUSSI ce qui a été saisi/envoyé, sinon la DE réapparaît vide. Non bloquant.
+  const persistLocalBrouillon = async (payload) => {
+    try {
+      if (localDeIdRef.current) {
+        await base44.entities.DemandeEtude.update(localDeIdRef.current, payload);
+      } else {
+        const row = await base44.entities.DemandeEtude.create(payload);
+        if (row?.id) localDeIdRef.current = row.id;
+      }
+      queryClient.invalidateQueries({ queryKey: ['demandes_etude'] });
+    } catch {
+      // Miroir local best-effort : on n'empêche pas l'affichage de l'erreur SAP.
+    }
+  };
 
   // ZUG = poids net × 1000 (auto), arrondi à l'entier pour éviter le bruit
   // flottant (1.598 × 1000 = 1597.9999…). toNumber tolère la virgule décimale.
@@ -1748,6 +1774,10 @@ export default function CreerDE() {
           }
           setFormData((prev) => ({ ...prev, projet_id: projetId, statut: 'de_brouillon' }));
         }
+        // Miroir LOCAL des données saisies/envoyées (même si l'envoi SAP a échoué) :
+        // sinon la DE réapparaît vide à la réouverture (le local n'était sauvé qu'au
+        // succès). On repart ainsi du brouillon complet pour corriger et renvoyer.
+        await persistLocalBrouillon({ ...savePayload, projet_id: projetId, statut: 'de_brouillon' });
         setSapModal({ status: 'error', title: result.title, message: result.message });
         return; // finally remet isSubmitting=false
       }
