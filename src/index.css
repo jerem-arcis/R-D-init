@@ -132,4 +132,21 @@
     opacity: 0.3;
     cursor: not-allowed;
   }
+
+  /* Champs de la PLAGE de dates (filtres DE) : intégrés dans un conteneur bordé
+     unique avec une icône calendrier de marque. On masque le glyphe natif du
+     navigateur (l'ouverture se fait via showPicker au clic) et on teinte le popup
+     calendrier avec la couleur primaire. Scopé à .date-field pour ne pas toucher
+     les autres champs date de l'app. */
+  input.date-field {
+    cursor: pointer;
+    accent-color: hsl(var(--primary));
+  }
+  input.date-field::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+  }
+  input.date-field::-webkit-datetime-edit {
+    padding: 0;
+  }
 }

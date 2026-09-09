@@ -106,6 +106,16 @@ describe('buildFichePayload', () => {
       .cr04e_oc2groupeimputationarticle).toBe('05');
   });
 
+  it('ne pousse que le motif de date pour les formats étiquette (retire le préfixe « N - »)', () => {
+    expect(buildFichePayload({ format_date_etiquette_colis: '2 - JJ MM AA' })
+      .cr04e_formatdateetiquettecolis).toBe('JJ MM AA');
+    expect(buildFichePayload({ format_dluo_etiquette_colis: '1 - JJ MM AAAA' })
+      .cr04e_formatdluoetiquettecolis).toBe('JJ MM AAAA');
+    // Une valeur sans préfixe numérique passe inchangée.
+    expect(buildFichePayload({ format_date_etiquette_colis: 'JJ MM AA' })
+      .cr04e_formatdateetiquettecolis).toBe('JJ MM AA');
+  });
+
   it('lit la nomenclature : nouvelle colonne d’abord, repli sur l’ancienne', () => {
     expect(toFicheShape({ cr04e_nomenclature_douaniere: 'NEW', cr04e_nomenclaturedouaniere: 'OLD' })
       .nomenclature_douaniere).toBe('NEW');

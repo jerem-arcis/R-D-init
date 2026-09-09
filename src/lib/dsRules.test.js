@@ -125,9 +125,9 @@ describe('computeTypeProduitDS', () => {
 
 describe('computeHierarchieDS', () => {
   it('activite -> hierarchie SAP', () => {
-    expect(computeHierarchieDS('PATISSERIES')).toBe('22\tDE\tDE');
-    expect(computeHierarchieDS('TRAITEUR')).toBe('27\tDE\tDE');
-    expect(computeHierarchieDS('MOCHIS')).toBe('21\tDE\tDE');
+    expect(computeHierarchieDS('PATISSERIES')).toBe('22\tDE\tDE\tDE');
+    expect(computeHierarchieDS('TRAITEUR')).toBe('27\tDE\tDE\tDE');
+    expect(computeHierarchieDS('MOCHIS')).toBe('21\tDE\tDE\tDE');
     expect(computeHierarchieDS('')).toBe('');
   });
 });

@@ -8,7 +8,6 @@ import {
   getType,
   getDesignation,
   getDemandeur,
-  getUsine,
   getCodeProjet,
   isDEValidated,
   isEnAttenteCC,
@@ -30,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FluxStatutBadge from '@/components/FluxStatutBadge';
+import { fluxStatut } from '@/lib/erreursSap';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   FileText,
@@ -41,6 +41,7 @@ import {
   Plus,
   Search,
   X,
+  Calendar,
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
@@ -514,22 +515,29 @@ export default function DemandesEtude() {
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Input
+          {/* Plage de dates : un seul contrôle bordé (mêmes hauteur / rayon /
+              bordure que les listes déroulantes voisines). L'icône violette signale
+              la nature « période » ; chaque champ ouvre son calendrier au clic
+              (showPicker), le glyphe natif du navigateur étant masqué (cf. .date-field). */}
+          <div className="flex items-center h-9 rounded-md border border-input bg-card px-2.5 gap-1.5 shadow-sm transition-colors hover:border-primary/40 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+            <Calendar className="w-4 h-4 text-primary shrink-0" />
+            <input
               type="date"
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-9 w-[150px]"
+              onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* pas de showPicker : saisie clavier */ } }}
+              className="date-field w-[104px] bg-transparent text-sm text-foreground outline-none"
               aria-label="Date de début"
             />
-            <span className="text-muted-foreground text-xs">→</span>
-            <Input
+            <span className="text-muted-foreground/60 text-xs select-none" aria-hidden="true">→</span>
+            <input
               type="date"
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-9 w-[150px]"
+              onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch { /* pas de showPicker : saisie clavier */ } }}
+              className="date-field w-[104px] bg-transparent text-sm text-foreground outline-none"
               aria-label="Date de fin"
             />
           </div>
@@ -574,9 +582,9 @@ export default function DemandesEtude() {
                   <SortHead sortId="code_projet">Code projet</SortHead>
                   <SortHead sortId="designation">Désignation</SortHead>
                   <SortHead sortId="demandeur">Demandeur</SortHead>
-                  <SortHead sortId="usine">Usine</SortHead>
                   <SortHead sortId="statut">Statut</SortHead>
                   <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Flux envoi DE</TableHead>
+                  <TableHead className="font-bold text-foreground uppercase text-xs tracking-wide">Code chapeau</TableHead>
                   <SortHead sortId="created_date">Date création</SortHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -603,14 +611,16 @@ export default function DemandesEtude() {
                     <TableCell className="text-foreground/80 text-sm">
                       {getDemandeur(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
-                    <TableCell className="text-foreground/80 text-sm">
-                      {getUsine(de) || <span className="text-muted-foreground/50">-</span>}
-                    </TableCell>
                     <TableCell>
                       {getStatutBadge(de.statut)}
                     </TableCell>
                     <TableCell>
                       <FluxStatutBadge value={de.flux_envoi_de} />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {fluxStatut(de.flux_envoi_de) === 'reussi' && de.code_chapeau
+                        ? de.code_chapeau
+                        : <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">

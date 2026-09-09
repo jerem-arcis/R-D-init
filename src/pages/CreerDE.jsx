@@ -141,6 +141,23 @@ const REQUIRED_FIELDS_DS = [
   { key: 'autre_activite', label: 'Activité' },
   { key: 'autre_poids_net_uv', label: 'Poids net pour 1 UV (en kg)' },
   { key: 'autre_type_marque', label: 'Type de marque' },
+  { key: 'autre_description', label: 'Description du besoin' },
+  // Champs calculés (SAP) : la DS ne part pas tant qu'une valeur dérivée reste vide
+  // (règle sans correspondance). Les valeurs viennent du contexte (calcul en render) ;
+  // l'utilisateur peut lever le blocage via l'override affiché dans le formulaire.
+  {
+    key: 'ds_division_origine',
+    label: "Code division d'origine",
+    // Le négoce (types 4/5) n'a PAS de code division d'origine (champ volontairement vide).
+    isRequired: (fd) => !isTypeNegoce(fd.autre_type_demande),
+    getValue: (fd, ctx) => ctx.dsDivisionOrigine,
+  },
+  { key: 'ds_division_fab', label: 'Code division', getValue: (fd, ctx) => ctx.dsDivisionFab },
+  { key: 'ds_hierarchie', label: 'Hiérarchie de produits', getValue: (fd, ctx) => ctx.dsHierarchie },
+  { key: 'ds_secteur', label: "Secteur d'activité", getValue: (fd, ctx) => ctx.dsSecteur },
+  { key: 'ds_classe_valo', label: 'Classe de valorisation', getValue: (fd, ctx) => ctx.dsClasseValo },
+  { key: 'ds_centre_profit', label: 'Centre de profit', getValue: (fd, ctx) => ctx.dsCentreProfit },
+  { key: 'ds_groupe_article', label: 'Groupe article (division)', getValue: (fd, ctx) => ctx.dsGroupeArticle },
 ];
 
 // Renvoie les libellés des champs obligatoires encore vides pour le formulaire
@@ -1412,8 +1429,14 @@ export default function CreerDE() {
   // surchargeable et repli sur la valeur persistée. IDENTIQUE au lookup écrit en
   // BDD (cf. api/ds.js) — c'est cette valeur qui part dans le flux SAP.
   const dsGroupeArticle = dsOvr('_ds_groupe_article_ovr', computeGroupeArticleDS(dsDivisionFab), '_ds_groupe_article');
-  // DS validée : fiche en lecture seule (consultation, aucune modification possible).
-  const dsReadOnly = formType === 'autre' && formData.statut === 'ds_validee';
+  // Article créé dans SAP : état terminal, la fiche est FIGÉE quel que soit son
+  // type. Une DS validée puis créée dans SAP passe à `fl_sap_cree` et se recharge
+  // en 'de' (cf. projet.js : type_de = 'de' hors DS_STATUTS) — d'où la présence de
+  // ce statut dans les DEUX garde-fous ci-dessous.
+  const SAP_CREE_STATUT = 'fl_sap_cree';
+  // DS validée (ou article déjà créé) : fiche en lecture seule, aucune modification.
+  const dsReadOnly =
+    formType === 'autre' && (formData.statut === 'ds_validee' || formData.statut === SAP_CREE_STATUT);
   // DS créée et en attente du code chapeau : c'est l'ÉTAPE SUIVANTE (réouverture
   // par l'ADV), la seule où l'obtention du code — « Besoin d'une VL » / « Besoin
   // d'un nouveau code » — a un sens. À la création par le Commerce, la DS n'existe
@@ -1423,7 +1446,7 @@ export default function CreerDE() {
     formType === 'autre' && formData.statut === 'ds_attente_cc' && !!formData.projet_id;
   // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
   // Brouillon et de_attente_cc restent éditables (création / obtention du code chapeau).
-  const DE_READONLY_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee'];
+  const DE_READONLY_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee', SAP_CREE_STATUT];
   const deReadOnly = formType === 'de' && DE_READONLY_STATUTS.includes(formData.statut);
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
@@ -1481,7 +1504,17 @@ export default function CreerDE() {
 
   // Champs obligatoires encore vides pour le formulaire courant : bloque l'envoi
   // et alimente la liste affichée sous les boutons.
-  const missingRequired = computeMissingRequired(formType, formData, { deGroupeArticleLocked });
+  const missingRequired = computeMissingRequired(formType, formData, {
+    deGroupeArticleLocked,
+    // Valeurs calculées (SAP) de la DS : requises pour l'envoi (cf. REQUIRED_FIELDS_DS).
+    dsDivisionOrigine,
+    dsDivisionFab,
+    dsHierarchie,
+    dsSecteur,
+    dsClasseValo,
+    dsCentreProfit,
+    dsGroupeArticle,
+  });
 
   // Reporte les valeurs calculées dans formData (envoi SAP / écriture Dataverse).
   // Champs verrouillés : toujours forcés à la valeur de la règle. Champs libres
@@ -1814,7 +1847,9 @@ export default function CreerDE() {
               <fieldset disabled={deReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
                 {deReadOnly && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
-                    Demande d'Étude - fiche en lecture seule.
+                    {formData.statut === SAP_CREE_STATUT
+                      ? 'Article créé dans SAP - fiche figée, aucune modification possible.'
+                      : 'Demande d\'Étude - fiche en lecture seule.'}
                   </div>
                 )}
                 <FormSection title="Informations générales" icon={FileText}>
@@ -2484,7 +2519,7 @@ export default function CreerDE() {
             )}
 
             <div className="space-y-3 pt-2">
-              {!deReadOnly && !(formType === 'autre' && formData.statut === 'ds_validee') && missingRequired.length > 0 && (
+              {!deReadOnly && !dsReadOnly && missingRequired.length > 0 && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                   <span className="font-semibold">
                     Il manque {missingRequired.length} champ{missingRequired.length > 1 ? 's' : ''} obligatoire{missingRequired.length > 1 ? 's' : ''} :
@@ -2494,8 +2529,8 @@ export default function CreerDE() {
               )}
               <div className="flex justify-end gap-3">
               {formType === 'autre' ? (
-                formData.statut === 'ds_validee' ? (
-                  // DS validée : lecture seule, aucune action.
+                dsReadOnly ? (
+                  // DS validée / article créé dans SAP : lecture seule, aucune action.
                   null
                 ) : formData.statut === 'ds_attente_cc' && formData.projet_id ? (
                   // DS ouverte par l'ADV : obtention du code chapeau puis push SAP

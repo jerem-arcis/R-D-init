@@ -136,6 +136,21 @@ const CODE_ONLY_FIELDS = new Set([
   'groupe_imputation',
 ]);
 
+// Champs « N - LABEL » (formats date / DLUO de l'étiquette colis) dont SEUL LE
+// LABEL part dans SAP : « 2 - JJ MM AA » -> « JJ MM AA ». La liste déroulante
+// stocke la valeur préfixée du numéro (issue du fichier FM) ; SAP n'attend que le
+// motif de date. Miroir de CODE_ONLY_FIELDS, côté label.
+const LABEL_ONLY_FIELDS = new Set([
+  'format_date_etiquette_colis',
+  'format_dluo_etiquette_colis',
+]);
+
+// Retire le préfixe « N - » d'une valeur « N - LABEL » et renvoie le label seul.
+// Sans préfixe numérique en tête, renvoie la valeur inchangée.
+function labelSansCode(v) {
+  return (v ?? '').toString().replace(/^\s*\d+\s*[—:=-]\s*/, '').trim();
+}
+
 // Objet FL partiel -> payload cr04e_projet (seuls les champs présents dans `patch`).
 // Les lookups sont poussés par leur code, résolus en @odata.bind via le référentiel.
 export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
@@ -143,7 +158,13 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
   for (const [ff, col] of Object.entries(TEXT_MAP)) {
     if (ff in patch) {
       const v = trimOrUndef(patch[ff]);
-      if (v !== undefined) payload[col] = CODE_ONLY_FIELDS.has(ff) ? leadingCode(v) : v;
+      if (v !== undefined) {
+        payload[col] = CODE_ONLY_FIELDS.has(ff)
+          ? leadingCode(v)
+          : LABEL_ONLY_FIELDS.has(ff)
+            ? labelSansCode(v)
+            : v;
+      }
     }
   }
   for (const [ff, col] of Object.entries(VISA_MAP)) {
