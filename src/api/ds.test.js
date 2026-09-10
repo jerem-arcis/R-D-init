@@ -109,6 +109,33 @@ describe('groupe article (division) — lookup déduit de l\'usine (comme la DE)
   });
 });
 
+describe('groupe autorisation / frais généraux / ZUG (poussés dans cr04e_projet)', () => {
+  it('négoce (Aire ou type 4/5) → NEGO / NEGO', () => {
+    // base : usine origine « Aire » → type produit NEGO.
+    const p = buildDsPayload(base, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p.cr04e_groupedautorisation).toBe('NEGO');
+    expect(p.cr04e_groupedefraisgeneraux).toBe('NEGO');
+  });
+  it('produit fini (ni Aire ni type 4/5) → PFIN / FG', () => {
+    const p = buildDsPayload(
+      { ...base, autre_usine_origine: 'Bonloc', autre_type_demande: '1' },
+      { sapOptions, statut: 'ds_attente_cc' },
+    );
+    expect(p.cr04e_groupedautorisation).toBe('PFIN');
+    expect(p.cr04e_groupedefraisgeneraux).toBe('FG');
+  });
+  it('ZUG = poids net × 1000 (arrondi)', () => {
+    const p = buildDsPayload({ ...base, autre_poids_net_uv: '0.25' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p.cr04e_zug).toBe(250);
+    const p2 = buildDsPayload({ ...base, autre_poids_net_uv: '1.598' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p2.cr04e_zug).toBe(1598);
+  });
+  it('ZUG omis si poids net non renseigné', () => {
+    const p = buildDsPayload({ ...base, autre_poids_net_uv: '' }, { sapOptions, statut: 'ds_attente_cc' });
+    expect(p.cr04e_zug).toBeUndefined();
+  });
+});
+
 describe('classe de valorisation (débloquée : usine/activité, surchargeable)', () => {
   it('usine de fabrication Aire → 2038', () => {
     const p = buildDsPayload(

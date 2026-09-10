@@ -50,6 +50,12 @@ export function computeDsValues(formData) {
   // Division de fabrication (override manuel prioritaire) : sert de base à plusieurs
   // valeurs SAP dont le groupe article.
   const divisionFab = ovr('_ds_division_fab_ovr', codeDivisionFabrication(ctx));
+  // Type de produit SAP (NEGO négoce / PFIN fini) : pilote le groupe d'autorisation
+  // et le groupe de frais généraux (même bascule que la DE).
+  const typeProduit = computeTypeProduitDS({ type_demande: ctx.type_demande, usine_origine: ctx.usine_origine });
+  // ZUG SAP = poids net (kg) × 1000, arrondi. Auto (pas de saisie DS) ; vide si le
+  // poids net n'est pas renseigné.
+  const poidsNet = toNumber(formData.autre_poids_net_uv);
   return {
     divisionFab,
     divisionOrigine: origineNegoce
@@ -62,7 +68,13 @@ export function computeDsValues(formData) {
     centreProfit: ovr('_ds_centre_profit_ovr', computeCentreProfitDS(ctx)),
     secteur: ovr('_ds_secteur_ovr', computeSecteurDS(formData.autre_type_marque)),
     // TypeProduit SAP : Aire → NEGO, sinon PFIN (usine de fabrication).
-    typeProduit: computeTypeProduitDS({ type_demande: ctx.type_demande, usine_origine: ctx.usine_origine }),
+    typeProduit,
+    // Groupe d'autorisation : suit le type de produit (NEGO → NEGO, PFIN → PFIN).
+    groupeAutorisation: typeProduit,
+    // Groupe de frais généraux : NEGO en négoce (type produit NEGO), sinon FG.
+    groupeFraisGeneraux: typeProduit === 'NEGO' ? 'NEGO' : 'FG',
+    // ZUG = poids net × 1000 (arrondi). Vide si poids net non renseigné.
+    zug: poidsNet == null ? undefined : Math.round(poidsNet * 1000),
     // Groupe article (division) : déduit de l'usine de fabrication, comme la DE
     // (Bonloc → PF-B, Rivesaltes → PF-F, Agen → PF-AS) ; repli « PF » pour les cas
     // sans règle (Aire, Agen FF STEF, négoce). Override manuel prioritaire.
@@ -82,6 +94,12 @@ export function buildDsPayload(formData, { sapOptions = {}, statut } = {}) {
     cr04e_poidsnet: toNumber(formData.autre_poids_net_uv),
     cr04e_codeprojet: trimOrUndef(formData.autre_code_origine),
     cr04e_codechapeau: trimOrUndef(formData.code_chapeau),
+    // Groupe d'autorisation (NEGO/PFIN) + groupe de frais généraux (NEGO/FG),
+    // dérivés du type de produit ; ZUG = poids net × 1000. Le flux SAP relit ces
+    // colonnes dans Dataverse (payload SAP_SEND réduit à { ID, PoidsNet }).
+    cr04e_groupedautorisation: trimOrUndef(c.groupeAutorisation),
+    cr04e_groupedefraisgeneraux: trimOrUndef(c.groupeFraisGeneraux),
+    cr04e_zug: c.zug,
     cr04e_secteurdactivite: trimOrUndef(c.secteur),
     cr04e_codedivisionorigine: trimOrUndef(c.divisionOrigine),
     cr04e_service: trimOrUndef(formData.autre_service),

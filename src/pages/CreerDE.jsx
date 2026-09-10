@@ -105,7 +105,12 @@ const REQUIRED_FIELDS_DS = [
   { key: 'autre_date', label: 'Date' },
   { key: 'autre_service', label: 'Service' },
   { key: 'autre_type_demande', label: 'Type de demande' },
-  { key: 'autre_usine_origine', label: "Usine de fabrication d'origine" },
+  {
+    key: 'autre_usine_origine',
+    label: "Usine de fabrication d'origine",
+    // Bloc masqué pour les types 4 et 5 (négoce, produit acheté) -> non requis.
+    isRequired: (fd) => !isTypeNegoce(fd.autre_type_demande),
+  },
   { key: 'autre_designation', label: 'Désignation article' },
   {
     key: 'autre_usine_fab',
@@ -1124,6 +1129,26 @@ export default function CreerDE() {
           message: `Impossible de vérifier le code auprès de SAP : ${err?.message || 'erreur inconnue'}.`,
         });
         return;
+      }
+      // Écriture du code chapeau (et des EAN recalculés à partir de lui) dans
+      // cr04e_projet AVANT l'envoi SAP : le flux relit TOUTE la ligne par ID, le
+      // code chapeau doit donc déjà y être. Sans ça il partait vide (écrit seulement
+      // après le succès SAP). BLOQUANT, comme l'écriture Dataverse de la DE.
+      if (formData.projet_id) {
+        try {
+          await updateDsFromForm(
+            formData.projet_id,
+            { ...formData, code_chapeau: effectiveCode },
+            { sapOptions, statut: formData.statut || 'ds_attente_cc' },
+          );
+        } catch (err) {
+          setSapModal({
+            status: 'error',
+            title: 'Enregistrement Dataverse échoué',
+            message: `Le code chapeau n'a PAS été écrit dans cr04e_projet : ${err?.message || 'erreur inconnue'}.\nVérifiez les droits sur la table.`,
+          });
+          return;
+        }
       }
       const result = await triggerSapSendDs(effectiveCode, formData.projet_id);
       if (!result.ok) {
