@@ -4,6 +4,10 @@ import {
   EMBALLAGE_BLOCK_FIELDS,
   hierarchieActivite,
   isHierarchiePlaceholder,
+  GROUPES_ARTICLE,
+  GROUPES_RISTOURNE,
+  GROUPES_STATISTIQUE,
+  GROUPES_IMPUTATION,
 } from './ficheSchema';
 
 // Champs visibles (non retirés, hors blocs emballage) par section, tous remplis.
@@ -96,6 +100,31 @@ describe('getMissingVisaFields', () => {
     const ok = getMissingVisaFields({ ...filledFiche, hierarchie_produit: '27 D4 10 DM' }, 'com')
       .map((f) => f.name);
     expect(ok).not.toContain('hierarchie_produit');
+  });
+});
+
+describe('listes OC2 (groupements ADV) alimentées depuis ListesSAP', () => {
+  it('tailles attendues (ListesSAP + option « 1 » en tête : article 73, ristourne 70)', () => {
+    expect(GROUPES_STATISTIQUE).toHaveLength(35);
+    expect(GROUPES_ARTICLE).toHaveLength(73);
+    expect(GROUPES_RISTOURNE).toHaveLength(70);
+    expect(GROUPES_IMPUTATION).toHaveLength(2);
+  });
+
+  it('article/ristourne : valeur « 01 » en tête puis les libellés complets, envoyés tels quels', () => {
+    expect(GROUPES_ARTICLE.every((v) => typeof v === 'string')).toBe(true);
+    expect(GROUPES_RISTOURNE.every((v) => typeof v === 'string')).toBe(true);
+    expect(GROUPES_ARTICLE[0]).toBe('01');
+    expect(GROUPES_RISTOURNE[0]).toBe('01');
+    expect(GROUPES_ARTICLE).toContain('AY-MB INTERMARCHE');
+    expect(GROUPES_RISTOURNE).toContain('AY-MB INTERMARCHE');
+  });
+
+  it('statistique : value = code seul (envoyé), label = libellé Excel (affiché)', () => {
+    expect(GROUPES_STATISTIQUE[0]).toEqual({ value: '1', label: '1-Groupe article 1' });
+    // Les codes sont bien 1..9 puis A..Z (aucun libellé complet côté value).
+    expect(GROUPES_STATISTIQUE.map((o) => o.value)).toContain('Z');
+    expect(GROUPES_STATISTIQUE.every((o) => o.value.length === 1)).toBe(true);
   });
 });
 

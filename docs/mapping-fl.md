@@ -74,7 +74,7 @@ Déjà couvertes (ou à rattacher) par un champ du fichier « Champs FL ».
 | OC1-Groupe marchandise | MVKE-MVGR1 (5 déclinaison) | Industriel/Eclatement groupe de marchandises | Liste déroulante |
 | OC2-Groupe statistique article | MVKE-VERSG | SupplyChain/Groupe statistique article | Liste déroulante |
 | OC2-Groupe d'article | MVKE-KONDM | SupplyChain/Groupe d'article | Liste déroulante |
-| OC2-Groupe de ristournes | MVKE-KONDM | SupplyChain/Groupe de ristournes | Saisi (libre) |
+| OC2-Groupe de ristournes | MVKE-BONUS | SupplyChain/Groupe de ristournes | Liste déroulante |
 | OC2-Groupe imputation article | MVKE-KTGRM | SupplyChain/Groupe imputation article | Liste déroulante |
 | Gestion par lots | MARA-XCHPF | ? | Saisi (libre) |
 | Centre de profit | MARC-PRCTR | Contrôle de gestion/Centre de profit | Liste déroulante |
@@ -280,7 +280,7 @@ Visas, émetteurs et dates : déjà gérés par le workflow de visa de l'app (`O
 |---|---|---|---|
 | OC2-Groupe statistique article | MVKE-VERSG | Saisie | Vue FL — champ métier existant |
 | OC2-Groupe d'article | MVKE-KONDM | Saisie | Vue FL — champ métier existant |
-| OC2-Groupe de ristournes | MVKE-KONDM | Saisie | Vue FL — champ métier existant |
+| OC2-Groupe de ristournes | MVKE-BONUS | Saisie | Vue FL — champ métier existant |
 | OC2-Groupe imputation article | MVKE-KTGRM | Saisie | Vue FL — champ métier existant |
 | OC2-Article prix | MVKE-PMATN | Saisie | Vue FL — à ajouter / arbitrer |
 

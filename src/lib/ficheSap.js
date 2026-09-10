@@ -193,6 +193,13 @@ export function computeFicheSap(fiche = {}) {
   return {
     ...SAP_CONSTANTS,
     'MVKE-VKORG': computeOrgCommerciale(origine),
+    // OC2 — groupements ADV saisis dans la FL (SupplyChainSection), poussés tels
+    // quels : article/ristourne en libellé complet (« AY-MB INTERMARCHE »),
+    // statistique/imputation en code (« 1 » / « 01 »). Cf. listes ficheSchema.
+    'MVKE-VERSG': s(fiche.groupe_statistique_article),
+    'MVKE-KONDM': s(fiche.groupe_article),
+    'MVKE-BONUS': s(fiche.groupe_ristourne),
+    'MVKE-KTGRM': s(fiche.groupe_imputation),
     'MARD-NUMMAG': computeNumeroMagasin(origine),
     'ZEINR': computeDocument(origine),
     'MARA-BEGRU': computeGroupeAutorisation(type),

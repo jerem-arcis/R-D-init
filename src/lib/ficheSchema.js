@@ -37,12 +37,54 @@ const SITE_STOCKAGE_LABELS = new Map(SITES_STOCKAGE.map((s) => [s.value, s.label
 export const siteStockageLabel = (code) =>
   SITE_STOCKAGE_LABELS.get((code ?? '').toString().trim()) || (code ?? '').toString();
 
-// OC2 — Groupe d'article. Valeurs du fichier FM (feuille ListesSAP, plage
-// GroupeArticle). À terme : dropdown alimenté par une table Dataverse (copie SAP).
-export const GROUPES_ARTICLE = ['01'];
+// OC2 — Groupe d'article (MVKE-KONDM). Liste ListesSAP/GroupeArticle du fichier FM.
+// Valeur = libellé complet « code-désignation » : stockée ET envoyée telle quelle à
+// SAP (choix métier — on transmet la valeur exacte de l'Excel, pas seulement le code).
+export const GROUPES_ARTICLE = [
+  '01', // valeur en tête (demande métier)
+  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN', 'A3-MB CR GLACEE SM MDD',
+  'A4-MB PATISSERIE MB', 'A5-MB PATISSERIE MN', 'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD',
+  'A8-MB PATISSERIE SM MN', 'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
+  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB CAKESMITHS',
+  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
+  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
+  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB MDD TRAITEUR', 'AR-MB MDD PATISSERIE',
+  'AS-MB EISMANN', 'AT-MB PROPER CORNISH', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE',
+  'AW-MB FROSTINVEST', 'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA',
+  'B0-MB LE MUTANT', 'B1-MB MAG M', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
+  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
+  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
+  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
+  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
+  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
+  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT',
+  'BS-MARIE', 'BT-MB CODITOUR PATISSER', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
+  'BW-MB INTERMARCHE TRAITEUR', 'BX-BPT CLASS(ANC.GP)', 'BY-MB ENTREMONT', 'BZ-TDL',
+];
 
-// OC2 — Groupe de ristournes. Valeurs du fichier FM (plage GroupeDeRistourne).
-export const GROUPES_RISTOURNE = ['01'];
+// OC2 — Groupe de ristournes (MVKE-BONUS). Liste ListesSAP/GroupeDeRistourne du
+// fichier FM. Valeur = libellé complet, stockée ET envoyée telle quelle (idem article).
+export const GROUPES_RISTOURNE = [
+  '01', // valeur en tête (demande métier)
+  'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN', 'A3-MB CR GLACEE SM MDD',
+  'A4-MB PATISSERIE RHF MB', 'A5-MB PATISSERIE GMS MN', 'A6-MB PATISSERIE SD', 'A7-MB PATISSERIE SM MDD',
+  'A8-MB PATISSERIE SM MN', 'A9-MB TRAITEUR MB', 'AA-MB TRAITEUR MN', 'AB-MB TRAITEUR SELE MDD',
+  'AC-MB TRAITEUR SM MDD', 'AD-MB ALDI', 'AE-MB ARGEL', 'AF-MB ASDA',
+  'AG-MB AUCHAN', 'AH-MB BELLE FRANCE', 'AI-MB BRAKE', 'AJ-MB CARREFOUR',
+  'AK-MB CASINO', 'AL-MB CODITOUR', 'AM-MB CORA', 'AN-MB COUP DE PATES',
+  'AO-MB DAVIGEL', 'AP-MB DELIFRANCE', 'AQ-MB DIA', 'AR-MB ED',
+  'AS-MB EISMANN', 'AT-MB EN CUISINE', 'AU-MB FARMERSLAND', 'AV-MB FOUR A IDEE',
+  'AW-MB FROSTINVEST', 'AX-MB GELISSIMO', 'AY-MB INTERMARCHE', 'AZ-MB LA SIRENA',
+  'B0-MB LE MUTANT', 'B1-MB LE PROFESSIONNEL', 'B2-MB LEADER PRICE', 'B3-MB MAC DONALD',
+  'B4-MB MARKS&SPENCE', 'B5-MB MAXIMO', 'B6-MB METRO', 'B7-MB MICHEL BRAS',
+  'B8-MB MONOPRIX', 'B9-MB MORRISONS', 'BA-MB NORMA', 'BB-MB PICARD',
+  'BC-MB POMONA', 'BD-MB PRODUITS "U"', 'BE-MB QUALIGEL', 'BF-MB SEGES',
+  'BG-MB SHAKE NDRINK', 'BH-MB SODIPA', 'BI-MB TOUPARGEL', 'BJ-MB TRANSGOURMET',
+  'BK-MB TROFIC', 'BL-MB WAITROSE', 'BM-MB WFM', 'BN-MB CAMPAGNE DE France',
+  'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT',
+  'BS-MARIE', 'BT-MB CODITOUR PATISSERIE', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
+  'BW-MB INTERMARCHE TRAITEUR',
+];
 
 // OC2 — Groupe imputation article. Valeurs du fichier FM (plage GpeImputArt).
 // Désignation affichée, code seul stocké/poussé (cf. codeOption plus bas).
@@ -51,9 +93,46 @@ export const GROUPES_IMPUTATION = [
   { value: '05', label: '05 - produits négoce', keywords: '05 produits négoce' },
 ];
 
-// MVKE-VERSG — Groupe statistique article (nouveau champ FL).
-// ⚠️ Provisoire : une seule valeur en attendant le référentiel SAP réel.
-export const GROUPES_STATISTIQUE = ['1'];
+// OC2 — Groupe statistique article (MVKE-VERSG). Liste ListesSAP/GroupeStatArticle.
+// Désignation « code-Groupe article code » affichée, mais seul le CODE est stocké
+// puis envoyé à SAP (ex. « 1 »), conformément à l'import Excel (VERSG = « 1 »).
+export const GROUPES_STATISTIQUE = [
+  { value: '1', label: '1-Groupe article 1' },
+  { value: '2', label: '2-Groupe article 2' },
+  { value: '3', label: '3-Groupe article 3' },
+  { value: '4', label: '4-Groupe article 4' },
+  { value: '5', label: '5-Groupe article 5' },
+  { value: '6', label: '6-Groupe article 6' },
+  { value: '7', label: '7-Groupe article 7' },
+  { value: '8', label: '8-Groupe article 8' },
+  { value: '9', label: '9-Groupe article 9' },
+  { value: 'A', label: 'A-Groupe article A' },
+  { value: 'B', label: 'B-Groupe article B' },
+  { value: 'C', label: 'C-Groupe article C' },
+  { value: 'D', label: 'D-Groupe article D' },
+  { value: 'E', label: 'E-Groupe article E' },
+  { value: 'F', label: 'F-Groupe article F' },
+  { value: 'G', label: 'G-Groupe article G' },
+  { value: 'H', label: 'H-Groupe article H' },
+  { value: 'I', label: 'I-Groupe article I' },
+  { value: 'J', label: 'J-Groupe article J' },
+  { value: 'K', label: 'K-Groupe article K' },
+  { value: 'L', label: 'L-Groupe article L' },
+  { value: 'M', label: 'M-Groupe article M' },
+  { value: 'N', label: 'N-Groupe article N' },
+  { value: 'O', label: 'O-Groupe article O' },
+  { value: 'P', label: 'P-Groupe article P' },
+  { value: 'Q', label: 'Q-Groupe article Q' },
+  { value: 'R', label: 'R-Groupe article R' },
+  { value: 'S', label: 'S-Groupe article S' },
+  { value: 'T', label: 'T-Groupe article T' },
+  { value: 'U', label: 'U-Groupe article U' },
+  { value: 'V', label: 'V-Groupe article V' },
+  { value: 'W', label: 'W-Groupe article W' },
+  { value: 'X', label: 'X-Groupe article X' },
+  { value: 'Y', label: 'Y-Groupe article Y' },
+  { value: 'Z', label: 'Z-Groupe article Z' },
+];
 
 // MARA-XCHPF — Gestion par lots (nouveau champ FL). Indicateur oui/non.
 export const GESTION_PAR_LOTS = ['Oui', 'Non'];
