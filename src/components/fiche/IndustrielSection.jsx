@@ -15,6 +15,8 @@ import {
   TYPES_PALETTE,
   TYPES_MAGASIN_EM,
   DUREES_VIE,
+  tagHerite,
+  libelleDemande,
 } from '@/lib/ficheSchema';
 
 export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
@@ -75,15 +77,15 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
           onChange={set('eclatement_groupe_marchandise')}
           disabled={disabled}
           options={ECLATEMENTS_GROUPE_MARCHANDISE}
-          fromSAP
         />
+        {/* Prérempli avec le profil de fabrication répétitive de la demande. */}
         <SelectField
           label="Type d'usine"
           value={fiche.type_usine}
           onChange={set('type_usine')}
           disabled={disabled}
           options={TYPES_USINE}
-          fromSAP
+          fromDE={tagHerite(fiche, 'type_usine')}
         />
         {/* MARA-BISMT / ProductOldID : n° de l'article remplacé, saisie libre. */}
         <TextField
@@ -101,6 +103,11 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
         />
       </FieldGrid>
 
+      {fiche.herite?.uvc_block && (
+        <p className="text-[11px] text-violet-700">
+          Poids net UVC repris {libelleDemande(fiche)}.
+        </p>
+      )}
       <EmballagesTable
         fiche={fiche}
         onUpdate={onUpdateTable}

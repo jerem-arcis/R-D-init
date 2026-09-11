@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getFicheById, updateFiche } from '@/api/fiche';
+import { getFicheById, updateFiche, patchHeritage } from '@/api/fiche';
 import { useSapOptions } from '@/lib/sapLists';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -26,11 +26,12 @@ import {
   TYPES_APPROVISIONNEMENT, ECLATEMENTS_GROUPE_MARCHANDISE, TYPES_USINE, TYPES_PALETTE,
   MASQUES_ETIQUETTE_COLIS, FORMATS_DATE_ETIQUETTE, TEMPS_RECEPTION_USINE, TYPES_MAGASIN_EM,
   STATUTS_LANCEMENT, FABRICATION_NEGOCE,
-  SECTEURS_ACTIVITE, MARQUES,
+  MARQUES,
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
   GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
   REMOVED_FIELDS, getMissingVisaFields, hierarchieActivite,
+  libelleDemande, tagHerite, optionsSecteur,
 } from '@/lib/ficheSchema';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
@@ -203,10 +204,11 @@ export default function FicheDetailV2() {
     };
   };
 
+  // Les valeurs reprises de la DE/DS partent avec le visa (le flux SAP relit Dataverse).
   const visaHandlers = {
-    supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
-    industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
-    commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
+    supply_chain: () => handleUpdate({ ...patchHeritage(localFiche, 'sc'), ...visaPatch('visa_supply_chain', 'refus_supply_chain') }),
+    industriel: () => handleUpdate({ ...patchHeritage(localFiche, 'ind'), ...visaPatch('visa_industriel', 'refus_industriel') }),
+    commerce: () => handleUpdate({ ...patchHeritage(localFiche, 'com'), ...visaPatch('visa_commerce', 'refus_commerce') }),
   };
   const refusHandlers = {
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),
@@ -240,6 +242,10 @@ export default function FicheDetailV2() {
   // Canaux de distribution : options « code - désignation » issues de la catégorie
   // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
   const canauxOptions = buildOptions(adminOptions.canaux_distrib);
+
+  // Secteur d'activité : même colonne et même liste Admin que la DE/DS (code « 15 »).
+  const secteurOptions = optionsSecteur(adminOptions.secteurs_activite, localFiche.secteur_activite);
+  const depuis = libelleDemande(localFiche);
 
   // Hiérarchie produit : liste déroulante du référentiel SAP filtrée sur le code
   // activité (2 premiers chiffres) de la valeur héritée de la DE ; vide -> complète.
@@ -328,13 +334,13 @@ export default function FicheDetailV2() {
         <Group visible={showGroup('classification')} id="classification" title="Classification commerciale">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('fabrication_negoce')}><SelectField label="Fabrication ou négoce" {...fld('fabrication_negoce')} options={FABRICATION_NEGOCE} /></Fld>
-            <Fld visible={showField('origine_fabrication')}><SelectField label="Origine de fabrication" {...fld('origine_fabrication')} options={origineFabOptions} fromSAP /></Fld>
+            <Fld visible={showField('origine_fabrication')}><SelectField label="Origine de fabrication" {...fld('origine_fabrication')} options={origineFabOptions} fromSAP fromDE={tagHerite(localFiche, 'origine_fabrication')} /></Fld>
             <Fld visible={showField('canaux_distribution')}><MultiSelectField label="Canaux de distribution" {...fld('canaux_distribution')} onChange={(v) => handleUpdate({ canaux_distribution: v })} options={canauxOptions} /></Fld>
-            <Fld visible={showField('secteur_activite')}><SelectField label="Secteur d'activité" {...fld('secteur_activite')} options={SECTEURS_ACTIVITE} /></Fld>
-            <Fld visible={showField('marque')}><SelectField label="Marque" {...fld('marque')} options={MARQUES} fromSAP /></Fld>
+            <Fld visible={showField('secteur_activite')}><SelectField label="Secteur d'activité" {...fld('secteur_activite')} options={secteurOptions} fromDE={localFiche.secteur_activite ? depuis : undefined} /></Fld>
+            <Fld visible={showField('marque')}><SelectField label="Marque" {...fld('marque')} options={MARQUES} /></Fld>
             <Fld visible={showField('mention_produit')}><SelectField label="Mention produit" {...fld('mention_produit')} options={MENTIONS_PRODUIT} /></Fld>
             <Fld visible={showField('specificite_produit')}><SelectField label="Spécificité produits" {...fld('specificite_produit')} options={SPECIFICITES_PRODUIT} /></Fld>
-            <Fld visible={showField('hierarchie_produit')}><SearchableSelectField label="Hiérarchie produit" {...fld('hierarchie_produit')} options={hierarchieOptions} fromSAP /></Fld>
+            <Fld visible={showField('hierarchie_produit')}><SearchableSelectField label="Hiérarchie produit" {...fld('hierarchie_produit')} options={hierarchieOptions} fromSAP fromDE={localFiche.hierarchie_produit ? depuis : undefined} /></Fld>
           </div>
         </Group>
 
@@ -364,11 +370,17 @@ export default function FicheDetailV2() {
         {/* ----- 5. Emballages ----- */}
         <Group visible={showGroup('emballages')} id="emballages" title="Emballages & dimensions">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Fld visible={showField('type_usine')}><SelectField label="Type d'usine" {...fld('type_usine')} options={TYPES_USINE} fromSAP /></Fld>
+            <Fld visible={showField('type_usine')}><SelectField label="Type d'usine" {...fld('type_usine')} options={TYPES_USINE} fromDE={tagHerite(localFiche, 'type_usine')} /></Fld>
             <Fld visible={showField('type_palette')}><SelectField label="Type de support/palette" {...fld('type_palette')} options={TYPES_PALETTE} /></Fld>
             <Fld visible={showField('duree_vie')}><TextField label="Durée de vie (jours)" type="number" {...fld('duree_vie')} /></Fld>
           </div>
           <Fld visible={showField('uvc_block')}>
+            {localFiche.herite?.uvc_block && (
+              <p className="text-[11px] text-violet-700">Poids net UVC repris {depuis}.</p>
+            )}
+            {['colis_block', 'couche_block', 'palette_block'].some((k) => localFiche.herite?.[k]) && (
+              <p className="text-[11px] text-violet-700">GTIN colis / couche / palette repris {depuis}.</p>
+            )}
             <EmballagesTable
               fiche={localFiche}
               onUpdate={handleUpdateDebounced}
@@ -395,25 +407,25 @@ export default function FicheDetailV2() {
             <Fld visible={showField('article_prix')}><TextField label="Article prix" {...fld('article_prix')} /></Fld>
             <Fld visible={showField('ancien_numero_article')}><TextField label="Ancien n° article" {...fld('ancien_numero_article')} /></Fld>
             <Fld visible={showField('biv')}><TextField label="BIV (ancien n° vu)" {...fld('biv')} /></Fld>
-            <Fld visible={showField('eclatement_groupe_marchandise')}><SelectField label="Éclatement groupe marchandise" {...fld('eclatement_groupe_marchandise')} options={ECLATEMENTS_GROUPE_MARCHANDISE} fromSAP /></Fld>
-            <Fld visible={showField('groupe_marchandises')}><TextField label="Groupe de marchandises" {...fld('groupe_marchandises')} fromSAP /></Fld>
+            <Fld visible={showField('eclatement_groupe_marchandise')}><SelectField label="Éclatement groupe marchandise" {...fld('eclatement_groupe_marchandise')} options={ECLATEMENTS_GROUPE_MARCHANDISE} /></Fld>
+            <Fld visible={showField('groupe_marchandises')}><TextField label="Groupe de marchandises" {...fld('groupe_marchandises')} /></Fld>
             <Fld visible={showField('groupement_articles')}><TextField label="Groupement d'articles" {...fld('groupement_articles')} /></Fld>
-            <Fld visible={showField('groupe_article')}><SearchableSelectField label="Groupe article" {...fld('groupe_article')} options={GROUPES_ARTICLE} fromSAP /></Fld>
-            <Fld visible={showField('groupe_ristourne')}><SearchableSelectField label="Groupe de ristourne" {...fld('groupe_ristourne')} options={GROUPES_RISTOURNE} fromSAP /></Fld>
-            <Fld visible={showField('groupe_imputation')}><SelectField label="Groupe d'imputation" {...fld('groupe_imputation')} options={GROUPES_IMPUTATION} fromSAP /></Fld>
-            <Fld visible={showField('groupe_statistique_article')}><SelectField label="Groupe statistique article" {...fld('groupe_statistique_article')} options={GROUPES_STATISTIQUE} fromSAP /></Fld>
-            <Fld visible={showField('nomenclature_douaniere')}><SearchableSelectField label="Nomenclature douanière" {...fld('nomenclature_douaniere')} options={NOMENCLATURES_DOUANIERES} fromSAP /></Fld>
+            <Fld visible={showField('groupe_article')}><SearchableSelectField label="Groupe article" {...fld('groupe_article')} options={GROUPES_ARTICLE} /></Fld>
+            <Fld visible={showField('groupe_ristourne')}><SearchableSelectField label="Groupe de ristourne" {...fld('groupe_ristourne')} options={GROUPES_RISTOURNE} /></Fld>
+            <Fld visible={showField('groupe_imputation')}><SelectField label="Groupe d'imputation" {...fld('groupe_imputation')} options={GROUPES_IMPUTATION} fromDE={tagHerite(localFiche, 'groupe_imputation')} /></Fld>
+            <Fld visible={showField('groupe_statistique_article')}><SelectField label="Groupe statistique article" {...fld('groupe_statistique_article')} options={GROUPES_STATISTIQUE} /></Fld>
+            <Fld visible={showField('nomenclature_douaniere')}><SearchableSelectField label="Nomenclature douanière" {...fld('nomenclature_douaniere')} options={NOMENCLATURES_DOUANIERES} /></Fld>
           </div>
         </Group>
 
         {/* ----- 8. Appro & stock ----- */}
         <Group visible={showGroup('appro_stock')} id="appro_stock" title="Approvisionnement & stock">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdate({ sites_stockage: v })} options={SITES_STOCKAGE} fromSAP /></Fld>
+            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdate({ sites_stockage: v })} options={SITES_STOCKAGE} /></Fld>
             <Fld visible={showField('dluc_dluo_critique')}><TextField label="DLC/DLUO critique (j)" type="number" {...fld('dluc_dluo_critique')} /></Fld>
             <Fld visible={showField('gestion_par_lots')}><SelectField label="Gestion par lots" {...fld('gestion_par_lots')} options={GESTION_PAR_LOTS} /></Fld>
-            <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot - usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
-            <Fld visible={showField('cle_calcul_lot_stockiste')}><SelectField label="Clé calcul lot - stockage" {...fld('cle_calcul_lot_stockiste')} options={CLES_CALCUL_LOT} fromSAP /></Fld>
+            <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot - usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} /></Fld>
+            <Fld visible={showField('cle_calcul_lot_stockiste')}><SelectField label="Clé calcul lot - stockage" {...fld('cle_calcul_lot_stockiste')} options={CLES_CALCUL_LOT} /></Fld>
             <Fld visible={showField('profil_couverture_usine')}><SelectField label="Profil couverture - usine" {...fld('profil_couverture_usine')} options={PROFILS_COUVERTURE} /></Fld>
             <Fld visible={showField('profil_couverture_stockiste')}><SelectField label="Profil couverture - stockiste" {...fld('profil_couverture_stockiste')} options={PROFILS_COUVERTURE} /></Fld>
             <Fld visible={showField('type_approvisionnement_usine')}><SelectField label="Type appro - usine" {...fld('type_approvisionnement_usine')} options={TYPES_APPROVISIONNEMENT} /></Fld>
@@ -423,9 +435,9 @@ export default function FicheDetailV2() {
             <Fld visible={showField('delai_securite_couv_reelle_usine')}><TextField label="Délai sec/couv réelle - usine" type="number" {...fld('delai_securite_couv_reelle_usine')} /></Fld>
             <Fld visible={showField('delai_securite_couv_reelle_stockiste')}><TextField label="Délai sec/couv réelle - stockiste" type="number" {...fld('delai_securite_couv_reelle_stockiste')} /></Fld>
             <Fld visible={showField('appro_special')}><TextField label="Approvisionnement spécial" {...fld('appro_special')} /></Fld>
-            <Fld visible={showField('delai_previsionnel_livraison')}><TextField label="Délai prévisionnel livraison" {...fld('delai_previsionnel_livraison')} fromSAP /></Fld>
+            <Fld visible={showField('delai_previsionnel_livraison')}><TextField label="Délai prévisionnel livraison" {...fld('delai_previsionnel_livraison')} /></Fld>
             <Fld visible={showField('temps_reception_usine')}><SelectField label="Temps réception (usine, j)" {...fld('temps_reception_usine')} options={TEMPS_RECEPTION_USINE} /></Fld>
-            <Fld visible={showField('temps_reception_stockiste')}><TextField label="Temps réception (stockiste)" {...fld('temps_reception_stockiste')} fromSAP /></Fld>
+            <Fld visible={showField('temps_reception_stockiste')}><TextField label="Temps réception (stockiste)" {...fld('temps_reception_stockiste')} /></Fld>
           </div>
         </Group>
 

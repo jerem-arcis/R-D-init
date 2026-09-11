@@ -2,15 +2,9 @@
 // Listes déroulantes, mapping DE→FL, regroupements, helpers.
 
 // ---------- Listes déroulantes ----------
-
-export const CENTRES_PROFIT = [
-  '0000PA001 - Pâtisseries',
-  '0000PA002 - Pâtisseries McDo',
-  '0000TR001 - Traiteur',
-  '0000TR002 - Pain surprise',
-  '0000MO001 - Mochis',
-  '0000NE001 - Négoce',
-];
+// Centre de profit et secteur d'activité ne sont plus des listes en dur : ce sont
+// les MÊMES référentiels Dataverse que la DE (table CEPCT alimentée SAP / option-set
+// Admin `secteurs_activite`), branchés dans IdentificationBanner / CommerceSection.
 
 // Sites de stockage = référentiel « DivprincStockage » du fichier FM (feuille
 // SupplyChain -> plage nommée « Entrepôt » -> ListesSAP!D2:D12). La valeur stockée
@@ -263,13 +257,6 @@ export const CANAUX_DISTRIBUTION = [
   'E-commerce',
 ];
 
-export const SECTEURS_ACTIVITE = [
-  '10 - Marque Nationale GMS',
-  '15 - Marques Distrib.',
-  '20 - RHF / Export',
-  '30 - BtoB',
-];
-
 export const MARQUES = [
   'Boncolac',
   'Boncolac Traiteur',
@@ -365,6 +352,39 @@ export const getValueFromDE = (de, ficheField) => {
   const mapping = CHAMPS_DEPUIS_DE[ficheField];
   if (!mapping) return null;
   return de[mapping.source] ?? null;
+};
+
+// Tag « depuis DE / DS » d'un champ FL. `libelleDemande` : colonne partagée avec la
+// demande (libellé, centre de profit, secteur, hiérarchie…). `tagHerite` : champ FL
+// vide complété depuis la demande (cf. appliquerHeritage dans api/fiche.js).
+export const libelleDemande = (fiche) => `depuis ${fiche?.demande || 'DE'}`;
+export const tagHerite = (fiche, champ) =>
+  (fiche?.herite?.[champ] ? libelleDemande(fiche) : undefined);
+
+// Secteur d'activité : la DE/DS stocke le CODE seul (« 15 », cf. deRules / dsRules)
+// alors que la liste Admin peut porter le libellé complet (« 15 - Marques Distrib. »).
+// Code de tête numérique ; valeur sans code renvoyée telle quelle.
+export const codeSecteur = (v) => {
+  const s = String(v ?? '').trim();
+  const m = s.match(/^(\d+)\s*[—:=·-]/);
+  return m ? m[1] : s;
+};
+
+// Options du secteur d'activité : VALEUR = code (ce qui est en base), LIBELLÉ =
+// choix complet de la liste Admin. Le « 15 » de la DE présélectionne donc
+// « 15 - Marques Distrib. » au lieu d'apparaître comme un choix à part.
+export const optionsSecteur = (rows = [], current) => {
+  const options = [];
+  const vus = new Set();
+  for (const { value, designation } of rows) {
+    const code = codeSecteur(value);
+    if (!code || vus.has(code)) continue;
+    vus.add(code);
+    const label = designation ? `${code} - ${designation}` : String(value).trim();
+    options.push({ value: code, label, keywords: label });
+  }
+  if (current && !vus.has(current)) options.push({ value: current, label: current, keywords: current });
+  return options;
 };
 
 // ---------- Helpers ----------

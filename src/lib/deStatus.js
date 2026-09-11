@@ -41,6 +41,12 @@ export const STATUT_ORDER = Object.values(STATUTS)
 
 export const getStatutMeta = (key) => STATUTS[key] || STATUTS.de_brouillon;
 
+// Bouton « Passer l'étape » (liste des demandes d'étude) : seule transition
+// manuelle, « Projet qualifié et en cours d'étude » -> « Validée ». Jamais vers
+// « Article créé dans SAP » : ce statut n'est posé que par la création SAP de la FL.
+export const ETAPE_SUIVANTE = { dl_attente_validation_cdg: "dl_validee" };
+export const etapeSuivante = (statut) => ETAPE_SUIVANTE[statut] || null;
+
 const isWeekend = (d) => {
   const g = d.getDay();
   return g === 0 || g === 6; // dimanche / samedi

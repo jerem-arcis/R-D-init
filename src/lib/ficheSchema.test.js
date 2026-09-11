@@ -8,6 +8,8 @@ import {
   GROUPES_RISTOURNE,
   GROUPES_STATISTIQUE,
   GROUPES_IMPUTATION,
+  codeSecteur,
+  optionsSecteur,
 } from './ficheSchema';
 
 // Champs visibles (non retirés, hors blocs emballage) par section, tous remplis.
@@ -153,5 +155,32 @@ describe('isHierarchiePlaceholder', () => {
     expect(isHierarchiePlaceholder('27')).toBe(false); // activité seule
     expect(isHierarchiePlaceholder('')).toBe(false);
     expect(isHierarchiePlaceholder(null)).toBe(false);
+  });
+});
+
+describe('secteur d’activité (code DE/DS <-> choix de la liste Admin)', () => {
+  it('codeSecteur : code de tête, sinon valeur inchangée', () => {
+    expect(codeSecteur('15 - Marques Distrib.')).toBe('15');
+    expect(codeSecteur('10 · Marque Nationale GMS')).toBe('10');
+    expect(codeSecteur('15')).toBe('15');
+    expect(codeSecteur('Boncolac')).toBe('Boncolac');
+    expect(codeSecteur(null)).toBe('');
+  });
+
+  it('optionsSecteur : le code « 15 » en base présélectionne « 15 - Marques Distrib. », sans doublon', () => {
+    const rows = [
+      { value: '10 - Marque Nationale GMS', designation: '' },
+      { value: '15 - Marques Distrib.', designation: '' },
+    ];
+    const opts = optionsSecteur(rows, '15');
+    expect(opts).toEqual([
+      { value: '10', label: '10 - Marque Nationale GMS', keywords: '10 - Marque Nationale GMS' },
+      { value: '15', label: '15 - Marques Distrib.', keywords: '15 - Marques Distrib.' },
+    ]);
+  });
+
+  it('optionsSecteur : code + désignation séparés, et valeur inconnue conservée', () => {
+    const opts = optionsSecteur([{ value: '12', designation: 'GDM' }], '99');
+    expect(opts.map((o) => [o.value, o.label])).toEqual([['12', '12 - GDM'], ['99', '99']]);
   });
 });

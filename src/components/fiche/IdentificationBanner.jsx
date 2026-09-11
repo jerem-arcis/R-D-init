@@ -1,7 +1,9 @@
 import React from 'react';
 import TextField from './fields/TextField';
-import SelectField from './fields/SelectField';
-import { CENTRES_PROFIT, getValueFromDE } from '@/lib/ficheSchema';
+import SearchableSelectField from './fields/SearchableSelectField';
+import { getValueFromDE, libelleDemande } from '@/lib/ficheSchema';
+import { useSapOptions } from '@/lib/sapLists';
+import { buildOptions } from '@/lib/adminLists';
 
 // Bandeau d'identification de l'article — remplace l'ancienne section « Contrôle
 // Gestion ». Ce ne sont pas des champs métier d'une des 4 sections : ils
@@ -10,6 +12,13 @@ import { CENTRES_PROFIT, getValueFromDE } from '@/lib/ficheSchema';
 // SAP. Partagé par les 2 vues pour un habillage identique.
 export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
+  const depuis = libelleDemande(fiche);
+
+  // Centre de profit : lookup vers la table CEPCT alimentée par SAP, le même
+  // référentiel que la DE/DS. L'ancienne liste en dur ne contenait aucun code CEPCT :
+  // la valeur choisie ne se résolvait pas en lookup et n'était jamais enregistrée.
+  const sap = useSapOptions();
+  const centreProfitOptions = buildOptions(sap.centres_profit, fiche.centre_profit);
 
   return (
     <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -32,15 +41,16 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           value={fiche.code_etude_rd || getValueFromDE(de, 'code_etude_rd')}
           onChange={set('code_etude_rd')}
           disabled={disabled}
-          fromDE
+          fromDE={depuis}
         />
-        <SelectField
+        <SearchableSelectField
           label="Centre de profit"
           value={fiche.centre_profit}
           onChange={set('centre_profit')}
           disabled={disabled}
-          options={CENTRES_PROFIT}
-          fromDE
+          options={centreProfitOptions}
+          fromDE={depuis}
+          fromSAP
         />
         <TextField
           label="Libellé article"
@@ -49,7 +59,7 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           value={fiche.libelle_article || getValueFromDE(de, 'libelle_article')}
           onChange={set('libelle_article')}
           disabled={disabled}
-          fromDE
+          fromDE={depuis}
           placeholder="Désignation produit"
         />
         <TextField
@@ -58,7 +68,7 @@ export default function IdentificationBanner({ fiche, de, onUpdate, disabled }) 
           value={fiche.date_demande}
           onChange={set('date_demande')}
           disabled={disabled}
-          fromDE
+          fromDE={depuis}
         />
         <TextField
           label="Date limite de création souhaitée"

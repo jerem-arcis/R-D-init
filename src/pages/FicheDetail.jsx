@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getFicheById, updateFiche } from '@/api/fiche';
+import { getFicheById, updateFiche, patchHeritage } from '@/api/fiche';
 import { useSapOptions } from '@/lib/sapLists';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -166,7 +166,8 @@ export default function FicheDetail() {
     isEditable: isSectionEditable(sectionKey, localFiche),
     onUpdate: handleUpdate,
     onUpdateDebounced: handleUpdateDebounced,
-    onVisa: () => handleUpdate(visaPatch(visaField, refusField)),
+    // Les valeurs reprises de la DE/DS partent avec le visa (le flux SAP relit Dataverse).
+    onVisa: () => handleUpdate({ ...patchHeritage(localFiche, owner), ...visaPatch(visaField, refusField) }),
     onRefus: (motif) => handleUpdate(refusPatch(visaField, refusField, motif)),
     // Champs vides qui bloquent le visa de la section (tableau Emballages exempté).
     visaBlockers: getMissingVisaFields(localFiche, owner),
@@ -191,9 +192,9 @@ export default function FicheDetail() {
   // Barre de visas (cases à cocher) commune aux 2 vues — 4 sections, écriture
   // simultanée, pas de cheminement.
   const visaHandlers = {
-    supply_chain: () => handleUpdate(visaPatch('visa_supply_chain', 'refus_supply_chain')),
-    industriel: () => handleUpdate(visaPatch('visa_industriel', 'refus_industriel')),
-    commerce: () => handleUpdate(visaPatch('visa_commerce', 'refus_commerce')),
+    supply_chain: () => handleUpdate({ ...patchHeritage(localFiche, 'sc'), ...visaPatch('visa_supply_chain', 'refus_supply_chain') }),
+    industriel: () => handleUpdate({ ...patchHeritage(localFiche, 'ind'), ...visaPatch('visa_industriel', 'refus_industriel') }),
+    commerce: () => handleUpdate({ ...patchHeritage(localFiche, 'com'), ...visaPatch('visa_commerce', 'refus_commerce') }),
   };
   const refusHandlers = {
     supply_chain: (m) => handleUpdate(refusPatch('visa_supply_chain', 'refus_supply_chain', m)),

@@ -9,11 +9,13 @@ import MultiSelectField from './fields/MultiSelectField';
 import LibelleParPaysTable from './fields/LibelleParPaysTable';
 import EmballagesTable from './fields/EmballagesTable';
 import {
-  SECTEURS_ACTIVITE,
   MARQUES,
   NOMENCLATURES_DOUANIERES,
   SITES_STOCKAGE,
   hierarchieActivite,
+  libelleDemande,
+  tagHerite,
+  optionsSecteur,
 } from '@/lib/ficheSchema';
 import { useSapOptions } from '@/lib/sapLists';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
@@ -33,7 +35,13 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
 
   // Canaux de distribution : options « code - désignation » issues de la catégorie
   // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
-  const canauxOptions = buildOptions(useAdminOptions().canaux_distrib);
+  const adminOptions = useAdminOptions();
+  const canauxOptions = buildOptions(adminOptions.canaux_distrib);
+
+  // Secteur d'activité : même colonne ET même liste Admin que la DE/DS, qui y
+  // stockent le code (« 15 »). Options indexées par code : le « 15 » de la demande
+  // présélectionne le vrai choix « 15 - Marques Distrib. » de la liste.
+  const secteurOptions = optionsSecteur(adminOptions.secteurs_activite, fiche.secteur_activite);
 
   // Hiérarchie produit : liste déroulante du référentiel SAP (familles_produit),
   // FILTRÉE sur le code activité (2 premiers chiffres) de la valeur héritée de la
@@ -85,6 +93,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           disabled={disabled}
           options={origineFabOptions}
           fromSAP
+          fromDE={tagHerite(fiche, 'origine_fabrication')}
         />
         <MultiSelectField
           label="Canaux de distribution"
@@ -98,7 +107,8 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           value={fiche.secteur_activite}
           onChange={set('secteur_activite')}
           disabled={disabled}
-          options={SECTEURS_ACTIVITE}
+          options={secteurOptions}
+          fromDE={fiche.secteur_activite ? libelleDemande(fiche) : undefined}
         />
         <SelectField
           label="Marque"
@@ -106,7 +116,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           onChange={set('marque')}
           disabled={disabled}
           options={MARQUES}
-          fromSAP
         />
       </FieldGrid>
 
@@ -140,6 +149,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           disabled={disabled}
           options={hierarchieOptions}
           fromSAP
+          fromDE={fiche.hierarchie_produit ? libelleDemande(fiche) : undefined}
         />
         <SearchableSelectField
           label="Nomenclature douanière"
@@ -147,7 +157,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           onChange={set('nomenclature_douaniere')}
           disabled={disabled}
           options={NOMENCLATURES_DOUANIERES}
-          fromSAP
         />
         <MultiSelectField
           label="Sites de stockage"
@@ -156,7 +165,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           onChange={set('sites_stockage')}
           disabled={disabled}
           options={SITES_STOCKAGE}
-          fromSAP
         />
       </FieldGrid>
 
@@ -165,6 +173,11 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           Saisie des GTIN - 1 code par emballage. Les dimensions sont renseignées côté{' '}
           <span className="font-semibold">Industriel</span> (lecture seule ici).
         </p>
+        {['colis_block', 'couche_block', 'palette_block'].some((k) => fiche.herite?.[k]) && (
+          <p className="text-[11px] text-violet-700">
+            GTIN colis / couche / palette repris {libelleDemande(fiche)}.
+          </p>
+        )}
         <EmballagesTable
           label="Saisie des GTIN (par emballage)"
           fiche={fiche}

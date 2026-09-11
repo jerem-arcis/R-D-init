@@ -12,7 +12,8 @@ const ROWS = [
   // U.élém : côté SAP l'unité « UE » ne porte QU'un compteur (nb d'éléments par
   // UVC). Aucun poids / volume / dimension n'y est stocké → ces colonnes sont
   // grisées (une saisie ne serait pas persistée). Cf. emballagesSap.js (ligne UE).
-  { key: 'element_block', label: 'Unité d\'élément', gtinKey: 'element', dimsNA: true },
+  // Pas de GTIN non plus : ni généré, ni saisissable.
+  { key: 'element_block', label: 'Unité d\'élément', dimsNA: true, noGtin: true },
   { key: 'couche_block', label: 'Couche', gtinKey: 'couche' },
   { key: 'colis_block', label: 'Colis', gtinKey: 'colis' },
   { key: 'palette_block', label: 'Palette', gtinKey: 'palette' },
@@ -55,9 +56,9 @@ export default function EmballagesTable({
   };
 
   // GTIN calculés depuis le code article, règle du fichier FM (feuille EAN) —
-  // même dérivation que les EAN de la DE, étendue à l'UVC et à l'unité d'élément.
+  // même dérivation que les EAN de la DE, étendue à l'UVC (l'unité d'élément n'en a pas).
   const gtins = buildGtinSet(fiche.code_article, { origine: fiche.origine_fabrication });
-  const manquants = ROWS.filter((r) => gtins[r.gtinKey] && !(fiche[r.key] || {}).gtin);
+  const manquants = ROWS.filter((r) => r.gtinKey && gtins[r.gtinKey] && !(fiche[r.key] || {}).gtin);
 
   // Ne remplit QUE les cellules vides : une saisie manuelle n'est jamais écrasée.
   const genererManquants = () => {
@@ -140,7 +141,17 @@ export default function EmballagesTable({
                       </td>
                     );
                   })}
-                  {showGtin && (
+                  {showGtin && row.noGtin && (
+                    <td className="px-1.5 py-1.5">
+                      <div
+                        className="h-8 flex items-center justify-center rounded-md bg-slate-100 text-xs text-slate-400"
+                        title="Pas de GTIN pour l'unité d'élément"
+                      >
+                        -
+                      </div>
+                    </td>
+                  )}
+                  {showGtin && !row.noGtin && (
                     <td className="px-1.5 py-1.5">
                       <BufferedInput
                         type="text"

@@ -4,8 +4,10 @@
 // src/api/projet.js. Les tables filles (libellé par pays, emballages) sont
 // branchées en Phase 2/3 dans getFicheById/updateFiche.
 
-import { Cr04e_projetsService } from '@/generated';
+import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
+import { DE_DIVISION_CODES, computeProfilFabricRepetDE } from '@/lib/deRules';
+import { FIELD_OWNERS, FORMATS_DATE_ETIQUETTE, codeSecteur, isFieldEditable } from '@/lib/ficheSchema';
 import { trimOrUndef } from '@/api/_odata';
 import { withQueue } from '@/api/_serialize';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
@@ -15,6 +17,13 @@ import { listValuesForProjet as listSitesStockage, syncForProjet as syncSitesSto
 
 // Clés des 5 blocs emballage (tables filles) : jamais envoyées au payload parent.
 const BLOC_KEYS = ['uvc_block', 'element_block', 'couche_block', 'colis_block', 'palette_block'];
+
+// Colonnes EAN du projet (écrites par la DE/DS depuis le code chapeau) <-> bloc FL.
+const EAN_COLS = {
+  colis_block: 'cr04e_eancar',
+  couche_block: 'cr04e_eanzco',
+  palette_block: 'cr04e_eanpal',
+};
 
 const FMT = '@OData.Community.Display.V1.FormattedValue';
 
@@ -103,6 +112,11 @@ export function toFicheShape(p) {
     const raw = p[col] ?? '';
     f[ff] = DATE_FIELDS.has(ff) ? String(raw).slice(0, 10) : raw;
   }
+  // Formats date / DLUO : stockés sans leur numéro (« JJ MM AA », seul le motif part
+  // dans SAP) ; on retrouve l'option « 2 - JJ MM AA » pour qu'elle soit présélectionnée.
+  for (const ff of LABEL_ONLY_FIELDS) f[ff] = optionFormatDate(f[ff]);
+  // Secteur : code seul (une ancienne saisie FL a pu écrire « 15 - Marques Distrib. »).
+  f.secteur_activite = codeSecteur(f.secteur_activite);
   for (const [ff, col] of Object.entries(VISA_MAP)) {
     f[ff] = p[col] === true;
   }
@@ -112,7 +126,99 @@ export function toFicheShape(p) {
   f.nomenclature_douaniere =
     (p[NOMENCLATURE_COL] ?? '').trim() || (p[NOMENCLATURE_COL_LEGACY] ?? '').trim();
   if (p.cr04e_statut_en_cours === SAP_STATUT) f.statut_sap = SAP_LABEL;
+  f.demande = demandeOrigine(p);
   return f;
+}
+
+// ---------- Reprise DE/DS -> FL ----------
+// La demande (DE ou DS) et la FL partagent la ligne cr04e_projet : les colonnes
+// communes (libellé, code projet, date, centre de profit, hiérarchie, secteur)
+// s'affichent donc telles quelles. Les champs ci-dessous ont une colonne FL
+// distincte, vide à l'ouverture : on les déduit de ce que la demande a déjà saisi.
+
+// Demande d'origine (libellé du tag « depuis DE / DS »). fl_sap_cree écrase le
+// statut ds_* : repli sur l'activité, colonne propre à la DS.
+export function demandeOrigine(p = {}) {
+  const statut = String(p.cr04e_statut_en_cours ?? '');
+  return statut.startsWith('ds_') || String(p.cr04e_activite_ds ?? '').trim() ? 'DS' : 'DE';
+}
+
+// Valeurs FL déductibles de la demande. `profilFabricRepet` = profil porté par la
+// ligne cr04e_divisionprojet (écrit à la création DE/DS, négoce inclus) ; à défaut,
+// recalculé depuis la division.
+export function valeursDemande(p = {}, { profilFabricRepet } = {}) {
+  const division = String(p[`_cr04e_divisionusine_value${FMT}`] ?? '').trim();
+  const v = {};
+  // Origine de fabrication : code division d'origine saisi en DS (usine de
+  // fabrication d'origine) ; sinon division DE/DS, seulement si c'est un site de
+  // fabrication (en négoce la division est un entrepôt, ex. 2820).
+  const origineDS = String(p.cr04e_codedivisionorigine ?? '').trim();
+  if (origineDS) v.origine_fabrication = origineDS;
+  else if (DE_DIVISION_CODES.includes(division)) v.origine_fabrication = division;
+  // Type d'usine = profil de fabrication répétitive (même champ SAP MARC-SFEPR).
+  const profil = String(profilFabricRepet ?? '').trim() || computeProfilFabricRepetDE(division);
+  if (profil) v.type_usine = profil;
+  // Groupe imputation article : 01 produits finis (PFIN) / 05 produits négoce (NEGO).
+  const typeProduit = String(p.cr04e_typedeproduit ?? '').trim().toUpperCase();
+  if (typeProduit === 'PFIN') v.groupe_imputation = '01';
+  if (typeProduit === 'NEGO') v.groupe_imputation = '05';
+  // Poids net UVC en kg, comme la DE/DS (ZUG = poids × 1000 des deux côtés).
+  const poids = p.cr04e_poidsnet;
+  if (poids !== null && poids !== undefined && poids !== '' && Number.isFinite(Number(poids))) {
+    v.poids_net_uvc = Number(poids);
+  }
+  // GTIN colis / couche / palette : EAN déjà calculés et stockés par la DE/DS
+  // (même dérivation GS1 que la FL, cf. lib/ean.js).
+  const gtin = {};
+  for (const [bloc, col] of Object.entries(EAN_COLS)) {
+    const ean = String(p[col] ?? '').trim();
+    if (ean) gtin[bloc] = ean;
+  }
+  if (Object.keys(gtin).length) v.gtin = gtin;
+  return v;
+}
+
+const vide = (v) => v === null || v === undefined || v === '';
+
+// Complète la fiche avec les valeurs de la demande, UNIQUEMENT sur les champs vides
+// et encore éditables (section non visée, article non créé) : une saisie FL n'est
+// jamais écrasée, et une section visée montre ce qui est réellement en base.
+// `fiche.herite` = { champ: section qui l'écrit au visa } (tag « depuis DE » + visa).
+export function appliquerHeritage(fiche, valeurs = {}) {
+  const herite = {};
+  for (const champ of ['origine_fabrication', 'type_usine', 'groupe_imputation']) {
+    if (valeurs[champ] && vide(fiche[champ]) && isFieldEditable(champ, fiche)) {
+      fiche[champ] = valeurs[champ];
+      herite[champ] = FIELD_OWNERS[champ];
+    }
+  }
+  const uvc = fiche.uvc_block || {};
+  if (valeurs.poids_net_uvc != null && vide(uvc.poids_net) && isFieldEditable('uvc_block', fiche)) {
+    fiche.uvc_block = { ...uvc, poids_net: valeurs.poids_net_uvc };
+    herite.uvc_block = 'ind';
+  }
+  // GTIN : saisis par le Commerce (colonne éditable tant que le visa Commerce n'est
+  // pas posé), même si les blocs emballage appartiennent à l'Industriel.
+  const gtinEditable = fiche.statut_sap !== SAP_LABEL && !fiche.visa_commerce;
+  for (const [bloc, gtin] of Object.entries(valeurs.gtin || {})) {
+    const b = fiche[bloc] || {};
+    if (vide(b.gtin) && gtinEditable) {
+      fiche[bloc] = { ...b, gtin };
+      herite[bloc] = 'com';
+    }
+  }
+  fiche.herite = herite;
+  return fiche;
+}
+
+// Champs repris de la demande pour une section (`owner` = sc | ind | com), à écrire
+// avec son visa : le flux SAP relit Dataverse, la valeur validée doit y être.
+export function patchHeritage(fiche, owner) {
+  const patch = {};
+  for (const [champ, section] of Object.entries(fiche?.herite || {})) {
+    if (section === owner) patch[champ] = fiche[champ];
+  }
+  return patch;
 }
 
 // Extrait le code de tête d'une valeur « CODE — LABEL » / « CODE - LABEL » /
@@ -151,6 +257,14 @@ function labelSansCode(v) {
   return (v ?? '').toString().replace(/^\s*\d+\s*[—:=-]\s*/, '').trim();
 }
 
+// Inverse de labelSansCode à la lecture : « JJ MM AA » -> option « 2 - JJ MM AA ».
+// Valeur inconnue de la liste : renvoyée telle quelle.
+function optionFormatDate(v) {
+  const s = (v ?? '').toString().trim();
+  if (!s) return v ?? '';
+  return FORMATS_DATE_ETIQUETTE.find((o) => o === s || labelSansCode(o) === s) || s;
+}
+
 // Objet FL partiel -> payload cr04e_projet (seuls les champs présents dans `patch`).
 // Les lookups sont poussés par leur code, résolus en @odata.bind via le référentiel.
 export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
@@ -166,6 +280,10 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
             : v;
       }
     }
+  }
+  // Secteur d'activité : code seul, comme la DE/DS (« 15 », pas le libellé de la liste).
+  if (payload.cr04e_secteurdactivite) {
+    payload.cr04e_secteurdactivite = codeSecteur(payload.cr04e_secteurdactivite);
   }
   for (const [ff, col] of Object.entries(VISA_MAP)) {
     if (ff in patch) payload[col] = patch[ff] === true;
@@ -194,6 +312,15 @@ export function buildFichePayload(patch = {}, { sapOptions = {} } = {}) {
   if ('palette_block' in patch) {
     const uc = patch.palette_block?.unite;
     payload.cr04e_nombreducpalette = uc == null || uc === '' ? '' : String(uc);
+  }
+  // GTIN colis / couche / palette : le tableau FL fait foi (un GTIN peut changer
+  // après la DE). On repousse donc la saisie dans les colonnes EAN du projet, en
+  // plus des lignes cr04e_unitofmeasure. Bloc sans clé `gtin` -> colonne non touchée.
+  for (const [bloc, col] of Object.entries(EAN_COLS)) {
+    const b = patch[bloc];
+    if (b && typeof b === 'object' && 'gtin' in b) {
+      payload[col] = vide(b.gtin) ? '' : String(b.gtin).trim();
+    }
   }
   return payload;
 }
@@ -245,7 +372,26 @@ export async function getFicheById(id) {
   fiche.canaux_distribution = await listCanaux(id);
   fiche.sites_stockage = await listSitesStockage(id);
   Object.assign(fiche, blocsFromRows(await listEmballages(id)));
-  return fiche;
+  const profilFabricRepet = await lireProfilFabricRepet(id);
+  return appliquerHeritage(fiche, valeursDemande(p, { profilFabricRepet }));
+}
+
+// Profil de fabrication répétitive porté par les lignes cr04e_divisionprojet du
+// projet (PROD, ou STOCK en négoce). Best-effort : '' si absent ou en échec, la FL
+// retombe alors sur la règle division (valeursDemande).
+async function lireProfilFabricRepet(projetId) {
+  try {
+    const result = await Cr04e_divisionprojetsService.getAll({
+      filter: `_cr04e_projet_value eq ${projetId} and cr04e_profilfabricrepet ne null`,
+      select: ['cr04e_profilfabricrepet'],
+      top: 1,
+    });
+    const rows = unwrap(result, 'Lecture profil de fabrication') ?? [];
+    return rows[0]?.cr04e_profilfabricrepet ?? '';
+  } catch (err) {
+    console.warn('[FL profil de fabrication]', err);
+    return '';
+  }
 }
 
 // Résout un code PJ (cr04e_codeprojet, humain) vers le GUID de la ligne

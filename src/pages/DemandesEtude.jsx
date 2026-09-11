@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { listProjets } from '@/api/projet';
-import { useQuery } from '@tanstack/react-query';
+import { listProjets, updateProjetStatut } from '@/api/projet';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
@@ -45,11 +45,23 @@ import {
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
+  FastForward,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { STATUTS, getStatutMeta, codeChapeauAlert } from '@/lib/deStatus';
+import { STATUTS, getStatutMeta, codeChapeauAlert, etapeSuivante } from '@/lib/deStatus';
 import { CodeChapeauAlertIcon } from '@/components/CodeChapeauAlertIcon';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 const TONE_BADGE = {
   amber: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -125,10 +137,32 @@ export default function DemandesEtude() {
   const [sortDir, setSortDir] = useState('desc');
   const [activeView, setActiveView] = useState('toutes');
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  // Ligne en attente de confirmation pour le passage manuel à l'étape suivante.
+  const [confirmDe, setConfirmDe] = useState(null);
+
   // Liste branchée sur Dataverse (cr04e_projet).
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ['projets-de'],
     queryFn: listProjets,
+  });
+
+  // Passage MANUEL (phase de test) à l'étape suivante : « Projet qualifié et en cours
+  // d'étude » (dl_attente_validation_cdg) -> « Validée » (dl_validee), règle unique
+  // etapeSuivante. JAMAIS « Article créé dans SAP » : ce statut n'est posé que par la
+  // création SAP depuis la FL. Simple transition de cr04e_statut_en_cours ; la FL
+  // apparaît dans l'Accueil dès « Validée ».
+  const promoteMutation = useMutation({
+    mutationFn: ({ id, statut }) => updateProjetStatut(id, statut),
+    onSuccess: (_, { statut }) => {
+      queryClient.invalidateQueries({ queryKey: ['projets-de'] });
+      queryClient.invalidateQueries({ queryKey: ['fiches'] });
+      toast({ title: 'Statut mis à jour', description: `Demande passée à « ${getStatutMeta(statut).label} » (test).` });
+    },
+    onError: (err) =>
+      toast({ title: 'Échec de la mise à jour', description: err?.message || 'Erreur inconnue.', variant: 'destructive' }),
+    onSettled: () => setConfirmDe(null),
   });
 
   // DE locales (localStorage) : sert à retrouver l'id local pour l'édition d'un
@@ -612,7 +646,23 @@ export default function DemandesEtude() {
                       {getDemandeur(de) || <span className="text-muted-foreground/50">-</span>}
                     </TableCell>
                     <TableCell>
-                      {getStatutBadge(de.statut)}
+                      <div className="flex flex-col items-start gap-1.5">
+                        {getStatutBadge(de.statut)}
+                        {etapeSuivante(de.statut) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmDe(de)}
+                            className="h-7 px-2 text-[11px] font-semibold border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+                          >
+                            <FastForward className="w-3 h-3 mr-1" />
+                            Passer à « {getStatutMeta(etapeSuivante(de.statut)).label} »
+                            <span className="ml-1.5 rounded-full bg-amber-400/90 text-amber-950 text-[9px] font-bold px-1.5 py-0.5">
+                              test
+                            </span>
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <FluxStatutBadge value={de.flux_envoi_de} />
@@ -679,6 +729,42 @@ export default function DemandesEtude() {
         </div>
 
       </main>
+
+      {/* Confirmation du passage manuel (test) « Projet qualifié » → « Validée ».
+          La mutation garde la pop-up ouverte pendant l'appel (preventDefault sur
+          l'action) puis la ferme via onSettled. */}
+      <AlertDialog open={!!confirmDe} onOpenChange={(o) => { if (!o && !promoteMutation.isPending) setConfirmDe(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Passer à « Validée » ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La demande{' '}
+              <span className="font-semibold text-foreground">
+                {confirmDe ? (getDesignation(confirmDe) || getCodeProjet(confirmDe) || '') : ''}
+              </span>{' '}
+              va passer de « Projet qualifié et en cours d'étude » à « Validée ».
+              <br />
+              <span className="text-xs italic">
+                Étape de test — la fiche de lancement s'ouvre ensuite dans l'Accueil.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={promoteMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                const statut = confirmDe && etapeSuivante(confirmDe.statut);
+                if (statut) promoteMutation.mutate({ id: confirmDe.id, statut });
+              }}
+              disabled={promoteMutation.isPending}
+            >
+              {promoteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

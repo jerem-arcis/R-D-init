@@ -9,6 +9,7 @@ import {
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
   GROUPES_STATISTIQUE,
+  tagHerite,
 } from '@/lib/ficheSchema';
 
 export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
@@ -41,7 +42,6 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('groupe_statistique_article')}
           disabled={disabled}
           options={GROUPES_STATISTIQUE}
-          fromSAP
         />
         <SearchableSelectField
           label="Groupe d'article"
@@ -49,7 +49,6 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('groupe_article')}
           disabled={disabled}
           options={GROUPES_ARTICLE}
-          fromSAP
         />
         <SearchableSelectField
           label="Groupe de ristournes"
@@ -57,15 +56,15 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           onChange={set('groupe_ristourne')}
           disabled={disabled}
           options={GROUPES_RISTOURNE}
-          fromSAP
         />
+        {/* Prérempli selon le type de produit de la demande (PFIN → 01, NEGO → 05). */}
         <SelectField
           label="Groupe imputation article"
           value={fiche.groupe_imputation}
           onChange={set('groupe_imputation')}
           disabled={disabled}
           options={GROUPES_IMPUTATION}
-          fromSAP
+          fromDE={tagHerite(fiche, 'groupe_imputation')}
         />
       </FieldGrid>
     </SectionShell>
