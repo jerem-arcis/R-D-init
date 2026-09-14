@@ -31,9 +31,14 @@ const SITE_STOCKAGE_LABELS = new Map(SITES_STOCKAGE.map((s) => [s.value, s.label
 export const siteStockageLabel = (code) =>
   SITE_STOCKAGE_LABELS.get((code ?? '').toString().trim()) || (code ?? '').toString();
 
+// Option « code-désignation » pour les groupes article/ristourne : le libellé complet
+// (« A0-MB BUCHES MN ») reste affiché et cherchable, mais seul le CODE sur 2 caractères
+// (« A0 ») est stocké en BDD puis envoyé à SAP. La valeur « 01 » (pas de désignation)
+// donne simplement { value: '01', label: '01' }.
+const groupeOption = (s) => ({ value: s.slice(0, 2), label: s, keywords: s });
+
 // OC2 — Groupe d'article (MVKE-KONDM). Liste ListesSAP/GroupeArticle du fichier FM.
-// Valeur = libellé complet « code-désignation » : stockée ET envoyée telle quelle à
-// SAP (choix métier — on transmet la valeur exacte de l'Excel, pas seulement le code).
+// Seul le code sur 2 caractères est stocké et envoyé à SAP (cf. groupeOption).
 export const GROUPES_ARTICLE = [
   '01', // valeur en tête (demande métier)
   'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN', 'A3-MB CR GLACEE SM MDD',
@@ -54,10 +59,10 @@ export const GROUPES_ARTICLE = [
   'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT',
   'BS-MARIE', 'BT-MB CODITOUR PATISSER', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
   'BW-MB INTERMARCHE TRAITEUR', 'BX-BPT CLASS(ANC.GP)', 'BY-MB ENTREMONT', 'BZ-TDL',
-];
+].map(groupeOption);
 
 // OC2 — Groupe de ristournes (MVKE-BONUS). Liste ListesSAP/GroupeDeRistourne du
-// fichier FM. Valeur = libellé complet, stockée ET envoyée telle quelle (idem article).
+// fichier FM. Seul le code sur 2 caractères est stocké/envoyé (idem article).
 export const GROUPES_RISTOURNE = [
   '01', // valeur en tête (demande métier)
   'A0-MB BUCHES MN', 'A1-MB CR GLACEE DIVERS', 'A2-MB CR GLACEE MN', 'A3-MB CR GLACEE SM MDD',
@@ -78,7 +83,7 @@ export const GROUPES_RISTOURNE = [
   'BO-MB TRADER JOE', 'BP-MB FAUCHON', 'BQ-MDD DIVERS', 'BR-BOULPAT',
   'BS-MARIE', 'BT-MB CODITOUR PATISSERIE', 'BU-MB FLUNCH', 'BV-MB POMONA TRAITEUR',
   'BW-MB INTERMARCHE TRAITEUR',
-];
+].map(groupeOption);
 
 // OC2 — Groupe imputation article. Valeurs du fichier FM (plage GpeImputArt).
 // Désignation affichée, code seul stocké/poussé (cf. codeOption plus bas).

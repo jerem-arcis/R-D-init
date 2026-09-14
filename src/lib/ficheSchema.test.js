@@ -113,13 +113,14 @@ describe('listes OC2 (groupements ADV) alimentées depuis ListesSAP', () => {
     expect(GROUPES_IMPUTATION).toHaveLength(2);
   });
 
-  it('article/ristourne : valeur « 01 » en tête puis les libellés complets, envoyés tels quels', () => {
-    expect(GROUPES_ARTICLE.every((v) => typeof v === 'string')).toBe(true);
-    expect(GROUPES_RISTOURNE.every((v) => typeof v === 'string')).toBe(true);
-    expect(GROUPES_ARTICLE[0]).toBe('01');
-    expect(GROUPES_RISTOURNE[0]).toBe('01');
-    expect(GROUPES_ARTICLE).toContain('AY-MB INTERMARCHE');
-    expect(GROUPES_RISTOURNE).toContain('AY-MB INTERMARCHE');
+  it('article/ristourne : value = code sur 2 car. (stocké/envoyé), label = libellé complet (affiché)', () => {
+    // Toutes les entrées sont des objets { value, label } et le code fait 2 caractères.
+    expect(GROUPES_ARTICLE.every((o) => typeof o === 'object' && o.value.length === 2)).toBe(true);
+    expect(GROUPES_RISTOURNE.every((o) => typeof o === 'object' && o.value.length === 2)).toBe(true);
+    expect(GROUPES_ARTICLE[0]).toEqual({ value: '01', label: '01', keywords: '01' });
+    expect(GROUPES_RISTOURNE[0]).toEqual({ value: '01', label: '01', keywords: '01' });
+    expect(GROUPES_ARTICLE).toContainEqual({ value: 'AY', label: 'AY-MB INTERMARCHE', keywords: 'AY-MB INTERMARCHE' });
+    expect(GROUPES_RISTOURNE).toContainEqual({ value: 'AY', label: 'AY-MB INTERMARCHE', keywords: 'AY-MB INTERMARCHE' });
   });
 
   it('statistique : value = code seul (envoyé), label = libellé Excel (affiché)', () => {

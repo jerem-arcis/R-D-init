@@ -135,10 +135,10 @@ describe('computeFicheSap (agrégat)', () => {
     type_usine: 'Z008 - Bonloc',
     cle_calcul_lot_usine: 'ZN - Niveau',
     uvc_block: { poids_net: 5, gtin: '3270160893614' },
-    // Groupements ADV : article/ristourne en libellé complet, statistique/imputation en code.
+    // Groupements ADV : tous stockés en code (article/ristourne sur 2 car.).
     groupe_statistique_article: '1',
-    groupe_article: 'AY-MB INTERMARCHE',
-    groupe_ristourne: 'AY-MB INTERMARCHE',
+    groupe_article: 'AY',
+    groupe_ristourne: 'AY',
     groupe_imputation: '01',
   };
   const payload = computeFicheSap(fiche);
@@ -156,11 +156,11 @@ describe('computeFicheSap (agrégat)', () => {
     expect(payload['MLGN-LETY1']).toBe('Z81 :palette 80x120');
     expect(payload['MARC-SFEPR']).toBe('Z008');
   });
-  it('pousse les groupements ADV (OC2) tels quels', () => {
-    expect(payload['MVKE-VERSG']).toBe('1');                 // statistique : code
-    expect(payload['MVKE-KONDM']).toBe('AY-MB INTERMARCHE'); // article : libellé complet
-    expect(payload['MVKE-BONUS']).toBe('AY-MB INTERMARCHE'); // ristourne : libellé complet
-    expect(payload['MVKE-KTGRM']).toBe('01');                // imputation : code
+  it('pousse les groupements ADV (OC2) en code', () => {
+    expect(payload['MVKE-VERSG']).toBe('1');   // statistique : code
+    expect(payload['MVKE-KONDM']).toBe('AY');  // article : code sur 2 car.
+    expect(payload['MVKE-BONUS']).toBe('AY');  // ristourne : code sur 2 car.
+    expect(payload['MVKE-KTGRM']).toBe('01');  // imputation : code
   });
   it('génère les unités de mesure', () => {
     const units = payload.unitsOfMeasure.map((r) => r.cr04e_alternativeunit);
