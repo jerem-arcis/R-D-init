@@ -15,6 +15,7 @@ import {
   listDemandeurs,
   filterDemandes,
   sortDemandes,
+  localIdFor,
 } from '@/lib/demandesFilter';
 import {
   Table, 
@@ -174,22 +175,10 @@ export default function DemandesEtude() {
   // La FL n'est plus matérialisée : la ligne cr04e_projet EST la FL dès `dl_validee`.
   // Elle apparaît directement dans « Accueil » (liste FL sur Dataverse).
 
-  // Clé de jointure principale : projet_id (stocké sur la DE locale au moment de
-  // l'écriture du projet). Robuste même quand code_projet/code_chapeau sont vides
-  // (brouillon). On garde code_chapeau/code_projet en repli.
-  const localIdByProjetId = new Map();
-  const localIdByChapeau = new Map();
-  const localIdByProjet = new Map();
-  localDEs.forEach((d) => {
-    if (d.projet_id) localIdByProjetId.set(d.projet_id, d.id);
-    if (d.code_chapeau) localIdByChapeau.set(d.code_chapeau, d.id);
-    if (d.code_projet) localIdByProjet.set(d.code_projet, d.id);
-  });
-  const localIdFor = (de) =>
-    (de.id && localIdByProjetId.get(de.id)) ||
-    (de.code_chapeau && localIdByChapeau.get(de.code_chapeau)) ||
-    (de.code_projet && localIdByProjet.get(de.code_projet)) ||
-    null;
+  // Jointure ligne Dataverse -> brouillon local par `projet_id` uniquement
+  // (helper pur testé `localIdFor`). Voir le commentaire du helper : les anciens
+  // replis code_chapeau/code_projet ouvraient la mauvaise fiche quand plusieurs
+  // essais partageaient le même code.
 
   // Demandeurs présents dans le jeu de données → options du filtre dédié.
   const demandeurs = useMemo(() => listDemandeurs(demandes), [demandes]);
@@ -684,7 +673,7 @@ export default function DemandesEtude() {
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const localId = localIdFor(de);
+                        const localId = localIdFor(localDEs, de);
                         // Cible d'ouverture de la ligne, selon le statut :
                         //  - Brouillon : édition de la DE locale (si présente dans ce
                         //    navigateur), SINON chargement Dataverse par projet_id — la

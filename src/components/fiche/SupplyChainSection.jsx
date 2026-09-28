@@ -4,11 +4,13 @@ import SectionShell from './fields/SectionShell';
 import FieldGrid from './fields/FieldGrid';
 import SelectField from './fields/SelectField';
 import SearchableSelectField from './fields/SearchableSelectField';
+import MultiSelectField from './fields/MultiSelectField';
 import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
   GROUPES_STATISTIQUE,
+  SITES_STOCKAGE,
   tagHerite,
 } from '@/lib/ficheSchema';
 
@@ -20,7 +22,6 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
     <SectionShell
       id="supply-chain"
       title="ADV"
-      subtitle="Renseigné par l'ADV"
       icon={Truck}
       accentColor="sky"
       isLocked={isLocked}
@@ -65,6 +66,17 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           disabled={disabled}
           options={GROUPES_IMPUTATION}
           fromDE={tagHerite(fiche, 'groupe_imputation')}
+        />
+      </FieldGrid>
+
+      <FieldGrid title="Stockage" cols={2}>
+        <MultiSelectField
+          label="Sites de stockage"
+          required
+          value={fiche.sites_stockage}
+          onChange={set('sites_stockage')}
+          disabled={disabled}
+          options={SITES_STOCKAGE}
         />
       </FieldGrid>
     </SectionShell>

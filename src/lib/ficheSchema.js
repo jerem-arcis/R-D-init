@@ -95,42 +95,12 @@ export const GROUPES_IMPUTATION = [
 // OC2 — Groupe statistique article (MVKE-VERSG). Liste ListesSAP/GroupeStatArticle.
 // Désignation « code-Groupe article code » affichée, mais seul le CODE est stocké
 // puis envoyé à SAP (ex. « 1 »), conformément à l'import Excel (VERSG = « 1 »).
+// Règle métier (atelier cycle de vie DE) : le groupe statistique est TOUJOURS « 1 ».
+// La liste est donc réduite à cette seule valeur (plus de choix A..Z), et la valeur
+// est préremplie à la création de la FL (cf. valeursDemande dans api/fiche.js).
+export const GROUPE_STATISTIQUE_DEFAUT = '1';
 export const GROUPES_STATISTIQUE = [
   { value: '1', label: '1-Groupe article 1' },
-  { value: '2', label: '2-Groupe article 2' },
-  { value: '3', label: '3-Groupe article 3' },
-  { value: '4', label: '4-Groupe article 4' },
-  { value: '5', label: '5-Groupe article 5' },
-  { value: '6', label: '6-Groupe article 6' },
-  { value: '7', label: '7-Groupe article 7' },
-  { value: '8', label: '8-Groupe article 8' },
-  { value: '9', label: '9-Groupe article 9' },
-  { value: 'A', label: 'A-Groupe article A' },
-  { value: 'B', label: 'B-Groupe article B' },
-  { value: 'C', label: 'C-Groupe article C' },
-  { value: 'D', label: 'D-Groupe article D' },
-  { value: 'E', label: 'E-Groupe article E' },
-  { value: 'F', label: 'F-Groupe article F' },
-  { value: 'G', label: 'G-Groupe article G' },
-  { value: 'H', label: 'H-Groupe article H' },
-  { value: 'I', label: 'I-Groupe article I' },
-  { value: 'J', label: 'J-Groupe article J' },
-  { value: 'K', label: 'K-Groupe article K' },
-  { value: 'L', label: 'L-Groupe article L' },
-  { value: 'M', label: 'M-Groupe article M' },
-  { value: 'N', label: 'N-Groupe article N' },
-  { value: 'O', label: 'O-Groupe article O' },
-  { value: 'P', label: 'P-Groupe article P' },
-  { value: 'Q', label: 'Q-Groupe article Q' },
-  { value: 'R', label: 'R-Groupe article R' },
-  { value: 'S', label: 'S-Groupe article S' },
-  { value: 'T', label: 'T-Groupe article T' },
-  { value: 'U', label: 'U-Groupe article U' },
-  { value: 'V', label: 'V-Groupe article V' },
-  { value: 'W', label: 'W-Groupe article W' },
-  { value: 'X', label: 'X-Groupe article X' },
-  { value: 'Y', label: 'Y-Groupe article Y' },
-  { value: 'Z', label: 'Z-Groupe article Z' },
 ];
 
 // MARA-XCHPF — Gestion par lots (nouveau champ FL). Indicateur oui/non.
@@ -169,12 +139,11 @@ export const ECLATEMENTS_GROUPE_MARCHANDISE = [
   codeOption('00400', 'Négoce'),
 ];
 
+// Carcassonne (Z004) et Montblanc (Z011) retirés de partout (demande atelier).
 export const TYPES_USINE = [
-  codeOption('Z004', 'Carcassonne'),
   codeOption('Z006', 'Agen-St Médard'),
   codeOption('Z008', 'Bonloc'),
   codeOption('Z010', 'Rivesaltes'),
-  codeOption('Z011', 'Montblanc'),
 ];
 
 export const TYPES_PALETTE = [
@@ -510,7 +479,7 @@ export const FIELD_OWNERS = {
   marque: 'com',
   mention_produit: 'com',
   nomenclature_douaniere: 'com',
-  sites_stockage: 'com',      // déplacé depuis SC (responsable Commerce)
+  sites_stockage: 'sc',       // pavé ADV (atelier cycle de vie DE) : renseigné par l'ADV
 };
 
 // Étape courante : premier visa non posé. Renvoie null si tous visés ou fiche null.
@@ -545,7 +514,7 @@ export const getFieldState = (fieldName, fiche) => {
 export const REMOVED_FIELDS = new Set([
   'statut_lancement', 'libelle_client', 'fabrication_negoce', 'mention_produit',
   // `sites_stockage` : réactivé (multi-select alimentant les lignes STOCK de
-  // cr04e_divisionprojets). Requis pour le visa Commerce (owner 'com').
+  // cr04e_divisionprojets). Requis pour le visa ADV (owner 'sc', pavé ADV).
   'specificite_produit', 'groupe_marchandises', 'groupement_articles',
   // `ancien_numero_article` reste visible : c'est MARA-BISMT / ProductOldID côté SAP.
   'vl', 'article_prix', 'biv', 'dluc_dluo_critique', 'gestion_par_lots',
@@ -623,15 +592,26 @@ export const isHierarchiePlaceholder = (v) => {
   return tokens.length >= 2 && tokens.slice(1).every((t) => t.toUpperCase() === 'DE');
 };
 
+// Produit négoce (NEGO) : la FL n'a alors pas de type d'usine (règle atelier cycle
+// de vie DE). On s'appuie sur le type de produit de la demande (cr04e_typedeproduit,
+// chargé dans fiche.type_produit) avec repli sur le groupe d'imputation « 05 -
+// produits négoce » (déduit du même type de produit à la création).
+export const isFicheNegoce = (fiche) =>
+  String(fiche?.type_produit ?? '').trim().toUpperCase() === 'NEGO' ||
+  String(fiche?.groupe_imputation ?? '').trim() === '05';
+
 // Champs vides mais requis pour poser le visa d'une section (`owner` = sc | ind | com).
 // Exclut les champs retirés et les 5 blocs d'emballage (exemptés). Renvoie une liste
 // de { name, label } — vide si tout est rempli (ou fiche/section absente).
 export function getMissingVisaFields(fiche, owner) {
   if (!fiche || !owner) return [];
+  const negoce = isFicheNegoce(fiche);
   return Object.entries(FIELD_OWNERS)
     .filter(([name, o]) =>
       o === owner &&
       !REMOVED_FIELDS.has(name) &&
+      // Négoce : pas de type d'usine dans la FL, donc jamais requis pour le visa.
+      !(name === 'type_usine' && negoce) &&
       !EMBALLAGE_BLOCK_FIELDS.includes(name))
     // Bloquant si non rempli — OU, pour la hiérarchie produit, si elle est encore
     // au gabarit « XX DE DE » hérité de la DE (il faut choisir une vraie famille).

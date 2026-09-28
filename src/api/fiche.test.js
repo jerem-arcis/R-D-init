@@ -159,7 +159,8 @@ describe('toFicheListShape', () => {
       cr04e_projetid: 'g1',
       cr04e_codechapeau: '742001',
       cr04e_nomduproduitdesignation: 'Tarte',
-      cr04e_divisionusinename: 'Bonloc',
+      // Usine dérivée de la division (valeur formatée du lookup), pas du champ …name.
+      [`_cr04e_divisionusine_value${FMT}`]: '2886',
       cr04e_typedelademande: 'Création',
       cr04e_visacommerce: true,
       cr04e_visaindustriel: true,
@@ -175,6 +176,12 @@ describe('toFicheListShape', () => {
       type_demande: 'Création',
       visas_valides: 2,
     });
+  });
+
+  it('dérive l\'usine de la division : négoce (2820) et repli import beCPG', () => {
+    expect(toFicheListShape({ [`_cr04e_divisionusine_value${FMT}`]: '2820' }).usine).toBe('Produit négoce');
+    expect(toFicheListShape({ cr04e_divisionimport: 'RIVESALTES' }).usine).toBe('Rivesaltes');
+    expect(toFicheListShape({}).usine).toBe('');
   });
 });
 
@@ -199,6 +206,7 @@ describe('reprise DE/DS -> FL', () => {
       origine_fabrication: '2886',
       type_usine: 'Z008', // règle division (Bonloc) faute de ligne divisionprojet
       groupe_imputation: '01',
+      groupe_statistique_article: '1', // règle atelier : toujours 1
       poids_net_uvc: 0.45,
     });
   });
@@ -220,9 +228,15 @@ describe('reprise DE/DS -> FL', () => {
     expect(fiche.origine_fabrication).toBe('2886');
     expect(fiche.type_usine).toBe('Z004'); // saisie FL conservée
     expect(fiche.groupe_imputation).toBe('01');
+    expect(fiche.groupe_statistique_article).toBe('1'); // règle atelier : toujours 1
     expect(fiche.uvc_block).toEqual({ unite: 1, poids_net: 0.45 });
     // Chaque champ repris porte la section qui l'écrira au visa.
-    expect(fiche.herite).toEqual({ origine_fabrication: 'com', groupe_imputation: 'sc', uvc_block: 'ind' });
+    expect(fiche.herite).toEqual({
+      origine_fabrication: 'com',
+      groupe_imputation: 'sc',
+      groupe_statistique_article: 'sc',
+      uvc_block: 'ind',
+    });
   });
 
   it('DS : le code division d’origine prime sur la division de fabrication', () => {
@@ -269,7 +283,7 @@ describe('reprise DE/DS -> FL', () => {
   it('patchHeritage : ne renvoie que les champs repris de la section visée', () => {
     const fiche = appliquerHeritage({}, valeursDemande(projetDE));
     expect(patchHeritage(fiche, 'com')).toEqual({ origine_fabrication: '2886' });
-    expect(patchHeritage(fiche, 'sc')).toEqual({ groupe_imputation: '01' });
+    expect(patchHeritage(fiche, 'sc')).toEqual({ groupe_imputation: '01', groupe_statistique_article: '1' });
     expect(patchHeritage(fiche, 'ind')).toEqual({ type_usine: 'Z008', uvc_block: { poids_net: 0.45 } });
     expect(patchHeritage({}, 'com')).toEqual({});
   });

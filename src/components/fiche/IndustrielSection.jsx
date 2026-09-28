@@ -17,11 +17,29 @@ import {
   DUREES_VIE,
   tagHerite,
   libelleDemande,
+  isFicheNegoce,
 } from '@/lib/ficheSchema';
+import { computeVolumeM3, paletteDimsFromType } from '@/lib/emballagesCalc';
 
 export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
+
+  // Type de palette : renseigne aussi les dimensions au sol (long/larg) des blocs
+  // couche & palette, déduites du libellé (« … 80 x 120 … »), comme dans l'onglet
+  // Industriel du fichier FM. Le volume de ces blocs est recalculé au passage.
+  const setTypePalette = (value) => {
+    const dims = paletteDimsFromType(value);
+    const patch = { type_palette: value };
+    if (dims) {
+      for (const key of ['couche_block', 'palette_block']) {
+        const bloc = { ...(fiche[key] || {}), long: dims.long, larg: dims.larg };
+        bloc.volume = computeVolumeM3(bloc);
+        patch[key] = bloc;
+      }
+    }
+    onUpdate?.(patch);
+  };
   // Saisie du tableau Emballages : écriture différée (les cellules quittées en
   // rafale sont regroupées en un seul enregistrement au lieu d'un PATCH par cellule).
   const onUpdateTable = onUpdateDebounced || onUpdate;
@@ -30,7 +48,6 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
     <SectionShell
       id="industriel"
       title="Industriel"
-      subtitle="Renseigné par le Site (industriel + commerce + logistique)"
       icon={Factory}
       accentColor="amber"
       isLocked={isLocked}
@@ -78,15 +95,18 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
           disabled={disabled}
           options={ECLATEMENTS_GROUPE_MARCHANDISE}
         />
-        {/* Prérempli avec le profil de fabrication répétitive de la demande. */}
-        <SelectField
-          label="Type d'usine"
-          value={fiche.type_usine}
-          onChange={set('type_usine')}
-          disabled={disabled}
-          options={TYPES_USINE}
-          fromDE={tagHerite(fiche, 'type_usine')}
-        />
+        {/* Prérempli avec le profil de fabrication répétitive de la demande. Masqué
+            pour les produits négoce : la FL n'a pas de type d'usine (règle atelier). */}
+        {!isFicheNegoce(fiche) && (
+          <SelectField
+            label="Type d'usine"
+            value={fiche.type_usine}
+            onChange={set('type_usine')}
+            disabled={disabled}
+            options={TYPES_USINE}
+            fromDE={tagHerite(fiche, 'type_usine')}
+          />
+        )}
         {/* MARA-BISMT / ProductOldID : n° de l'article remplacé, saisie libre. */}
         <TextField
           label="Ancien n° article"
@@ -97,7 +117,7 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
         <SelectField
           label="Type de support / palette"
           value={fiche.type_palette}
-          onChange={set('type_palette')}
+          onChange={setTypePalette}
           disabled={disabled}
           options={TYPES_PALETTE}
         />

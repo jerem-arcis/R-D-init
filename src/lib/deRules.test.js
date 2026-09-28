@@ -3,6 +3,7 @@ import {
   DE_DIVISION_CODES,
   divisionCodeFromPlant,
   usineFromDivision,
+  usineLabelFromDivision,
   computeHierarchieDE,
   computeClasseValoDE,
   computeCentreProfitDE,
@@ -18,7 +19,57 @@ import {
   hierarchiePrefix,
   centresProfitAutorises,
   classesValoAutorisees,
+  computeCentreProfitAgenDE,
+  isCodeOrigineValide,
 } from './deRules';
+
+describe('usineLabelFromDivision — libellé usine (liste/filtre) depuis la division', () => {
+  it('mappe les 4 sites de fabrication DE', () => {
+    expect(usineLabelFromDivision('2886')).toBe('Bonloc');
+    expect(usineLabelFromDivision('2866')).toBe('Rivesaltes');
+    expect(usineLabelFromDivision('2847')).toBe('Agen');
+    expect(usineLabelFromDivision('2859')).toBe('Aire');
+  });
+  it('mappe Agen Faux Frais STEF (2823) sur Agen et le négoce (2820) sur Produit négoce', () => {
+    expect(usineLabelFromDivision('2823')).toBe('Agen');
+    expect(usineLabelFromDivision('2820')).toBe('Produit négoce');
+  });
+  it('tolère les espaces et renvoie "" pour une division inconnue/vide', () => {
+    expect(usineLabelFromDivision(' 2886 ')).toBe('Bonloc');
+    expect(usineLabelFromDivision('9999')).toBe('');
+    expect(usineLabelFromDivision('')).toBe('');
+    expect(usineLabelFromDivision(null)).toBe('');
+  });
+});
+
+describe('computeCentreProfitAgenDE — centre de profit Agen déduit du choix', () => {
+  it('mappe le choix Agen vers le code centre de profit', () => {
+    expect(computeCentreProfitAgenDE('Assortiments ou plateaux')).toBe('27CA');
+    expect(computeCentreProfitAgenDE('Pains surprises')).toBe('27PS');
+    expect(computeCentreProfitAgenDE('Plaques')).toBe('27PL');
+  });
+  it('renvoie "" tant qu\'aucun choix (déclenche le champ obligatoire)', () => {
+    expect(computeCentreProfitAgenDE('')).toBe('');
+    expect(computeCentreProfitAgenDE(null)).toBe('');
+    expect(computeCentreProfitAgenDE('Autre chose')).toBe('');
+  });
+});
+
+describe('isCodeOrigineValide — code d\'origine 4 ou 6 chiffres', () => {
+  it('accepte 4 et 6 chiffres', () => {
+    expect(isCodeOrigineValide('1234')).toBe(true);
+    expect(isCodeOrigineValide('123456')).toBe(true);
+    expect(isCodeOrigineValide('  1234  ')).toBe(true);
+  });
+  it('rejette les autres longueurs (dont 8) et le non-numérique', () => {
+    expect(isCodeOrigineValide('12345')).toBe(false);
+    expect(isCodeOrigineValide('1234567')).toBe(false);
+    expect(isCodeOrigineValide('12345678')).toBe(false);
+    expect(isCodeOrigineValide('123')).toBe(false);
+    expect(isCodeOrigineValide('')).toBe(false);
+    expect(isCodeOrigineValide('12a4')).toBe(false);
+  });
+});
 
 describe('DE_DIVISION_CODES', () => {
   it('restreint aux 4 sites de fabrication', () => {

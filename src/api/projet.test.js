@@ -12,6 +12,31 @@ describe('toListShape — type DS', () => {
     expect(row.type_de).toBe('de');
   });
 
+  it('dérive usine_validee de la division (valeur formatée du lookup), pas du champ …name', () => {
+    const FMT = '@OData.Community.Display.V1.FormattedValue';
+    // Le champ `...name` du lookup revient null en prod : on ne doit PAS s'en servir.
+    const bonloc = listShapeForTest({
+      cr04e_projetid: '1',
+      [`_cr04e_divisionusine_value${FMT}`]: '2886',
+      cr04e_divisionusinename: null,
+    });
+    expect(bonloc.usine_validee).toBe('Bonloc');
+
+    // Négoce (DS) : division 2820 -> « Produit négoce » (option du filtre usine).
+    const negoce = listShapeForTest({
+      cr04e_projetid: '2',
+      [`_cr04e_divisionusine_value${FMT}`]: '2820',
+    });
+    expect(negoce.usine_validee).toBe('Produit négoce');
+
+    // Repli sur la colonne d'import beCPG (nom de site) si le lookup est absent.
+    const importe = listShapeForTest({ cr04e_projetid: '3', cr04e_divisionimport: 'RIVESALTES' });
+    expect(importe.usine_validee).toBe('Rivesaltes');
+
+    // Rien d'exploitable -> chaîne vide (pas de crash).
+    expect(listShapeForTest({ cr04e_projetid: '4' }).usine_validee).toBe('');
+  });
+
   it('remonte les statuts de flux SAP (texte) en passe-plat', () => {
     const abs = listShapeForTest({ cr04e_projetid: '1' });
     expect(abs.flux_envoi_de).toBeUndefined();
@@ -70,6 +95,52 @@ describe('type de produit SAP (cr04e_typedeproduit)', () => {
   it('la valeur est posée quel que soit le statut (dont validation)', () => {
     expect(buildProjetPayload({}, { statut: 'dl_attente_validation_cdg' }).cr04e_typedeproduit).toBe('PFIN');
     expect(buildDsPayload({ autre_type_demande: '5' }, { statut: 'ds_validee' }).cr04e_typedeproduit).toBe('NEGO');
+  });
+});
+
+describe('secteur d’activité (cr04e_secteurdactivite)', () => {
+  it('persiste le secteur SAISI (marque) tel quel', () => {
+    expect(buildProjetPayload({ marque: '10' }).cr04e_secteurdactivite).toBe('10');
+  });
+
+  it('à défaut de saisie, retombe sur le calcul réseau -> secteur (comme l’écran et la validation)', () => {
+    // marque vide + réseau HSFC : le champ affiche « 15 » et la validation passe ;
+    // la base doit recevoir « 15 », pas du vide.
+    const p = buildProjetPayload({ marque: '', reseau: 'HSFC' });
+    expect(p.cr04e_secteurdactivite).toBe('15');
+  });
+
+  it('la saisie prime sur le repli réseau', () => {
+    const p = buildProjetPayload({ marque: '12', reseau: 'HSFC' });
+    expect(p.cr04e_secteurdactivite).toBe('12');
+  });
+
+  it('ni saisie ni réseau exploitable : colonne omise', () => {
+    expect('cr04e_secteurdactivite' in buildProjetPayload({})).toBe(false);
+    expect('cr04e_secteurdactivite' in buildProjetPayload({ reseau: 'INCONNU' })).toBe(false);
+  });
+});
+
+describe('groupe article (division) — lookup cr04e_Groupearticledivision', () => {
+  const sapOptions = { groupes_article: [{ id: 'gpfb', value: 'PF-B' }, { id: 'gba', value: 'BA' }] };
+  const BIND = 'cr04e_Groupearticledivision@odata.bind';
+
+  it('lie le groupe article SAISI', () => {
+    const p = buildProjetPayload({ groupe_article: 'BA' }, { sapOptions });
+    expect(p[BIND]).toBe('/cr04e_groupearticledivisions(gba)');
+  });
+
+  it('à défaut, retombe sur le verrou division (Bonloc 2886 -> PF-B), comme la validation', () => {
+    // groupe_article vide + division Bonloc : l'écran/validation utilisent PF-B ;
+    // la base doit lier PF-B, pas omettre le lookup.
+    const p = buildProjetPayload({ groupe_article: '', division: '2886' }, { sapOptions });
+    expect(p[BIND]).toBe('/cr04e_groupearticledivisions(gpfb)');
+  });
+
+  it('division NON verrouillée (Agen/Aire) sans saisie : lookup omis (pas de repli)', () => {
+    // Aire (2859) : groupe article libre, aucun verrou -> on n'invente pas de valeur.
+    const p = buildProjetPayload({ groupe_article: '', division: '2859' }, { sapOptions });
+    expect(BIND in p).toBe(false);
   });
 });
 

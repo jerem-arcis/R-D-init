@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE, updateProjetFromDE, getProjetById, createDivisionProjet, ensureDivisionProjet, PROJET_STATUT } from '@/api/projet';
+import { createProjetFromDE, updateProjetFromDE, getProjetById, ensureDivisionProjet, PROJET_STATUT } from '@/api/projet';
 import { createDsFromForm, updateDsFromForm, getDsById, computeDsValues, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
@@ -29,6 +29,8 @@ import {
   computeHierarchieDE,
   computeClasseValoDE,
   computeCentreProfitDE,
+  computeCentreProfitAgenDE,
+  isCodeOrigineValide,
   computeGroupeArticleDE,
   computeGroupeArticleLockedDE,
   computeProfilFabricRepetDE,
@@ -92,11 +94,38 @@ const REQUIRED_FIELDS_DE = [
   { key: 'division', label: 'Division (Usine)' },
   { key: 'designation_article', label: 'Nom du produit / Désignation' },
   { key: 'poids_net', label: 'Poids net' },
+  // Secteur d'activité : auto depuis le réseau, mais reste requis (réseau sans règle
+  // ou effacé -> vide). Valeur effective = saisie ou calculée (ctx.deSecteur).
+  { key: 'marque', label: "Secteur d'activité", getValue: (fd, ctx) => fd.marque || ctx.deSecteur },
   {
     key: 'groupe_article',
     label: 'Groupe article (division)',
     // Satisfait si la division impose/verrouille la valeur.
     getValue: (fd, ctx) => fd.groupe_article || ctx.deGroupeArticleLocked,
+  },
+  // Agen : le choix (Assortiments/Pains/Plaques) pilote le centre de profit. Requis
+  // seulement si Agen ET centre de profit encore vide — une DE Agen rouverte depuis
+  // Dataverse a bien un centre de profit (lookup) mais PAS agen_choix (non persisté),
+  // il ne faut donc pas la rebloquer.
+  {
+    key: 'agen_choix',
+    label: 'Agen - choix',
+    isRequired: (fd) => needsSurgeleWarningDE(fd.division) && !fd.centre_profit,
+  },
+  // Article d'origine (option A) : il faut avoir choisi VL OU nouveau code. Satisfait
+  // aussi si un code chapeau existe déjà (réouverture Dataverse : besoin_vl/nouveau_code
+  // ne sont pas persistés, il ne faut pas rebloquer une DE déjà dotée d'un code).
+  {
+    key: 'origine',
+    label: "Article d'origine",
+    getValue: (fd) => (fd.besoin_vl || fd.besoin_nouveau_code || fd.code_chapeau ? 'ok' : ''),
+  },
+  // Si VL : le code d'origine doit être présent ET valide (4 ou 6 chiffres).
+  {
+    key: 'code_vl',
+    label: "Code d'origine (4 ou 6 chiffres)",
+    isRequired: (fd) => !!fd.besoin_vl,
+    getValue: (fd) => (isCodeOrigineValide(fd.code_vl) ? fd.code_vl : ''),
   },
 ];
 
@@ -132,6 +161,14 @@ const REQUIRED_FIELDS_DS = [
   { key: 'autre_poids_net_uv', label: 'Poids net pour 1 UV (en kg)' },
   { key: 'autre_type_marque', label: 'Type de marque' },
   { key: 'autre_description', label: 'Description du besoin' },
+  // Code d'origine : requis (et valide 4/6 chiffres) uniquement si l'ADV choisit la VL
+  // au moment de l'obtention du code chapeau. En « nouveau code », pas de code d'origine.
+  {
+    key: 'autre_code_origine',
+    label: "Code d'origine (4 ou 6 chiffres)",
+    isRequired: (fd) => !!fd.besoin_vl,
+    getValue: (fd) => (isCodeOrigineValide(fd.autre_code_origine) ? fd.autre_code_origine : ''),
+  },
   // Champs calculés (SAP) : la DS ne part pas tant qu'une valeur dérivée reste vide
   // (règle sans correspondance). Les valeurs viennent du contexte (calcul en render) ;
   // l'utilisateur peut lever le blocage via l'override affiché dans le formulaire.
@@ -831,6 +868,8 @@ export default function CreerDE() {
     division: '',
     classe_valorisation: '',
     centre_profit: '',
+    // Agen (DE) : choix qui détermine le centre de profit (cf. computeCentreProfitAgenDE).
+    agen_choix: '',
     groupe_autorisation: '',
     groupe_frais_generaux: '',
 
@@ -1150,6 +1189,28 @@ export default function CreerDE() {
           return;
         }
       }
+      // Ligne cr04e_divisionprojet GARANTIE avant le flux : le payload SAP est réduit
+      // à { ID, PoidsNet } et le flux relit la division depuis cette table. Elle est
+      // normalement écrite à la création (handleCreateDs), mais pas si la DS est
+      // ancienne, si l'écriture avait échoué (non bloquante), ou si l'usine a changé.
+      // Idempotent (ensureDivisionProjet) : ne recrée pas si elle existe déjà.
+      // Non bloquant, comme la DE : la ligne cr04e_projet porte déjà le lookup division.
+      if (formData.projet_id) {
+        const divisionFab = computeDsValues(formData).divisionFab;
+        const typeDivision = isTypeNegoce(formData.autre_type_demande) ? 'STOCK' : 'PROD';
+        const profil = computeProfilFabricRepetDE(
+          codeDivisionFabrication({ usine: formData.autre_usine_fab, agen_type: formData.autre_agen_type }),
+        );
+        try {
+          await ensureDivisionProjet({ projetId: formData.projet_id, division: divisionFab, type: typeDivision, profilFabricRepet: profil });
+        } catch (err) {
+          toast({
+            title: 'Division-projet non enregistrée',
+            description: `L'envoi continue, mais l'écriture cr04e_divisionprojet a échoué : ${err?.message || 'erreur inconnue'}.`,
+            variant: 'destructive',
+          });
+        }
+      }
       const result = await triggerSapSendDs(effectiveCode, formData.projet_id);
       if (!result.ok) {
         setSapModal({ status: 'error', title: result.title, message: result.message });
@@ -1250,9 +1311,14 @@ export default function CreerDE() {
       const code = await requestVlCodeChapeau(base);
       setVlResolvedCode(code);
     } catch (err) {
+      // « 0 » renvoyé par le flux = aucune VL pour ce code -> message dédié. Dans tous
+      // les cas vlResolvedCode reste vide, donc l'envoi SAP est bloqué (pas de code).
+      const notFound = err?.code === 'VL_NOT_FOUND';
       toast({
-        title: 'Code chapeau VL non obtenu',
-        description: `Impossible de récupérer le code à partir de la VL : ${err?.message || 'erreur inconnue'}.`,
+        title: notFound ? 'Code non trouvé' : 'Code chapeau VL non obtenu',
+        description: notFound
+          ? `Aucune VL ne correspond au code « ${base} » dans SAP. Vérifiez le code d'origine.`
+          : `Impossible de récupérer le code à partir de la VL : ${err?.message || 'erreur inconnue'}.`,
         variant: 'destructive',
       });
     } finally {
@@ -1325,6 +1391,14 @@ export default function CreerDE() {
     const code = extractCodeChapeau(text);
     if (!code) {
       throw new Error("Réponse du flux VL vide : le code chapeau doit être renvoyé dans le corps (Body) de l'action Réponse.");
+    }
+    // Le flux VL renvoie « 0 » quand aucune VL ne correspond au code envoyé : c'est
+    // un « code non trouvé », pas un code chapeau. On le remonte comme erreur dédiée
+    // (sinon « 0 » serait pris pour un vrai code et partirait vers SAP).
+    if (/^0+$/.test(code)) {
+      const e = new Error('Code non trouvé');
+      e.code = 'VL_NOT_FOUND';
+      throw e;
     }
     return code;
   };
@@ -1480,6 +1554,9 @@ export default function CreerDE() {
   const deGroupeArticleLocked = computeGroupeArticleLockedDE(formData.division);
   const deSecteur = computeSecteurFromReseau(formData.reseau);
   const deAgenWarning = needsSurgeleWarningDE(formData.division);
+  // Agen : le centre de profit n'est plus un choix libre — il est déduit de « Agen - choix ».
+  const isAgenDE = deAgenWarning; // division Agen (2847)
+  const deCentreProfitAgen = computeCentreProfitAgenDE(formData.agen_choix);
 
   // Filtre centre profit / classe valo aux valeurs autorisées par F (groupe article
   // division) et J (préfixe hiérarchie). [] = aucune contrainte → liste complète.
@@ -1496,6 +1573,7 @@ export default function CreerDE() {
   // et alimente la liste affichée sous les boutons.
   const missingRequired = computeMissingRequired(formType, formData, {
     deGroupeArticleLocked,
+    deSecteur,
     // Valeurs calculées (SAP) de la DS : requises pour l'envoi (cf. REQUIRED_FIELDS_DS).
     dsDivisionOrigine,
     dsDivisionFab,
@@ -1530,7 +1608,8 @@ export default function CreerDE() {
       };
       force('famille_produit', deHierarchie);
       force('classe_valorisation', deClasseValo);
-      force('centre_profit', deCentreProfitAuto); // Aire/Bonloc/Rivesaltes
+      // Centre de profit : Agen -> déduit de « Agen - choix », sinon règle division.
+      force('centre_profit', isAgenDE ? deCentreProfitAgen : deCentreProfitAuto);
       force('marque', deSecteur);
       force('groupe_autorisation', computeGroupeAutorisationDE(formData.division)); // Aire→NEGO, sinon PFIN
       force('groupe_frais_generaux', computeGroupeFraisGenerauxDE(formData.division)); // Aire→NEGO, sinon FG
@@ -1540,7 +1619,7 @@ export default function CreerDE() {
       return changed ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formType, formData.division, formData.reseau]);
+  }, [formType, formData.division, formData.reseau, formData.agen_choix]);
 
   const handleSaveBrouillon = async () => {
     let projetId = formData.projet_id;
@@ -1586,7 +1665,12 @@ export default function CreerDE() {
       ? (nouveauCode || '').trim()
       : origine_mode === 'vl'
         ? (vlResolvedCode || '').trim()
-        : '';
+        // Réouverture depuis Dataverse (DE en erreur repassée en brouillon, ou reprise
+        // sur un autre poste) : origine_mode n'est pas restauré, mais le code chapeau a
+        // déjà été obtenu et persisté dans cr04e_projet. On le relit depuis formData —
+        // sinon le garde « Code chapeau requis » bloque le renvoi SAP alors que le code
+        // est bien présent (et affiché à l'écran).
+        : (formData.code_chapeau || '').trim();
 
   // Renseigne les codes EAN à partir du code chapeau (4 premiers chiffres) dès
   // qu'il est disponible, tant que le bloc « Besoin des codes EAN » est actif.
@@ -1688,9 +1772,11 @@ export default function CreerDE() {
       // Ligne cr04e_divisionprojet rattachée au projet (relation lookup cr04e_Projet),
       // écrite JUSTE APRÈS la table Projet (le lookup a besoin du GUID). Non bloquant :
       // le projet est déjà enregistré, un échec ici ne stoppe pas l'envoi SAP.
+      // Idempotent (ensureDivisionProjet) : un renvoi après échec SAP ne crée pas de
+      // doublon (createDivisionProjet en créait une nouvelle à chaque tentative).
       if (projetId) {
         try {
-          await createDivisionProjet({
+          await ensureDivisionProjet({
             projetId,
             division: formData.division,
             type: 'PROD',
@@ -1993,7 +2079,30 @@ export default function CreerDE() {
                       options={classesValoOptions}
                       hint="Production → 7012, Aire → 2038"
                     />
-                    {deCentreProfitAuto ? (
+                    {isAgenDE ? (
+                      <>
+                        <Field label="Agen - choix" required hint="Détermine le centre de profit">
+                          <Select
+                            value={formData.agen_choix || ''}
+                            onValueChange={(v) => handleChange('agen_choix', v)}
+                          >
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Assortiments / Pains / Plaques" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {AGEN_CHOIX.map((t) => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <ReadOnlyField
+                          label="Centre de profit"
+                          value={formData.centre_profit || deCentreProfitAgen}
+                          hint="Auto selon « Agen - choix »"
+                        />
+                      </>
+                    ) : (
                       <ReadOnlyField
                         label="Centre de profit"
                         value={formData.centre_profit || deCentreProfitAuto}
@@ -2001,15 +2110,6 @@ export default function CreerDE() {
                         options={centresProfitOptions}
                         hint="Selon la division"
                       />
-                    ) : (
-                      <Field label="Centre de profit" hint="Choix libre (Agen)">
-                        <SearchableSelect
-                          value={formData.centre_profit}
-                          onChange={(v) => handleChange('centre_profit', v)}
-                          options={buildOptions(centresProfitOptions, formData.centre_profit)}
-                          placeholder="Sélectionner un centre"
-                        />
-                      </Field>
                     )}
                     <Field label="Groupe d'autorisation">
                       <SearchableSelect
@@ -2097,15 +2197,15 @@ export default function CreerDE() {
                               handleChange('code_vl', e.target.value);
                               setVlResolvedCode(''); // le code base change -> code résolu obsolète
                             }}
-                            placeholder="Ex: 12345678"
-                            maxLength={8}
+                            placeholder="Ex: 1234 ou 123456"
+                            maxLength={6}
                             className="h-11 font-mono max-w-[260px]"
                           />
                           <Button
                             type="button"
                             size="sm"
                             onClick={handleRequestVlCode}
-                            disabled={!formData.code_vl.trim() || isRequestingVlCode}
+                            disabled={!isCodeOrigineValide(formData.code_vl) || isRequestingVlCode}
                             className="h-10 bg-violet-600 hover:bg-violet-700 text-white shrink-0"
                           >
                             {isRequestingVlCode ? (
@@ -2117,7 +2217,7 @@ export default function CreerDE() {
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground italic">
-                          Code à 6 ou 8 chiffres requis
+                          Code à 4 ou 6 chiffres requis
                         </p>
                       </div>
                     </div>
@@ -2339,15 +2439,15 @@ export default function CreerDE() {
                             handleChange('autre_code_origine', e.target.value);
                             setVlResolvedCode(''); // le code base change -> code résolu obsolète
                           }}
-                          placeholder="Ex: 12345678"
-                          maxLength={8}
+                          placeholder="Ex: 1234 ou 123456"
+                          maxLength={6}
                           className="h-11 font-mono max-w-[260px]"
                         />
                         <Button
                           type="button"
                           size="sm"
                           onClick={handleRequestVlCode}
-                          disabled={!(formData.autre_code_origine || '').trim() || isRequestingVlCode}
+                          disabled={!isCodeOrigineValide(formData.autre_code_origine) || isRequestingVlCode}
                           className="h-10 bg-violet-600 hover:bg-violet-700 text-white shrink-0"
                         >
                           {isRequestingVlCode ? (
@@ -2359,7 +2459,7 @@ export default function CreerDE() {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground italic">
-                        Code à 6 ou 8 chiffres requis
+                        Code à 4 ou 6 chiffres requis
                       </p>
                     </div>
                   )}

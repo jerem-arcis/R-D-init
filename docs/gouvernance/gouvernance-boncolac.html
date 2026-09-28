@@ -1,0 +1,608 @@
+<title>Gouvernance · App Boncolac</title>
+<style>
+  :root{
+    --ink:#1b2436; --ink-soft:#3a4353; --muted:#6b7484;
+    --paper:#f4f5f7; --surface:#ffffff; --line:#e2e5ea; --line-strong:#cdd2db;
+    --accent:#0f7b6c; --accent-deep:#0b5a4f; --accent-wash:#e6f2ef;
+    --r:#0f7b6c; --r-bg:#e2f0ec;
+    --a:#a86400; --a-bg:#f6ecd7;
+    --c:#2f6fb0; --c-bg:#e4eef8;
+    --i:#6b7484; --i-bg:#eceef1;
+    --warn:#b45309; --warn-bg:#fdf1e0; --warn-line:#f0cf9c;
+    --ok:#0f7b6c; --ok-bg:#e2f0ec; --ok-line:#a9d4c9;
+    --stop:#c0392b; --stop-bg:#fbe9e7;
+    --mono:ui-monospace,"Cascadia Code","Cascadia Mono","Consolas","SFMono-Regular",monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arabic,sans-serif;
+    --maxread:70ch;
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .page{
+    font-family:var(--sans); color:var(--ink); background:var(--paper);
+    line-height:1.65; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .page::selection{background:var(--accent-wash)}
+
+  /* ---------- Shell ---------- */
+  .shell{max-width:1200px; margin:0 auto; padding:0 clamp(16px,4vw,40px)}
+  .layout{display:grid; grid-template-columns:1fr; gap:0}
+  @media(min-width:960px){
+    .layout{grid-template-columns:248px minmax(0,1fr); gap:48px; align-items:start}
+    .toc{position:sticky; top:0; height:100vh; overflow:auto; padding:40px 0}
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead{border-bottom:1px solid var(--line-strong); background:var(--surface)}
+  .masthead .shell{padding-top:44px; padding-bottom:40px}
+  .eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-deep)}
+  h1{font-size:clamp(2rem,4.4vw,3rem); line-height:1.06; margin:.5rem 0 .6rem; letter-spacing:-.02em; text-wrap:balance; max-width:20ch}
+  .lede{font-size:1.075rem; color:var(--ink-soft); max-width:60ch; margin:0}
+  .meta-row{display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:22px}
+  .tag{font-family:var(--mono); font-size:.72rem; letter-spacing:.03em; padding:5px 10px; border:1px solid var(--line-strong); border-radius:999px; color:var(--ink-soft); background:var(--paper)}
+  .tag.live{border-color:var(--warn-line); background:var(--warn-bg); color:var(--warn)}
+
+  /* ---------- TOC ---------- */
+  .toc nav{display:flex; flex-direction:column; gap:2px}
+  .toc .toc-title{font-family:var(--mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); padding:0 12px 10px}
+  .toc a{display:flex; gap:12px; align-items:baseline; text-decoration:none; color:var(--ink-soft); padding:9px 12px; border-radius:8px; font-size:.92rem; border-left:2px solid transparent}
+  .toc a .n{font-family:var(--mono); font-size:.78rem; color:var(--muted); min-width:1.4em}
+  .toc a:hover{background:var(--surface); color:var(--ink)}
+  .toc a.active{background:var(--surface); color:var(--accent-deep); border-left-color:var(--accent); font-weight:600}
+  .toc a.active .n{color:var(--accent)}
+  .toc-nav-mobile{display:none}
+  @media(max-width:959px){
+    .toc{padding:0}
+    .toc nav{position:sticky; top:0; z-index:5; flex-direction:row; overflow-x:auto; gap:4px; background:var(--paper); border-bottom:1px solid var(--line); padding:10px 0; scrollbar-width:thin}
+    .toc .toc-title{display:none}
+    .toc a{border-left:none; border-bottom:2px solid transparent; white-space:nowrap; padding:8px 10px}
+    .toc a.active{border-left:none; border-bottom-color:var(--accent)}
+  }
+
+  /* ---------- Sections ---------- */
+  main{padding:48px 0 96px}
+  section{scroll-margin-top:24px; padding-bottom:12px}
+  section + section{margin-top:64px; padding-top:56px; border-top:1px solid var(--line)}
+  .sec-head{margin-bottom:26px}
+  .sec-head .eyebrow{color:var(--accent-deep)}
+  h2{font-size:clamp(1.5rem,2.6vw,2.05rem); line-height:1.12; margin:.35rem 0 0; letter-spacing:-.015em; text-wrap:balance}
+  h3{font-size:1.14rem; margin:2.2rem 0 .7rem; letter-spacing:-.01em}
+  h4{font-size:.96rem; margin:1.4rem 0 .5rem; color:var(--ink)}
+  p{max-width:var(--maxread); margin:.8rem 0}
+  .prose li{max-width:var(--maxread)}
+  a.inl{color:var(--accent-deep); text-underline-offset:2px}
+  strong{font-weight:650}
+  code{font-family:var(--mono); font-size:.85em; background:var(--surface); border:1px solid var(--line); border-radius:5px; padding:1px 5px; color:var(--accent-deep)}
+
+  /* ---------- Journey diagram ---------- */
+  .journey{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:26px 0 8px}
+  .step{background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:10px; padding:16px}
+  .step .k{font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; color:var(--accent); text-transform:uppercase}
+  .step .t{font-weight:650; margin:.35rem 0 .3rem; font-size:1rem}
+  .step .d{font-size:.85rem; color:var(--muted); margin:0}
+
+  /* ---------- Callouts ---------- */
+  .call{border:1px solid var(--line); border-left:3px solid var(--muted); background:var(--surface); border-radius:8px; padding:14px 18px; margin:20px 0; max-width:var(--maxread)}
+  .call p{margin:.4rem 0; max-width:none}
+  .call .lab{font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600}
+  .call.warn{border-left-color:var(--warn); background:var(--warn-bg); border-color:var(--warn-line)}
+  .call.warn .lab{color:var(--warn)}
+  .call.ok{border-left-color:var(--ok); background:var(--ok-bg); border-color:var(--ok-line)}
+  .call.ok .lab{color:var(--accent-deep)}
+  .call ul{margin:.5rem 0 .2rem; padding-left:1.1rem}
+  .call li{margin:.3rem 0}
+
+  /* ---------- Tables ---------- */
+  .twrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; margin:20px 0; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:.9rem}
+  thead th{background:#eef0f3; text-align:left; font-weight:600; color:var(--ink); padding:11px 14px; border-bottom:1px solid var(--line-strong); white-space:nowrap; position:sticky; top:0}
+  tbody td, tbody th{padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  tbody tr:last-child td, tbody tr:last-child th{border-bottom:none}
+  tbody tr:hover{background:#fafbfc}
+  th[scope=row]{text-align:left; font-weight:550; color:var(--ink); min-width:230px}
+  .raci th[scope=row]{position:sticky; left:0; background:var(--surface); box-shadow:1px 0 0 var(--line)}
+  .raci tbody tr:hover th[scope=row]{background:#fafbfc}
+  .raci td{text-align:center; white-space:nowrap}
+  .raci thead th:not(:first-child){text-align:center; font-family:var(--mono); font-size:.78rem}
+  .phase-row th{background:var(--accent-wash); color:var(--accent-deep); font-family:var(--mono); font-size:.74rem; letter-spacing:.08em; text-transform:uppercase; padding:8px 14px}
+  td.mono, .mono-cell{font-family:var(--mono); font-size:.82rem}
+
+  /* ---------- RACI chips ---------- */
+  .chip{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:5px; font-family:var(--mono); font-size:.72rem; font-weight:700; margin:0 1px}
+  .chip.r{color:var(--r); background:var(--r-bg)}
+  .chip.a{color:var(--a); background:var(--a-bg)}
+  .chip.c{color:var(--c); background:var(--c-bg)}
+  .chip.i{color:var(--i); background:var(--i-bg)}
+  .dot{color:var(--line-strong)}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; margin:16px 0 4px; font-size:.86rem}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+
+  /* ---------- Sequence blocks ---------- */
+  .seq{overflow-x:auto; background:#12324a; color:#dfe8ef; border-radius:10px; padding:18px 20px; margin:18px 0; font-family:var(--mono); font-size:.82rem; line-height:1.55}
+  .seq pre{margin:0}
+  .seq .cap{display:block; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#7fb7ac; margin-bottom:10px}
+  .seq b{color:#8fd3c6; font-weight:600}
+  .seq .stop{color:#f2a59d}
+  .seq .ok{color:#a7e0b0}
+
+  /* ---------- Role cards ---------- */
+  .roles{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:22px 0}
+  .role{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px}
+  .role .rk{font-family:var(--mono); font-size:.7rem; letter-spacing:.06em; padding:3px 8px; border-radius:6px; background:var(--accent-wash); color:var(--accent-deep); display:inline-block}
+  .role h4{margin:.6rem 0 .35rem}
+  .role p{font-size:.86rem; color:var(--muted); margin:0; max-width:none}
+
+  /* ---------- Screen steps (mode op) ---------- */
+  .screens{display:flex; flex-direction:column; gap:14px; margin:22px 0}
+  .screen{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:18px 20px; display:grid; grid-template-columns:auto 1fr; gap:0 18px; align-items:start}
+  .screen .num{font-family:var(--mono); font-weight:700; font-size:1.1rem; color:var(--accent); background:var(--accent-wash); width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; grid-row:span 2}
+  .screen h4{margin:0 0 .2rem; font-size:1.02rem}
+  .screen .do{margin:.5rem 0 0; font-size:.9rem}
+  .screen .do p{margin:.3rem 0; max-width:none}
+  .screen .file{font-family:var(--mono); font-size:.72rem; color:var(--muted)}
+
+  footer{border-top:1px solid var(--line-strong); background:var(--surface); color:var(--muted); font-size:.85rem}
+  footer .shell{padding:26px 0}
+  footer a{color:var(--accent-deep)}
+
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+  html{scroll-behavior:smooth}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  /* ---------- Print / PDF ---------- */
+  @media print{
+    @page{margin:14mm}
+    :root{--maxread:none}
+    *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .page{background:#fff; font-size:11.5px}
+    .toc{display:none !important}
+    .layout{display:block !important}
+    .shell{max-width:none; padding:0}
+    .masthead{border-bottom:2px solid var(--ink)}
+    .masthead .shell{padding:0 0 18px}
+    main{padding:22px 0 0}
+    section{break-inside:auto}
+    section + section{margin-top:26px; padding-top:24px}
+    h2,h3,h4{break-after:avoid}
+    .sec-head{break-after:avoid}
+    .twrap{overflow:visible; break-inside:auto}
+    table{font-size:10.5px}
+    thead th{position:static}
+    .raci th[scope=row]{position:static; box-shadow:none}
+    tr,.step,.role,.screen,.call,.seq{break-inside:avoid}
+    .journey,.roles{gap:8px}
+    .seq{background:#12324a !important; color:#dfe8ef !important}
+    p,.prose li{max-width:none}
+    footer{border-top:2px solid var(--ink)}
+    a{color:var(--ink); text-decoration:none}
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="shell">
+      <div class="eyebrow">Gouvernance &amp; documentation · v0.2</div>
+      <h1>Qui fait quoi, comment, et comment ça marche</h1>
+      <p class="lede">Référentiel de travail pour l'application Boncolac : création d'articles SAP depuis une Demande d'Étude jusqu'à la Fiche de Lancement. Matrice de responsabilité, groupes &amp; alertes, mode opératoire et flux techniques, en un seul document.</p>
+      <div class="meta-row">
+        <span class="tag">Mis à jour le 16/09/2026</span>
+        <span class="tag live">Brouillon, à valider ensemble</span>
+        <span class="tag">Secteurs alignés sur l'Atelier 4 (cycle de vie DE)</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <div class="layout">
+
+      <aside class="toc">
+        <nav aria-label="Sommaire">
+          <span class="toc-title">Sommaire</span>
+          <a href="#vue"><span class="n">00</span><span>Vue d'ensemble</span></a>
+          <a href="#matrice"><span class="n">01</span><span>Matrice de responsabilité</span></a>
+          <a href="#groupes"><span class="n">02</span><span>Groupes &amp; diffusion</span></a>
+          <a href="#modop"><span class="n">03</span><span>Mode opératoire</span></a>
+          <a href="#flux"><span class="n">04</span><span>Flux Power Automate</span></a>
+          <a href="#decisions"><span class="n">05</span><span>Décisions &amp; questions</span></a>
+        </nav>
+      </aside>
+
+      <main>
+
+        <!-- ============ 00 VUE ============ -->
+        <section id="vue">
+          <div class="sec-head">
+            <div class="eyebrow">00 · Le principe</div>
+            <h2>Un produit, cinq étapes, plusieurs mains</h2>
+          </div>
+          <p>L'application sert à <strong>créer un nouveau produit dans SAP</strong>. <strong>Elle ne couvre pas tout le cycle</strong> : la partie amont (rédaction de la DE, import beCPG, génération du code PJ, <strong>validation Codir</strong>) se passe <strong>hors application</strong> (dans beCPG). L'app <strong>prend le relais à partir de la validation Codir</strong> : un flux quotidien importe les projets validés, l'ADV crée le code chapeau, puis quatre services remplissent la Fiche de Lancement avant l'envoi à SAP.</p>
+
+          <div class="journey" role="list">
+            <div class="step" role="listitem"><span class="k">Amont · hors app</span><p class="t">DE + validation Codir</p><p class="d">Dans <strong>beCPG</strong> : le Commerce/Marketing rédige la DE, import beCPG + code PJ, puis le <strong>Codir valide</strong>.</p></div>
+            <div class="step" role="listitem"><span class="k">Étape 1</span><p class="t">Import + code chapeau</p><p class="d">Un <strong>flux quotidien</strong> importe les projets validés Codir ; l'<strong>ADV</strong> crée le code chapeau et l'envoie à SAP.</p></div>
+            <div class="step" role="listitem"><span class="k">Étape 2</span><p class="t">Validation DL (auto)</p><p class="d">Un <strong>flux</strong> met à jour le statut du projet selon que la validation DL est passée ou non. Aucune saisie.</p></div>
+            <div class="step" role="listitem"><span class="k">Étape 3</span><p class="t">Les visas</p><p class="d"><strong>Commerce/Marketing, R&amp;D, ADV, Qualité</strong> remplissent chacun leur section et la « visent ».</p></div>
+            <div class="step" role="listitem"><span class="k">Étape 4</span><p class="t">Création SAP</p><p class="d">Les 4 visas posés → l'article est créé ; mails services + <strong>entrepôt</strong> (palettisation).</p></div>
+          </div>
+
+          <div class="call ok">
+            <span class="lab">✓ Compris le 16/09/2026 (Atelier 4, cycle de vie DE)</span>
+            <ul>
+              <li>L'app <strong>démarre à la validation Codir</strong> : tout l'amont (DE, import beCPG, code PJ, validation Codir) est <strong>hors app</strong>. Un <strong>flux quotidien</strong> importe dans Dataverse les projets validés Codir puis lance l'alerte ADV.</li>
+              <li>De « en attente de code chapeau » jusqu'à « en attente de DL » : <strong>seul l'ADV crée / modifie</strong> ; les autres secteurs sont en <strong>lecture seule</strong>.</li>
+              <li>La <strong>validation DL</strong> n'a plus d'import manuel : un <strong>flux Power Automate</strong> met à jour le statut automatiquement (passée ou non).</li>
+              <li><strong>Fiche de Lancement : quatre secteurs</strong> : Commerce/Marketing, R&amp;D, ADV, Qualité. Une fois les <strong>visas signés (sections remplies)</strong>, l'envoi SAP est possible.</li>
+              <li>L'<strong>Entrepôt</strong> est <strong>informé</strong> en fin de cycle (données de palettisation).</li>
+            </ul>
+          </div>
+
+          <div class="call warn">
+            <span class="lab">⚠ Zones non définies / écart avec le code</span>
+            <p><strong>DS (négoce)</strong> : circuit non défini pour l'instant, volontairement laissé vide. <strong>Écart app ↔ cible</strong> : l'app possède encore un écran de création de DE et des visas <strong>ADV / Industriel / Commerce</strong> (sans section R&amp;D ni Qualité). L'alignement sur ce schéma reste à implémenter côté code.</p>
+          </div>
+
+          <div class="call warn">
+            <span class="lab">⚠ À savoir</span>
+            <p>Aujourd'hui l'application <strong>ne bloque personne par rôle</strong> : tout utilisateur connecté peut tout faire (y compris ouvrir l'Admin). Ce document décrit la cible ; les <a class="inl" href="#groupes">groupes de sécurité</a> sont ce qui la rendra réellement applicable.</p>
+          </div>
+        </section>
+
+        <!-- ============ 01 MATRICE ============ -->
+        <section id="matrice">
+          <div class="sec-head">
+            <div class="eyebrow">01 · RACI</div>
+            <h2>Matrice de responsabilité</h2>
+          </div>
+          <p>Qui <strong>a le droit de faire quoi</strong> dans l'application, une fois le projet importé (après la validation Codir). <strong>Cinq acteurs</strong> agissent dans l'app ; la validation Codir, la validation DL et l'entrepôt sont <strong>hors app</strong> (voir l'encart en dessous).</p>
+
+          <div class="roles">
+            <div class="role"><span class="rk">ADV</span><h4>ADV / Supply Chain</h4><p><strong>Seul acteur</strong> de la phase code chapeau → DL : crée/modifie la demande, crée le <strong>code chapeau</strong>, envoie à SAP. En FL : saisit/vise la section ADV et déclenche « Créer dans SAP ».</p></div>
+            <div class="role"><span class="rk">COM</span><h4>Commerce / Marketing</h4><p>Rédige la DE <em>en amont dans beCPG</em> (hors app). Dans l'app : saisit/vise le volet commercial de la FL (libellés, origine, canaux, hiérarchie, marque, nomenclature, sites, GTIN).</p></div>
+            <div class="role"><span class="rk">R&amp;D</span><h4>R&amp;D</h4><p>Dans l'app : remplit et <strong>vise sa section de la FL</strong> (étude / recette produit). Lecture seule sur le reste.</p></div>
+            <div class="role"><span class="rk">QUA</span><h4>Qualité</h4><p>Dans l'app : remplit et <strong>vise sa section de la FL</strong> (conformité, spécifications). Lecture seule sur le reste.</p></div>
+            <div class="role"><span class="rk">ADM</span><h4>Admin / IT</h4><p>Page Admin : listes déroulantes, registre des flux, journal des erreurs SAP, gestion des droits (à venir).</p></div>
+          </div>
+
+          <div class="call">
+            <span class="lab">Hors application (contexte)</span>
+            <ul>
+              <li><strong>Codir</strong> : valide le projet en amont dans beCPG. L'app ne fait que <strong>récupérer le statut</strong> via un flux quotidien qui crée le projet dans Dataverse.</li>
+              <li><strong>Validation DL</strong> : plus d'étape manuelle, un <strong>flux</strong> met à jour le statut du projet (passée / non passée). Aucun rôle applicatif.</li>
+              <li><strong>Entrepôt</strong> : <strong>informé</strong> en fin de cycle, reçoit le mail « données de palettisation » après la création SAP. Pas de saisie.</li>
+            </ul>
+          </div>
+
+          <div class="legend" aria-hidden="true">
+            <span><span class="chip r">R</span> Réalise</span>
+            <span><span class="chip a">A</span> Décide / rend compte</span>
+            <span><span class="chip c">C</span> Consulté</span>
+            <span><span class="chip i">I</span> Informé</span>
+          </div>
+
+          <div class="twrap">
+            <table class="raci">
+              <thead>
+                <tr>
+                  <th scope="col">Action</th>
+                  <th scope="col">ADV</th><th scope="col">COM</th><th scope="col">R&amp;D</th><th scope="col">QUA</th><th scope="col">ADM</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="phase-row"><th colspan="6" scope="colgroup">Phase 1 : Demande importée &amp; code chapeau <span style="text-transform:none;font-weight:400">(seul l'ADV agit, les autres sont en lecture seule)</span></th></tr>
+                <tr><th scope="row">Créer / modifier la demande (jusqu'à « en attente de DL »)</th>
+                  <td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Créer le code chapeau (VL / nouveau code)</th>
+                  <td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Envoyer la DE vers SAP (VERIF_DE + SAP_SEND)</th>
+                  <td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip i">I</span></td></tr>
+
+                <tr class="phase-row"><th colspan="6" scope="colgroup">Phase 2 : Fiche de Lancement (4 visas en parallèle)</th></tr>
+                <tr><th scope="row">Renseigner + viser la section ADV / Supply Chain</th>
+                  <td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Renseigner + viser la section Commerce</th>
+                  <td><span class="dot">·</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Renseigner + viser la section R&amp;D (étude / recette)</th>
+                  <td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="dot">·</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Renseigner + viser la section Qualité</th>
+                  <td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Refuser une section (motif obligatoire)</th>
+                  <td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Créer l'article dans SAP (SAP_SEND_FL, 4 visas requis)</th>
+                  <td><span class="chip r">R</span><span class="chip a">A</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td></tr>
+                <tr><th scope="row">Exporter la FL en PDF</th>
+                  <td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip i">I</span></td></tr>
+
+                <tr class="phase-row"><th colspan="6" scope="colgroup">Phase 3 : Administration &amp; support</th></tr>
+                <tr><th scope="row">Gérer les listes déroulantes (Admin)</th>
+                  <td><span class="chip c">C</span></td><td><span class="chip c">C</span></td><td><span class="chip c">C</span></td><td><span class="chip c">C</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td></tr>
+                <tr><th scope="row">Suivre / débloquer les erreurs SAP</th>
+                  <td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="dot">·</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td></tr>
+                <tr><th scope="row">Gérer le registre des flux &amp; les droits</th>
+                  <td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip i">I</span></td><td><span class="chip r">R</span><span class="chip a">A</span></td></tr>
+                <tr><th scope="row">Consulter le tableau de bord</th>
+                  <td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td><td><span class="chip r">R</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="call">
+            <span class="lab">Notes de lecture</span>
+            <ul>
+              <li><strong>Admin</strong> : accès en <strong>consultation sur tout le cycle</strong> (colonne ADM = <span class="chip i">I</span>), en plus de la gestion de l'app.</li>
+              <li><strong>Validation DL</strong> : non listée, elle est <strong>automatique</strong> (flux Power Automate qui met à jour le statut). Aucune action utilisateur dans l'app.</li>
+              <li><strong>Entrepôt</strong> (hors colonnes) : <span class="chip i">I</span> en fin de cycle, reçoit le mail « données de palettisation » après la création SAP (voir <a class="inl" href="#groupes">listes de diffusion</a>).</li>
+              <li><strong>DS (négoce)</strong> : circuit non défini, volontairement absent de la matrice pour l'instant.</li>
+              <li><strong>Écart app ↔ cible</strong> : l'app a aujourd'hui des visas <strong>ADV / Industriel / Commerce</strong> (pas de section R&amp;D ni Qualité) et un écran de création de DE. L'alignement sur ce schéma reste à faire côté code.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ============ 02 GROUPES ============ -->
+        <section id="groupes">
+          <div class="sec-head">
+            <div class="eyebrow">02 · Entra ID &amp; M365</div>
+            <h2>Groupes de sécurité &amp; listes de diffusion</h2>
+          </div>
+          <p>Deux besoins à ne pas confondre : les <strong>groupes de sécurité</strong> décident <em>qui peut faire quoi dans l'app</em> ; les <strong>listes de diffusion</strong> décident <em>qui reçoit quelle alerte</em> envoyée par les flux.</p>
+
+          <h3>Groupes de sécurité</h3>
+          <p>Convention : <code>SEC-BONCOLAC-&lt;Rôle&gt;</code>. Un utilisateur peut appartenir à plusieurs groupes.</p>
+          <div class="twrap">
+            <table>
+              <thead><tr><th scope="col">Groupe</th><th scope="col">Membres</th><th scope="col">Donne accès à</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">SEC-BONCOLAC-Utilisateurs</td><td>Tous</td><td>Connexion + tableau de bord (lecture)</td></tr>
+                <tr><td class="mono">SEC-BONCOLAC-ADV</td><td>ADV / Supply Chain</td><td>Phase code chapeau (créer / modifier), envoi SAP, visa ADV, création article FL</td></tr>
+                <tr><td class="mono">SEC-BONCOLAC-Commerce</td><td>Commerce + Marketing</td><td>Saisie &amp; visa section Commerce de la FL, sites de stockage</td></tr>
+                <tr><td class="mono">SEC-BONCOLAC-RD</td><td>R&amp;D</td><td>Saisie &amp; visa section R&amp;D (à exposer côté app)</td></tr>
+                <tr><td class="mono">SEC-BONCOLAC-Qualite</td><td>Qualité</td><td>Saisie &amp; visa section Qualité (à exposer côté app)</td></tr>
+                <tr><td class="mono">SEC-BONCOLAC-Admin</td><td>Admin fonctionnel / IT</td><td>Page Admin : listes, flux, journal d'erreurs, droits</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>Codir</strong> et <strong>CDG</strong> ne reçoivent <strong>pas</strong> de groupe applicatif : leurs validations sont <strong>hors app</strong> (beCPG) ou <strong>automatiques</strong> (flux). À créer uniquement si on leur ouvre un accès en consultation.</p>
+
+          <h3>Listes de diffusion (alertes mail)</h3>
+          <p>Convention : <code>DL-BONCOLAC-&lt;Sujet&gt;</code>. Les alertes code chapeau et retards sont déjà <strong>calculées dans l'app</strong> ; il reste à brancher l'envoi mail dessus.</p>
+          <div class="twrap">
+            <table>
+              <thead><tr><th scope="col">Liste</th><th scope="col">Déclencheur</th><th scope="col">Destinataires</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">DL-…-CodeChapeau</td><td>Projet importé (validé Codir) → à traiter par l'ADV, relances J+0 / J+6</td><td>ADV</td></tr>
+                <tr><td class="mono">DL-…-Visa-ADV</td><td>FL en attente du visa ADV</td><td>ADV</td></tr>
+                <tr><td class="mono">DL-…-Visa-Commerce</td><td>FL en attente du visa Commerce</td><td>Commerce</td></tr>
+                <tr><td class="mono">DL-…-Visa-RD</td><td>FL en attente du visa R&amp;D</td><td>R&amp;D</td></tr>
+                <tr><td class="mono">DL-…-Visa-Qualite</td><td>FL en attente du visa Qualité</td><td>Qualité</td></tr>
+                <tr><td class="mono">DL-…-ErreursSAP</td><td>Flux SAP_SEND / SAP_SEND_FL en erreur</td><td>ADV + Admin</td></tr>
+                <tr><td class="mono">DL-…-Retards</td><td>Fiche en retard / critique / imminent</td><td>ADV + Commerce + R&amp;D + Qualité</td></tr>
+                <tr><td class="mono">DL-…-Palettisation</td><td>Article créé → données de palettisation (mail entrepôt)</td><td>Entrepôt</td></tr>
+                <tr><td class="mono">DL-…-FicheFinale</td><td>Article créé → PDF récap (SAP_SEND_Fiche_final)</td><td>Commerce + ADV + demandeur</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="call">
+            <span class="lab">Quick win sécurité</span>
+            <p>Étape 1 immédiate : masquer la page <strong>Admin</strong> et les boutons sensibles selon le groupe (<code>src/Layout.jsx</code>). Étape 2 : rôles de sécurité Dataverse + table de liaison <em>user ↔ organisation</em> pour le cloisonnement fin des données.</p>
+          </div>
+        </section>
+
+        <!-- ============ 03 MODE OP ============ -->
+        <section id="modop">
+          <div class="sec-head">
+            <div class="eyebrow">03 · Pour tous les utilisateurs</div>
+            <h2>Mode opératoire, expliqué très simplement</h2>
+          </div>
+          <p>Écran par écran, ce qu'on fait et où cliquer. Les captures correspondantes sont dans <code>docs/modop/img/</code>.</p>
+
+          <div class="screens">
+            <div class="screen"><div class="num">1</div>
+              <div><h4>L'accueil (tableau de bord) 🏠</h4><span class="file">01-dashboard.png</span></div>
+              <div class="do"><p>La page d'entrée montre les produits en retard (rouge), bientôt à lancer (orange), et un calendrier.</p><p>👉 <strong>Tu regardes le rouge.</strong> S'il y en a, tu cliques dessus pour voir ce qui bloque.</p></div>
+            </div>
+            <div class="screen"><div class="num">2</div>
+              <div><h4>La liste des demandes 📋</h4><span class="file">02-demandes-etude.png</span></div>
+              <div class="do"><p>Toutes les DE et DS, avec des onglets de filtre (Brouillon, En attente de code chapeau, Validée…).</p><p>👉 Les <strong>DE remontent automatiquement</strong> via les flux Power Automate : pas besoin de les créer à la main. Une <strong>DS (négoce)</strong>, en revanche, doit être créée avec <strong>« + Créer une DS »</strong>. Pour continuer une demande, clique sur sa ligne.</p></div>
+            </div>
+            <div class="screen"><div class="num">3</div>
+              <div><h4>Créer une demande ✏️</h4><span class="file">03-creer-de.png</span></div>
+              <div class="do"><p>Le formulaire. Trois boutons clés : <strong>Récupération beCPG</strong> (remplit tout seul), <strong>Demander mon code</strong> (le code chapeau, indispensable), <strong>Envoyer vers SAP</strong>.</p><p>⚠️ Si une case obligatoire manque (souvent le <strong>poids net</strong>), « Envoyer » reste gris. Une fenêtre 🟢/🔴 confirme l'envoi. Bouton <strong>Enregistrer</strong> = brouillon.</p></div>
+            </div>
+            <div class="screen"><div class="num">4</div>
+              <div><h4>L'accueil des Fiches de Lancement 🗂️</h4><span class="file">04-accueil-fl.png</span></div>
+              <div class="do"><p>Une fois la demande validée, elle devient une Fiche de Lancement. La liste est triée par urgence.</p><p>👉 Clique sur <strong>ta</strong> fiche pour remplir <strong>ta</strong> partie.</p></div>
+            </div>
+            <div class="screen"><div class="num">5</div>
+              <div><h4>Remplir ta partie (fiche par service) 🧩</h4><span class="file">05-fiche-par-service.png</span></div>
+              <div class="do"><p>La fiche est coupée par équipe (Commerce, ADV, R&amp;D, Qualité). Tu remplis <strong>seulement tes cases</strong>, puis <strong>« Viser »</strong> (= je signe). Si un souci : <strong>« Refuser »</strong> + écrire pourquoi.</p><p>⚠️ Après le visa, tes cases se <strong>verrouillent</strong>. Vérifie avant de signer. Chaque équipe travaille en même temps.</p></div>
+            </div>
+            <div class="screen"><div class="num">6</div>
+              <div><h4>La fiche complète 📄</h4><span class="file">06-fiche-complete.png</span></div>
+              <div class="do"><p>Toute la fiche d'un coup. Quand les équipes ont signé, <strong>« Créer dans SAP »</strong> s'active, ça prend quelques minutes (normal).</p><p>🟢 « Article créé dans SAP » = gagné · 🔴 erreur = préviens l'admin · ⏳ « toujours en cours » = reviens plus tard. Bouton <strong>Export PDF</strong> pour imprimer/sauver.</p></div>
+            </div>
+            <div class="screen"><div class="num">7</div>
+              <div><h4>Les sites de stockage 📦</h4><span class="file">07-sites-stockage.png</span></div>
+              <div class="do"><p>On coche les entrepôts où le produit sera rangé (en général, partie Commerce).</p></div>
+            </div>
+            <div class="screen"><div class="num">8</div>
+              <div><h4>L'administration (réservé) 🔧</h4><span class="file">08-admin.png</span></div>
+              <div class="do"><p>Réservé à l'admin : gère les listes déroulantes et le journal des erreurs SAP. Si tu n'es pas admin, tu n'as rien à faire ici.</p></div>
+            </div>
+          </div>
+
+          <h3>Les mots compliqués, traduits</h3>
+          <div class="twrap">
+            <table>
+              <thead><tr><th scope="col">Le mot</th><th scope="col">Ça veut dire…</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">DE</td><td>Demande pour un produit <strong>qu'on fabrique</strong>.</td></tr>
+                <tr><td class="mono">DS</td><td>Demande pour un produit <strong>qu'on achète pour revendre</strong>.</td></tr>
+                <tr><td class="mono">FL</td><td>La grande fiche qu'on <strong>remplit à plusieurs</strong>.</td></tr>
+                <tr><td class="mono">Code chapeau</td><td>Le <strong>numéro du produit</strong>. Sans lui, rien ne part vers SAP.</td></tr>
+                <tr><td class="mono">Viser</td><td><strong>Signer</strong> : « ma partie est finie et correcte ».</td></tr>
+                <tr><td class="mono">Codir</td><td>Comité de direction : dit <strong>oui / non au projet</strong> tout au début (hors application).</td></tr>
+                <tr><td class="mono">Validation DL</td><td>Un <strong>contrôle automatique</strong> dit si le projet peut continuer vers la Fiche de Lancement.</td></tr>
+                <tr><td class="mono">SAP</td><td>Le <strong>grand logiciel</strong> où vit le produit.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============ 04 FLUX ============ -->
+        <section id="flux">
+          <div class="sec-head">
+            <div class="eyebrow">04 · Power Platform</div>
+            <h2>Flux Power Automate : ordre &amp; contrats</h2>
+          </div>
+          <p>Les URL des flux vivent dans la table <code>cr04e_fluxregistre</code> (clé → URL) ; l'app résout par <code>getFluxUrl(cle)</code>. En-tête <code>Accept-Language: en-US</code> <strong>obligatoire</strong> : sinon SAP reçoit les décimaux avec une virgule et renvoie <span style="color:var(--stop)">400</span>.</p>
+
+          <div class="call ok">
+            <span class="lab">✓ Réduction du payload DE/DS : faite</span>
+            <p>La DE et la DS n'envoient plus que <code>{ ID, PoidsNet }</code> à <code>SAP_SEND</code> ; tout le reste (code chapeau, EAN, groupes SAP, ZUG…) est écrit en Dataverse par l'app puis <strong>relu par le flux</strong>. Modèle « n'envoyer que l'<code>ID</code>, le flux relit Dataverse ».</p>
+          </div>
+
+          <h3>Catalogue des flux</h3>
+          <div class="twrap">
+            <table>
+              <thead><tr><th scope="col">Clé</th><th scope="col">Rôle</th><th scope="col">Déclencheur</th><th scope="col">Payload</th><th scope="col">Bloquant</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">BECPG</td><td>Récupère les métadonnées beCPG</td><td>« Récupération beCPG »</td><td class="mono-cell">{ CodePJ }</td><td>non</td></tr>
+                <tr><td class="mono">NOUVEAU_CODE</td><td>Génère un code chapeau</td><td>« Besoin d'un nouveau code »</td><td class="mono-cell">∅</td><td>à la demande</td></tr>
+                <tr><td class="mono">VL_CODE</td><td>Résout une VL en code chapeau</td><td>« Demander mon code »</td><td class="mono-cell">{ Numéro }</td><td>à la demande</td></tr>
+                <tr><td class="mono">DOCUMENT</td><td>Récupère le fichier Excel projet</td><td>« Voir le document »</td><td class="mono-cell">{ CodePJ }</td><td>non</td></tr>
+                <tr><td class="mono">VERIF_DE</td><td>Le code existe-t-il déjà dans SAP ?</td><td>« Envoyer vers SAP » (DE)</td><td class="mono-cell">{ Numéro }</td><td style="color:var(--stop);font-weight:600">oui</td></tr>
+                <tr><td class="mono">SAP_SEND</td><td>Crée l'article dans SAP (DE &amp; DS)</td><td>« Envoyer vers SAP »</td><td class="mono-cell">{ ID, PoidsNet }</td><td style="color:var(--stop);font-weight:600">oui</td></tr>
+                <tr><td class="mono">SAP_SEND_FL</td><td>Crée l'article complet depuis la FL</td><td>« Créer dans SAP »</td><td class="mono-cell">{ ID }</td><td>non (polling)</td></tr>
+                <tr><td class="mono">SAP_SEND_Fiche_final</td><td>Envoie la fiche récap PDF (mail)</td><td>auto après SAP_SEND_FL ✓</td><td class="mono-cell">{ ID, NomFichier, Fichier }</td><td>non</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="call">
+            <span class="lab">Flux planifiés (hors registre app)</span>
+            <p>Deux flux tournent <strong>en tâche de fond</strong> (non déclenchés par l'app, donc absents de <code>cr04e_fluxregistre</code>) :</p>
+            <ul>
+              <li><strong>Import quotidien Codir</strong> : récupère les derniers statuts « validation Codir » depuis beCPG ; si le projet n'est pas encore dans Dataverse, il le <strong>crée</strong> puis lance l'alerte ADV (demande de code chapeau).</li>
+              <li><strong>Validation DL</strong> : met à jour le statut du projet selon que la validation DL est passée ou non (remplace l'ancien import manuel du fichier DL).</li>
+              <li><strong>Synchro SAP quotidienne</strong> : met à jour les <strong>tables référentielles</strong> (listes déroulantes alimentées depuis SAP).</li>
+            </ul>
+          </div>
+
+          <h3>Ordre d'exécution</h3>
+
+          <div class="seq"><span class="cap">DE : Demande d'Étude</span><pre>« Envoyer vers SAP »
+│
+├─ 1. <b>VERIF_DE</b>   { Numéro }                     ── BLOQUANT
+│      200 → on continue    <span class="stop">400 → STOP « code déjà existant »</span>
+│
+├─ 2. Écriture Dataverse                          ── BLOQUANT
+│      cr04e_projet + cr04e_divisionprojet
+│      statut = dl_attente_validation_cdg
+│
+└─ 3. <b>SAP_SEND</b>   { ID, PoidsNet: "1.598" }      ── BLOQUANT
+       <span class="ok">200 → reste dl_attente_validation_cdg (au CDG de décider)</span>
+       <span class="stop">400 → repasse de_brouillon (retry = même ligne)</span></pre></div>
+
+          <div class="seq"><span class="cap">DS : Demande Simplifiée (négoce)</span><pre>Ouvrir la DS → saisir le code chapeau → « Envoyer vers SAP »
+│
+├─ 1. Écriture Dataverse (code chapeau, EAN)      ── BLOQUANT
+│
+└─ 2. <b>SAP_SEND</b>   { ID, PoidsNet }               ── BLOQUANT
+       <span class="ok">200 → statut = ds_validee (prête pour la FL)</span>
+       <span class="stop">400 → statut inchangé (ds_attente_cc), retry possible</span>
+
+Pas de VERIF_DE ni de validation CDG pour la DS.</pre></div>
+
+          <div class="seq"><span class="cap">FL : Fiche de Lancement (asynchrone, polling)</span><pre>DE/DS validée → visas ✓ → « Créer dans SAP »
+│
+├─ 1. Lire modifiedon de référence (baseline)
+├─ 2. <b>SAP_SEND_FL</b>   { ID }                      ── non bloquant (~8s)
+│
+├─ 3. Polling 5s (max 10 min) : relire modifiedon + cr04e_fluxenvoiefl
+│      quand modifiedon change :
+│      ├─ <span class="ok">'reussi' → SAP_SEND_Fiche_final (mail PDF)</span>
+│      │            statut = fl_sap_cree + date d'envoi (verrou)
+│      └─ <span class="stop">'erreur' → statut inchangé, formulaire éditable</span>
+│
+└─ Timeout 10 min → modale « toujours en cours »</pre></div>
+
+          <h3>Qui écrit quel statut</h3>
+          <div class="twrap">
+            <table>
+              <thead><tr><th scope="col">Champ Dataverse</th><th scope="col">Écrit par</th><th scope="col">Valeurs</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">cr04e_statut_en_cours</td><td><strong>App</strong></td><td class="mono-cell">de_brouillon · dl_attente_validation_cdg · dl_validee · ds_validee · fl_sap_cree …</td></tr>
+                <tr><td class="mono">cr04e_fluxenvoiede</td><td>Flux SAP_SEND (DE &amp; DS)</td><td class="mono-cell">reussi · erreur</td></tr>
+                <tr><td class="mono">cr04e_fluxenvoiefl</td><td>Flux SAP_SEND_FL</td><td class="mono-cell">reussi · erreur</td></tr>
+                <tr><td class="mono">cr04e_dateenvoidelafiche</td><td><strong>App</strong> (après succès FL)</td><td class="mono-cell">date ISO, verrou anti-renvoi</td></tr>
+                <tr><td class="mono">modifiedon</td><td>Dataverse (système)</td><td class="mono-cell">timestamp, base du polling FL</td></tr>
+                <tr><td class="mono">cr04e_gestiondeserreurs</td><td>Flux (sur 400/500)</td><td class="mono-cell">détail erreur SAP → journal Admin</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============ 05 DECISIONS ============ -->
+        <section id="decisions">
+          <div class="sec-head">
+            <div class="eyebrow">05 · Suivi</div>
+            <h2>Décisions actées &amp; questions ouvertes</h2>
+          </div>
+
+          <div class="call ok">
+            <span class="lab">✓ Compris le 16/09/2026 (Atelier 4)</span>
+            <ul>
+              <li>L'app <strong>démarre à la validation Codir</strong> (amont hors app) ; un <strong>flux quotidien</strong> importe les projets validés dans Dataverse.</li>
+              <li>Phase <strong>code chapeau → DL</strong> : <strong>seul l'ADV</strong> crée / modifie ; les autres secteurs sont en lecture seule.</li>
+              <li><strong>Validation DL automatique</strong> (flux Power Automate), plus d'import manuel.</li>
+              <li><strong>FL : quatre secteurs</strong> (Commerce/Marketing, R&amp;D, ADV, Qualité) ; une fois les visas posés → envoi SAP possible.</li>
+              <li><strong>Entrepôt</strong> informé en fin de cycle (palettisation). <strong>Marketing</strong> fusionné dans Commerce.</li>
+            </ul>
+          </div>
+
+          <div class="call warn">
+            <span class="lab">⚠ Non défini / remplace le 15/09</span>
+            <p><strong>DS (négoce)</strong> : circuit non défini, laissé vide volontairement. Cette version annule les points du 15/09 « Industriel = rôle FL » et « Qualité/R&amp;D sans visa » : la FL cible ne comporte ni Industriel ni Gestion Besoin.</p>
+          </div>
+
+          <h3>Encore à trancher</h3>
+          <ul class="prose">
+            <li><strong>Écart app ↔ cible</strong> : l'app a des visas ADV/Industriel/Commerce (+ section Gestion Besoin masquée) et un écran de création de DE. Où atterrit le contenu <em>Industriel</em> (emballages, palette) : R&amp;D, Qualité, ou Entrepôt ? Puis implémenter les sections <strong>R&amp;D</strong> et <strong>Qualité</strong> et retirer la création de DE côté app.</li>
+            <li><strong>Nombre de visas requis</strong> pour activer « Créer dans SAP » : cible <strong>4</strong> (ADV, Commerce, R&amp;D, Qualité) ; aujourd'hui l'app en exige 3.</li>
+            <li><strong>DS (négoce)</strong> : décrire le circuit (qui, quels statuts, quels flux), rien n'est documenté pour l'instant.</li>
+            <li><strong>Visa de secours</strong> : autoriser un service à viser à la place d'un autre (congés / backup) ? Si oui, prévoir un rôle « superviseur ».</li>
+            <li><strong>Alertes mail</strong> : temps réel (à chaque changement) ou digest quotidien ? Listes nominatives ou boîtes partagées par service ?</li>
+            <li><strong>Contenu du mail Entrepôt</strong> : quelles données de palettisation exactement, et à partir de quel statut ?</li>
+          </ul>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <footer>
+    <div class="shell">
+      Document de gouvernance · App Boncolac · Brouillon v0.2 du 16/09/2026 · Secteurs alignés sur l'Atelier 4 (cycle de vie DE). Reconstruit depuis <code>src/</code>, <code>docs/mapping-fl.md</code> et les specs. Versions markdown détaillées dans <code>docs/gouvernance/</code>.
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var map = {};
+    links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var sections = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
+    if(!('IntersectionObserver' in window)) return;
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          if(map[e.target.id]) map[e.target.id].classList.add('active');
+        }
+      });
+    }, { rootMargin:'-10% 0px -75% 0px', threshold:0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  })();
+</script>

@@ -14,6 +14,7 @@ import {
   isStatutResolu,
   joinCodeProjet,
   fluxStatut,
+  resolveFluxOutcome,
   buildSuiviFlux,
 } from './erreursSap';
 
@@ -350,6 +351,40 @@ describe('fluxStatut', () => {
   });
   it('valeur inconnue -> null (pas de faux statut affiché)', () => {
     expect(fluxStatut('bidon')).toBeNull();
+  });
+});
+
+describe('resolveFluxOutcome (polling envoi FL)', () => {
+  const T0 = '2026-09-14T10:00:00Z';
+  const T1 = '2026-09-14T10:03:00Z';
+
+  it('modifiedon inchangé -> pending (le flux n\'a rien écrit)', () => {
+    expect(resolveFluxOutcome(T0, { modifiedon: T0, flux: '' })).toBe('pending');
+    // Même si une ancienne valeur de flux traîne, sans changement -> pending.
+    expect(resolveFluxOutcome(T0, { modifiedon: T0, flux: 'erreur' })).toBe('pending');
+  });
+
+  it('modifiedon changé + statut lisible -> réussi / erreur', () => {
+    expect(resolveFluxOutcome(T0, { modifiedon: T1, flux: 'reussi' })).toBe('reussi');
+    expect(resolveFluxOutcome(T0, { modifiedon: T1, flux: 'erreur' })).toBe('erreur');
+  });
+
+  it('modifiedon changé mais statut encore vide -> pending (écriture intermédiaire)', () => {
+    expect(resolveFluxOutcome(T0, { modifiedon: T1, flux: '' })).toBe('pending');
+    expect(resolveFluxOutcome(T0, { modifiedon: T1, flux: null })).toBe('pending');
+  });
+
+  it('ré-envoi : flux valait déjà « erreur », le changement de modifiedon permet de reconclure', () => {
+    // baseline = T1 (modifiedon au moment du ré-envoi) ; le flux réécrit -> T2.
+    const T2 = '2026-09-14T10:06:00Z';
+    expect(resolveFluxOutcome(T1, { modifiedon: T2, flux: 'reussi' })).toBe('reussi');
+    // tant que modifiedon reste à T1, on n'a pas reconclu sur l'ancienne erreur.
+    expect(resolveFluxOutcome(T1, { modifiedon: T1, flux: 'erreur' })).toBe('pending');
+  });
+
+  it('baseline null (modifiedon inconnu au départ) : tout modifiedon non vide compte comme changement', () => {
+    expect(resolveFluxOutcome(null, { modifiedon: T1, flux: 'reussi' })).toBe('reussi');
+    expect(resolveFluxOutcome(null, { modifiedon: null, flux: 'reussi' })).toBe('pending');
   });
 });
 

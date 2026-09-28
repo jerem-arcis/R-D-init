@@ -11,7 +11,6 @@ import EmballagesTable from './fields/EmballagesTable';
 import {
   MARQUES,
   NOMENCLATURES_DOUANIERES,
-  SITES_STOCKAGE,
   hierarchieActivite,
   libelleDemande,
   tagHerite,
@@ -59,7 +58,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
     <SectionShell
       id="commerce"
       title="Commerce"
-      subtitle="Renseigné par l'ADV puis validé par le Commerce"
       icon={ShoppingCart}
       accentColor="rose"
       isLocked={isLocked}
@@ -141,7 +139,7 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
         disabled={disabled}
       />
 
-      <FieldGrid title="Hiérarchie, douane & stockage" cols={2}>
+      <FieldGrid title="Hiérarchie & douane" cols={2}>
         <SearchableSelectField
           label="Hiérarchie produit"
           value={fiche.hierarchie_produit}
@@ -157,14 +155,6 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           onChange={set('nomenclature_douaniere')}
           disabled={disabled}
           options={NOMENCLATURES_DOUANIERES}
-        />
-        <MultiSelectField
-          label="Sites de stockage"
-          required
-          value={fiche.sites_stockage}
-          onChange={set('sites_stockage')}
-          disabled={disabled}
-          options={SITES_STOCKAGE}
         />
       </FieldGrid>
 

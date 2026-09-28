@@ -5,6 +5,7 @@ import {
   listDemandeurs,
   getDemandeur,
   getUsine,
+  localIdFor,
 } from './demandesFilter';
 
 // Jeu de données minimal couvrant DE, DS et « autre ».
@@ -42,6 +43,34 @@ describe('listDemandeurs', () => {
     expect(listDemandeurs(DEMANDES)).toEqual([
       'Julien Dubois', 'Marie Lefèvre', 'Sophie Martin', 'Thomas Bernard',
     ]);
+  });
+});
+
+describe('localIdFor', () => {
+  it('joint le brouillon local par projet_id (GUID unique)', () => {
+    const locaux = [{ id: 'loc-1', projet_id: 'guid-A' }];
+    expect(localIdFor(locaux, { id: 'guid-A' })).toBe('loc-1');
+  });
+
+  it('ignore code_chapeau : deux essais en erreur partagent le même code sans se confondre', () => {
+    // Deux DE distinctes réutilisent le MÊME code chapeau de test (749301). Sans
+    // repli sur code_chapeau, une ligne sans miroir local ne doit PAS emprunter
+    // l'id local de l'autre.
+    const locaux = [
+      { id: 'loc-sap', projet_id: 'guid-SAP', code_chapeau: '749301' }, // fiche déjà créée dans SAP
+    ];
+    const brouillonEnErreur = { id: 'guid-BROUILLON', code_chapeau: '749301' };
+    expect(localIdFor(locaux, brouillonEnErreur)).toBeNull();
+  });
+
+  it('ignore code_projet réutilisé (même PJ sur deux lignes)', () => {
+    const locaux = [{ id: 'loc-x', projet_id: 'guid-X', code_projet: 'PJ6025' }];
+    expect(localIdFor(locaux, { id: 'guid-Y', code_projet: 'PJ6025' })).toBeNull();
+  });
+
+  it('renvoie null sans miroir local (rechargement Dataverse par projet_id)', () => {
+    expect(localIdFor([], { id: 'guid-A' })).toBeNull();
+    expect(localIdFor([{ id: 'l', projet_id: 'other' }], { id: 'guid-A' })).toBeNull();
   });
 });
 

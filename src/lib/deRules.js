@@ -26,6 +26,20 @@ export const divisionCodeFromPlant = (name) =>
 
 export const usineFromDivision = (code) => DE_DIVISIONS[String(code ?? '').trim()] || '';
 
+// Code division -> libellé usine affiché dans la LISTE / le FILTRE des demandes
+// (DemandesEtude). Superset de DE_DIVISIONS, sans polluer la liste des sites de
+// fabrication DE : ajoute Agen Faux Frais STEF (2823, même site qu'Agen 2847) et
+// le négoce (2820, entrepôt — usine d'origine « Produit négoce » côté DS). Les
+// libellés sont ceux du dropdown usine (USINES_OPTIONS) pour que le filtre matche.
+export const USINE_LABELS_BY_DIVISION = {
+  ...DE_DIVISIONS,
+  '2823': 'Agen',
+  '2820': 'Produit négoce',
+};
+
+export const usineLabelFromDivision = (code) =>
+  USINE_LABELS_BY_DIVISION[String(code ?? '').trim()] || '';
+
 // Hiérarchie produit famille selon le métier de l'usine :
 // Bonloc/Rivesaltes (Pâtisseries) -> 22, Agen/Aire (Traiteur) -> 27.
 // IMPORTANT : les segments sont séparés par des TABULATIONS (\t), pas des
@@ -49,13 +63,28 @@ export const computeClasseValoDE = (code) => {
 };
 
 // Centre de profit : Aire -> 27TDL, Rivesaltes/Bonloc -> 22PF.
-// Agen (et inconnu) -> '' : choix libre laissé à l'utilisateur.
+// Agen (et inconnu) -> '' : déterminé par « Agen - choix », cf. computeCentreProfitAgenDE.
 export const computeCentreProfitDE = (code) => {
   const u = usineFromDivision(code);
   if (u === 'Aire') return '27TDL';
   if (u === 'Bonloc' || u === 'Rivesaltes') return '22PF';
   return '';
 };
+
+// Cas Agen : le centre de profit n'est pas saisi librement mais DÉDUIT du choix
+// « Agen - choix » (même logique que la DS, cf. computeCentreProfitDS). Les codes
+// obtenus (27CA/27PS/27PL) sont ceux autorisés par le référentiel PF-AS|27.
+export const AGEN_CHOIX_CENTRE = {
+  'Assortiments ou plateaux': '27CA',
+  'Pains surprises': '27PS',
+  Plaques: '27PL',
+};
+export const computeCentreProfitAgenDE = (choix) =>
+  AGEN_CHOIX_CENTRE[String(choix ?? '').trim()] || '';
+
+// Code d'origine (VL) : valide s'il fait 4 OU 6 chiffres (règle métier — 8 n'est
+// plus accepté). Sert à la validation avant « Demander mon code » / envoi SAP.
+export const isCodeOrigineValide = (code) => /^\d{4}(\d{2})?$/.test(String(code ?? '').trim());
 
 // Profil de fabrication répétitive (SAP) selon la division (usine) :
 // Agen -> Z006, Bonloc -> Z008, Rivesaltes -> Z010. 2823 = Agen Faux Frais STEF

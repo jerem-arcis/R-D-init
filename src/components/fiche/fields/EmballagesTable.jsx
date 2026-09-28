@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Barcode } from 'lucide-react';
 import { buildGtinSet } from '@/lib/ean';
+import { computeVolumeM3, computePoidsNet } from '@/lib/emballagesCalc';
 import BufferedInput from './BufferedInput';
 
 // Lignes : chaque ligne = un type d'emballage avec sa clé de stockage dans la fiche.
@@ -45,9 +46,34 @@ export default function EmballagesTable({
   showGtin = false,  // affiche la colonne GTIN / EAN
   gtinEditable = false, // éditabilité des cellules GTIN
 }) {
+  // Niveaux dont le poids net se déduit de l'UVC (colis/couche/palette).
+  const NIVEAUX_PN = ['colis_block', 'couche_block', 'palette_block'];
+
   const setCell = (rowKey, sub, type, raw) => {
-    const block = fiche[rowKey] || {};
-    onUpdate?.({ [rowKey]: { ...block, [sub]: parseValue(raw, type) } });
+    const val = parseValue(raw, type);
+    const next = { ...(fiche[rowKey] || {}), [sub]: val };
+    // Volume auto-calculé depuis les dimensions (formule FM : L×l×h/1e9), comme
+    // dans l'onglet Industriel. Recalculé à chaque changement de dimension.
+    if (sub === 'long' || sub === 'larg' || sub === 'haut') {
+      next.volume = computeVolumeM3(next);
+    }
+    const patch = { [rowKey]: next };
+
+    // Cascade poids net (formule FM) : poids net d'un niveau = poids net UVC × nb
+    // d'UVC contenues (`unite`). Rempli quand le poids net UVC OU le nb d'UVC change.
+    const uvcPn = rowKey === 'uvc_block' && sub === 'poids_net'
+      ? val
+      : (fiche.uvc_block || {}).poids_net;
+    const remplirPn = (key) => {
+      const base = patch[key] || fiche[key] || {};
+      patch[key] = { ...base, poids_net: computePoidsNet(uvcPn, base.unite) };
+    };
+    if (rowKey === 'uvc_block' && sub === 'poids_net') {
+      NIVEAUX_PN.forEach(remplirPn);
+    } else if (sub === 'unite' && NIVEAUX_PN.includes(rowKey)) {
+      remplirPn(rowKey);
+    }
+    onUpdate?.(patch);
   };
 
   const setGtin = (rowKey, raw) => {
@@ -120,16 +146,30 @@ export default function EmballagesTable({
                     // U.élém : seul le compteur « unité » s'applique ; les colonnes
                     // dimensions/poids/volume ne sont pas gérées par SAP → grisées.
                     const dimNA = row.dimsNA && c.sub !== 'unite';
-                    const cellEditable = editable && !dimNA;
+                    // Volume : auto-calculé depuis les dimensions (formule FM), donc
+                    // lecture seule — l'utilisateur ne le saisit jamais.
+                    const isVolume = c.sub === 'volume';
+                    const cellEditable = editable && !dimNA && !isVolume;
+                    const value = dimNA
+                      ? ''
+                      : isVolume
+                      ? (computeVolumeM3(block) ?? block.volume ?? '')
+                      : (block[c.sub] ?? '');
                     return (
                       <td key={c.sub} className="px-1.5 py-1.5">
                         <BufferedInput
                           type="number"
                           step={c.type === 'int' ? '1' : '0.001'}
-                          value={dimNA ? '' : (block[c.sub] ?? '')}
+                          value={value}
                           onCommit={(raw) => setCell(row.key, c.sub, c.type, raw)}
                           disabled={!cellEditable}
-                          title={dimNA ? "Non géré par SAP pour l'unité d'élément" : undefined}
+                          title={
+                            dimNA
+                              ? "Non géré par SAP pour l'unité d'élément"
+                              : isVolume
+                              ? 'Calculé automatiquement (long × larg × haut)'
+                              : undefined
+                          }
                           className={`h-8 text-xs text-right ${
                             dimNA
                               ? 'bg-slate-100 text-slate-400 cursor-not-allowed'

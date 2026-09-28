@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { updateFiche } from '@/api/fiche';
+import React, { useState, useRef, useEffect } from 'react';
+import { updateFiche, getFicheFluxState } from '@/api/fiche';
 import { postFlowRaw, FLUX } from '@/api/flux';
+import { resolveFluxOutcome } from '@/lib/erreursSap';
 import { generateFichePdfBase64 } from '@/lib/generateFichePdf';
 import { useSapOptions } from '@/lib/sapLists';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,41 +11,27 @@ import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Envoi de la FL vers SAP : le flux `SAP_SEND_FL` n'attend QUE l'identifiant de la
-// ligne Dataverse ({ "ID": "<guid cr04e_projetid>" }) — il relit lui-même la fiche
-// et ses tables filles côté Power Automate. Renvoie { ok, title, message } ; le
-// pilotage de la pop-up est fait par l'appelant. Même convention de statuts que la
-// DE : 200 = succès, 400 = erreur(s) métier SAP.
-async function sendFlToSap(ficheId, codeArticle) {
-  try {
-    const res = await postFlowRaw(FLUX.SAP_SEND_FL, { ID: ficheId });
-    if (res.status === 200) {
-      return {
-        ok: true,
-        title: 'Envoyé vers SAP',
-        message: "La création de l'article a bien été transmise à SAP.",
-      };
-    }
-    if (res.status === 400) {
-      return {
-        ok: false,
-        title: 'Une ou plusieurs erreurs sur SAP',
-        message: `Contactez l'administrateur.\nArticle ${codeArticle || '-'}.`,
-      };
-    }
-    const text = await res.text().catch(() => '');
-    return {
-      ok: false,
-      title: 'Envoi SAP échoué',
-      message: `Le flux a répondu HTTP ${res.status}${text ? ` - ${text}` : ''}.`,
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      title: 'Envoi SAP non déclenché',
-      message: `L'envoi vers SAP a échoué : ${err?.message || 'erreur inconnue'}.`,
-    };
-  }
+// Cadence et durée max du polling (cf. handleCreateSAP). Le flux SAP met > 2 min :
+// on relit la ligne toutes les 5 s pendant 10 min avant d'afficher « toujours en
+// cours » (sans conclure à un échec).
+const POLL_INTERVAL_MS = 5000;
+const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Déclenche le flux SAP_SEND_FL SANS se fier à sa réponse HTTP (le flux répond au
+// terme de la création SAP, > 2 min -> timeout systématique). On ne veut détecter
+// QUE l'échec immédiat de déclenchement (URL du registre introuvable, réseau) :
+// on laisse ~8 s au POST pour rejeter ; au-delà, on considère le flux « parti » et
+// c'est le polling de la ligne qui fera foi. Renvoie { triggered, error }.
+async function declencherFluxFl(ficheId) {
+  const post = postFlowRaw(FLUX.SAP_SEND_FL, { ID: ficheId });
+  const early = await Promise.race([
+    post.then(() => ({ triggered: true })).catch((err) => ({ triggered: false, error: err })),
+    sleep(8000).then(() => ({ triggered: true, slow: true })),
+  ]);
+  // Réponse tardive/timeout du flux ignorée (évite une "unhandled rejection").
+  post.catch(() => {});
+  return early;
 }
 
 // Alerte « fiche finale » : le PDF de la fiche récap est généré DANS L'APP (même
@@ -81,6 +68,11 @@ export default function FLSynthesisSection({ fiche }) {
   const queryClient = useQueryClient();
   const [sapModal, setSapModal] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  // Le polling peut durer plusieurs minutes : on ignore les setState si le
+  // composant a été démonté entre-temps (navigation).
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+  const setModalIfMounted = (m) => { if (mountedRef.current) setSapModal(m); };
 
   const sap = useSapOptions();
   const createSAPMutation = useMutation({
@@ -100,32 +92,78 @@ export default function FLSynthesisSection({ fiche }) {
     },
   });
 
-  // 1) POST { ID } au flux SAP_SEND_FL, 2) si SAP a répondu 200, on bascule la FL
-  // en « Création SAP effectuée ». Un échec du flux laisse le statut inchangé :
-  // la fiche reste modifiable et l'envoi peut être relancé.
-  // Pas de window.confirm : les boîtes de dialogue natives du navigateur sont
-  // proscrites dans l'app (rendu hors charte, bloquantes, filtrées selon le
-  // contexte d'hébergement). Le garde-fou est ailleurs : les 3 visas sont requis
-  // et la date d'envoi verrouille définitivement le bouton après le premier envoi.
+  // Envoi FL -> SAP par POLLING (le flux met > 2 min, sa réponse HTTP n'est pas
+  // fiable) : 1) on mémorise `modifiedon` (baseline) ; 2) on déclenche le flux ;
+  // 3) on relit la ligne toutes les 5 s : tant que `modifiedon` n'a pas bougé ->
+  // « en cours » ; dès qu'il bouge on lit `flux_envoi_fl` -> réussi / erreur.
+  //   - réussi : alerte fiche récap + bascule statut/date d'envoi (verrouille le bouton).
+  //   - erreur : rien n'est persisté, la fiche reste modifiable et ré-envoyable.
+  //   - toujours « en cours » après 10 min : état neutre, rien persisté.
+  // Pas de window.confirm (boîtes natives proscrites) ; garde-fous : les 3 visas
+  // requis + la date d'envoi qui verrouille après un envoi réussi.
   const handleCreateSAP = async () => {
     setIsSending(true);
     setSapModal({ status: 'loading' });
-    const result = await sendFlToSap(fiche.id, fiche.code_article);
-    if (result.ok) {
-      // 1) Alerte + fiche récap en pièce jointe, AVANT la mise à jour du statut :
-      //    la fiche n'a pas encore basculé en lecture seule, donc le PDF reflète
-      //    exactement ce qui vient d'être envoyé à SAP.
+
+    // Baseline fiable : la valeur mappée sur la fiche, sinon une lecture fraîche
+    // (évite qu'un baseline manquant fasse conclure sur un ancien flux_envoi_fl).
+    let baseline = fiche.modified_on;
+    if (!baseline) {
+      try { baseline = (await getFicheFluxState(fiche.id)).modifiedon; } catch { /* garde null */ }
+    }
+
+    // 1) Déclenche le flux ; seul un échec IMMÉDIAT (réseau/registre) est bloquant.
+    const trig = await declencherFluxFl(fiche.id);
+    if (!trig.triggered) {
+      setModalIfMounted({
+        status: 'error',
+        title: 'Envoi SAP non déclenché',
+        message: `L'envoi vers SAP n'a pas pu démarrer : ${trig.error?.message || 'erreur inconnue'}.`,
+      });
+      setIsSending(false);
+      return;
+    }
+
+    // 2) Polling de la ligne jusqu'à conclusion ou expiration.
+    const started = Date.now();
+    let outcome = 'pending';
+    while (Date.now() - started < POLL_TIMEOUT_MS) {
+      await sleep(POLL_INTERVAL_MS);
+      if (!mountedRef.current) return;
+      let state;
+      try { state = await getFicheFluxState(fiche.id); }
+      catch { continue; } // lecture transitoire en échec -> on retente au tick suivant
+      outcome = resolveFluxOutcome(baseline, state);
+      if (outcome !== 'pending') break;
+    }
+
+    if (outcome === 'reussi') {
+      let message = "La création de l'article a bien été transmise à SAP.";
+      // Alerte + fiche récap en pièce jointe (non bloquant).
       const alerte = await envoyerFicheFinale(fiche);
-      if (alerte) result.message += `\n\n${alerte}`;
-      // 2) Statut + date d'envoi (c'est cette date qui verrouille le bouton).
+      if (alerte) message += `\n\n${alerte}`;
+      // Statut + date d'envoi (c'est cette date qui verrouille le bouton).
       try {
         await createSAPMutation.mutateAsync();
       } catch (err) {
         console.error('[FL statut SAP]', err);
-        result.message += `\n\nLe statut de la fiche n'a pas pu être mis à jour : ${err?.message || 'erreur inconnue'}.`;
+        message += `\n\nLe statut de la fiche n'a pas pu être mis à jour : ${err?.message || 'erreur inconnue'}.`;
       }
+      setModalIfMounted({ status: 'success', title: 'Article créé dans SAP', message });
+    } else if (outcome === 'erreur') {
+      setModalIfMounted({
+        status: 'error',
+        title: 'Une ou plusieurs erreurs sur SAP',
+        message: `Contactez l'administrateur.\nArticle ${fiche.code_article || '-'}.`,
+      });
+    } else {
+      // Timeout : le flux tourne toujours. Ni succès ni échec.
+      setModalIfMounted({
+        status: 'pending',
+        title: 'Création toujours en cours',
+        message: "SAP n'a pas encore répondu. La création se poursuit côté SAP — vérifiez le suivi des créations dans quelques minutes.",
+      });
     }
-    setSapModal({ status: result.ok ? 'success' : 'error', title: result.title, message: result.message });
     setIsSending(false);
   };
 

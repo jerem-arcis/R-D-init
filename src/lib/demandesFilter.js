@@ -28,6 +28,23 @@ export const isEnAttenteCC = (statut) =>
 export const isValideeCount = (statut) =>
   isDEValidated(statut) || statut === 'ds_validee';
 
+// Retrouve l'id du brouillon LOCAL (localStorage) correspondant à une ligne
+// Dataverse `de`, pour rouvrir le brouillon riche plutôt que recharger la ligne
+// depuis Dataverse. Jointure par `projet_id` UNIQUEMENT : c'est le GUID
+// cr04e_projetid, seule clé unique par ligne — et tout brouillon local rattaché
+// à une ligne Dataverse porte ce projet_id (posé par handleSaveBrouillon /
+// persistLocalBrouillon). Ni `code_chapeau` ni `code_projet` ne sont fiables :
+// plusieurs essais réutilisent le même code chapeau (souvent en erreur), et un
+// même code projet peut apparaître deux fois — ces replis faisaient rouvrir la
+// MAUVAISE fiche (ex. un brouillon en erreur ouvrait une fiche déjà créée dans
+// SAP, en lecture seule). Renvoie null si aucun miroir local : la page recharge
+// alors la ligne Dataverse par projet_id.
+export function localIdFor(localDEs, de) {
+  if (!de || !de.id) return null;
+  const match = (localDEs || []).find((d) => d.projet_id && d.projet_id === de.id);
+  return match ? match.id : null;
+}
+
 // Liste triée des demandeurs présents dans le jeu de données (pour le dropdown).
 export function listDemandeurs(demandes) {
   const set = new Set();

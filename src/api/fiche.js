@@ -6,8 +6,13 @@
 
 import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated';
 import { lookupBind } from '@/api/sapLists';
-import { DE_DIVISION_CODES, computeProfilFabricRepetDE } from '@/lib/deRules';
-import { FIELD_OWNERS, FORMATS_DATE_ETIQUETTE, codeSecteur, isFieldEditable } from '@/lib/ficheSchema';
+import {
+  DE_DIVISION_CODES,
+  computeProfilFabricRepetDE,
+  divisionCodeFromPlant,
+  usineLabelFromDivision,
+} from '@/lib/deRules';
+import { FIELD_OWNERS, FORMATS_DATE_ETIQUETTE, GROUPE_STATISTIQUE_DEFAUT, codeSecteur, isFieldEditable } from '@/lib/ficheSchema';
 import { trimOrUndef } from '@/api/_odata';
 import { withQueue } from '@/api/_serialize';
 import { listForProjet as listLibellePays, syncForProjet as syncLibellePays } from '@/api/ficheLibellePays';
@@ -125,7 +130,15 @@ export function toFicheShape(p) {
   }
   f.nomenclature_douaniere =
     (p[NOMENCLATURE_COL] ?? '').trim() || (p[NOMENCLATURE_COL_LEGACY] ?? '').trim();
+  // Type de produit de la demande (PFIN / NEGO) : non éditable en FL, sert de flag
+  // métier (négoce -> pas de type d'usine, cf. isFicheNegoce dans ficheSchema).
+  f.type_produit = String(p.cr04e_typedeproduit ?? '').trim().toUpperCase();
   if (p.cr04e_statut_en_cours === SAP_STATUT) f.statut_sap = SAP_LABEL;
+  // Suivi de l'envoi FL vers SAP : statut posé par le flux (vide = jamais envoyé)
+  // et horodatage système de la ligne, servant de baseline au polling (cf.
+  // resolveFluxOutcome / getFicheFluxState).
+  f.flux_envoi_fl = p.cr04e_fluxenvoiefl;
+  f.modified_on = p.modifiedon ?? null;
   f.demande = demandeOrigine(p);
   return f;
 }
@@ -162,6 +175,9 @@ export function valeursDemande(p = {}, { profilFabricRepet } = {}) {
   const typeProduit = String(p.cr04e_typedeproduit ?? '').trim().toUpperCase();
   if (typeProduit === 'PFIN') v.groupe_imputation = '01';
   if (typeProduit === 'NEGO') v.groupe_imputation = '05';
+  // Groupe statistique article : règle atelier « toujours 1 » — prérempli sur toute
+  // FL (l'ADV n'a plus à le choisir, cf. GROUPES_STATISTIQUE réduit à « 1 »).
+  v.groupe_statistique_article = GROUPE_STATISTIQUE_DEFAUT;
   // Poids net UVC en kg, comme la DE/DS (ZUG = poids × 1000 des deux côtés).
   const poids = p.cr04e_poidsnet;
   if (poids !== null && poids !== undefined && poids !== '' && Number.isFinite(Number(poids))) {
@@ -186,7 +202,7 @@ const vide = (v) => v === null || v === undefined || v === '';
 // `fiche.herite` = { champ: section qui l'écrit au visa } (tag « depuis DE » + visa).
 export function appliquerHeritage(fiche, valeurs = {}) {
   const herite = {};
-  for (const champ of ['origine_fabrication', 'type_usine', 'groupe_imputation']) {
+  for (const champ of ['origine_fabrication', 'type_usine', 'groupe_imputation', 'groupe_statistique_article']) {
     if (valeurs[champ] && vide(fiche[champ]) && isFieldEditable(champ, fiche)) {
       fiche[champ] = valeurs[champ];
       herite[champ] = FIELD_OWNERS[champ];
@@ -223,7 +239,7 @@ export function patchHeritage(fiche, owner) {
 
 // Extrait le code de tête d'une valeur « CODE — LABEL » / « CODE - LABEL » /
 // « CODE : LABEL » / « CODE = LABEL ». Les espaces autour du séparateur sont
-// facultatifs : le fichier FM écrit aussi bien « Z004 - Carcassonne » que
+// facultatifs : le fichier FM écrit aussi bien « Z008 - Bonloc » que
 // « 01-produits finis ». Sans séparateur, renvoie la valeur telle quelle.
 // '' -> undefined.
 function leadingCode(v) {
@@ -234,7 +250,7 @@ function leadingCode(v) {
 // Champs dont SEUL LE CODE est stocké puis poussé dans SAP : la désignation
 // n'existe que pour l'affichage de la liste déroulante. Les listes fournissent
 // déjà le code seul en `value` ; l'extraction ci-dessous nettoie en plus les
-// valeurs historiques enregistrées en toutes lettres (« Z004 - Carcassonne »).
+// valeurs historiques enregistrées en toutes lettres (« Z008 - Bonloc »).
 const CODE_ONLY_FIELDS = new Set([
   'type_usine',
   'eclatement_groupe_marchandise',
@@ -332,7 +348,13 @@ export function toFicheListShape(p) {
     id: p.cr04e_projetid,
     code_article: p.cr04e_codechapeau ?? '',
     libelle_article: p.cr04e_nomduproduitdesignation ?? '',
-    usine: p.cr04e_divisionusinename ?? '',
+    // Usine = libellé dérivé de la DIVISION du projet (valeur formatée du lookup),
+    // pas du champ `...name` qui revient null en prod. Repli sur le nom de site des
+    // imports beCPG. Même logique que toListShape (src/api/projet.js).
+    usine: usineLabelFromDivision(
+      String(p[`_cr04e_divisionusine_value${FMT}`] ?? '').trim() ||
+        divisionCodeFromPlant(p.cr04e_divisionimport),
+    ),
     type_demande: p.cr04e_typedelademande ?? '',
     statut_sap: p.cr04e_statut_en_cours === SAP_STATUT ? SAP_LABEL : '',
     visas_valides: visas.filter((v) => v === true).length,
@@ -374,6 +396,22 @@ export async function getFicheById(id) {
   Object.assign(fiche, blocsFromRows(await listEmballages(id)));
   const profilFabricRepet = await lireProfilFabricRepet(id);
   return appliquerHeritage(fiche, valeursDemande(p, { profilFabricRepet }));
+}
+
+// Lecture LÉGÈRE pour le polling de l'envoi FL -> SAP : uniquement l'horodatage
+// système et le statut de flux, sans les tables filles (chaque tick doit rester
+// bon marché). Renvoie { modifiedon, flux } ; { modifiedon: null } si introuvable.
+export async function getFicheFluxState(id) {
+  if (!id) return { modifiedon: null, flux: null };
+  const result = await Cr04e_projetsService.getAll({
+    filter: `cr04e_projetid eq ${id}`,
+    select: ['modifiedon', 'cr04e_fluxenvoiefl'],
+    top: 1,
+  });
+  const rows = unwrap(result, 'Lecture statut flux FL') ?? [];
+  const row = rows[0];
+  if (!row) return { modifiedon: null, flux: null };
+  return { modifiedon: row.modifiedon ?? null, flux: row.cr04e_fluxenvoiefl ?? null };
 }
 
 // Profil de fabrication répétitive porté par les lignes cr04e_divisionprojet du

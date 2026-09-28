@@ -327,6 +327,29 @@ export function fluxStatut(value) {
 }
 
 // ---------------------------------------------------------------------------
+// Résultat d'un envoi FL vers SAP suivi par POLLING de la ligne cr04e_projet.
+//
+// Le flux Power Automate met > 2 min : on ne peut pas se fier à sa réponse HTTP
+// (timeout). On capture `modifiedon` AVANT l'envoi (baseline), puis on relit la
+// ligne : tant que `modifiedon` n'a pas bougé, le flux n'a rien écrit -> 'pending'.
+// Quand il a bougé, on lit `flux_envoi_fl` pour conclure. Un rebond intermédiaire
+// de `modifiedon` sans statut lisible reste 'pending' (le flux écrira le statut
+// plus tard). Détecter le CHANGEMENT (pas juste « non vide ») gère le ré-envoi
+// d'une fiche dont flux_envoi_fl valait déjà 'erreur'.
+//
+//   baseline : `modifiedon` au moment de l'envoi (string ISO, ou null si inconnu)
+//   state    : { modifiedon, flux } relu de la ligne
+//   -> 'reussi' | 'erreur' | 'pending'
+// ---------------------------------------------------------------------------
+export function resolveFluxOutcome(baseline, state = {}) {
+  const { modifiedon, flux } = state;
+  const changed = !!modifiedon && modifiedon !== baseline;
+  if (!changed) return 'pending';
+  const statut = fluxStatut(flux);
+  return statut ?? 'pending';
+}
+
+// ---------------------------------------------------------------------------
 // Suivi par flux (Admin, vue project-driven) : à partir de TOUS les projets, on
 // ne garde que ceux ayant une valeur sur au moins un flux (DE ou FL), et on
 // rattache la « création » d'erreurs correspondante (jointure par code chapeau,

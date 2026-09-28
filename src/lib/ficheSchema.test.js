@@ -8,6 +8,7 @@ import {
   GROUPES_RISTOURNE,
   GROUPES_STATISTIQUE,
   GROUPES_IMPUTATION,
+  isFicheNegoce,
   codeSecteur,
   optionsSecteur,
 } from './ficheSchema';
@@ -107,7 +108,8 @@ describe('getMissingVisaFields', () => {
 
 describe('listes OC2 (groupements ADV) alimentées depuis ListesSAP', () => {
   it('tailles attendues (ListesSAP + option « 1 » en tête : article 73, ristourne 70)', () => {
-    expect(GROUPES_STATISTIQUE).toHaveLength(35);
+    // Groupe statistique réduit à « 1 » (règle atelier : toujours 1).
+    expect(GROUPES_STATISTIQUE).toHaveLength(1);
     expect(GROUPES_ARTICLE).toHaveLength(73);
     expect(GROUPES_RISTOURNE).toHaveLength(70);
     expect(GROUPES_IMPUTATION).toHaveLength(2);
@@ -123,11 +125,23 @@ describe('listes OC2 (groupements ADV) alimentées depuis ListesSAP', () => {
     expect(GROUPES_RISTOURNE).toContainEqual({ value: 'AY', label: 'AY-MB INTERMARCHE', keywords: 'AY-MB INTERMARCHE' });
   });
 
-  it('statistique : value = code seul (envoyé), label = libellé Excel (affiché)', () => {
-    expect(GROUPES_STATISTIQUE[0]).toEqual({ value: '1', label: '1-Groupe article 1' });
-    // Les codes sont bien 1..9 puis A..Z (aucun libellé complet côté value).
-    expect(GROUPES_STATISTIQUE.map((o) => o.value)).toContain('Z');
-    expect(GROUPES_STATISTIQUE.every((o) => o.value.length === 1)).toBe(true);
+  it('statistique : toujours « 1 » (liste réduite à cette seule valeur)', () => {
+    expect(GROUPES_STATISTIQUE).toEqual([{ value: '1', label: '1-Groupe article 1' }]);
+  });
+});
+
+describe('isFicheNegoce', () => {
+  it('vrai si type_produit NEGO ou groupe imputation 05', () => {
+    expect(isFicheNegoce({ type_produit: 'NEGO' })).toBe(true);
+    expect(isFicheNegoce({ groupe_imputation: '05' })).toBe(true);
+    expect(isFicheNegoce({ type_produit: 'PFIN', groupe_imputation: '01' })).toBe(false);
+    expect(isFicheNegoce({})).toBe(false);
+    expect(isFicheNegoce(null)).toBe(false);
+  });
+
+  it('négoce : le type d\'usine n\'est jamais requis pour le visa Industriel', () => {
+    const fiche = { ...filledFiche, type_usine: '', type_produit: 'NEGO' };
+    expect(getMissingVisaFields(fiche, 'ind').map((m) => m.name)).not.toContain('type_usine');
   });
 });
 

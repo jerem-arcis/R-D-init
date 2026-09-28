@@ -1,7 +1,13 @@
 import { Cr04e_projetsService, Cr04e_divisionprojetsService } from '@/generated';
 import { lookupBind, codeFromLookupValue } from '@/api/sapLists';
 import { DS_STATUTS } from '@/api/ds';
-import { divisionCodeFromPlant, normalizeAxeStrategique } from '@/lib/deRules';
+import {
+  divisionCodeFromPlant,
+  usineLabelFromDivision,
+  normalizeAxeStrategique,
+  computeSecteurFromReseau,
+  computeGroupeArticleLockedDE,
+} from '@/lib/deRules';
 import { buildEANSet } from '@/lib/ean';
 import { toNumber, trimOrUndef } from '@/api/_odata';
 
@@ -52,7 +58,12 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
     cr04e_typedelademande: trimOrUndef(formData.type_demande_de),
     cr04e_demandeur: trimOrUndef(formData.demandeur),
     cr04e_nomduproduitdesignation: trimOrUndef(formData.designation_article),
-    cr04e_secteurdactivite: trimOrUndef(formData.marque),
+    // Secteur d'activité : on persiste la valeur EFFECTIVE = saisie (`marque`) OU
+    // repli sur le calcul réseau -> secteur. Le champ à l'écran et la validation
+    // utilisent déjà `marque || deSecteur` ; sans ce même repli ici, une DE au
+    // secteur auto-calculé (marque vide en formData) partait en base — et vers
+    // SAP, qui relit la ligne — SANS secteur, malgré un écran renseigné.
+    cr04e_secteurdactivite: trimOrUndef(formData.marque || computeSecteurFromReseau(formData.reseau)),
     cr04e_client: trimOrUndef(formData.client),
     cr04e_groupedautorisation: trimOrUndef(formData.groupe_autorisation),
     // Groupe de frais généraux : désormais un CHAMP TEXTE simple (FG / NEGO),
@@ -78,7 +89,17 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
   payload.cr04e_eanpal = trimOrUndef(eans.ean_palette || formData.ean_palette);
 
   for (const [key, field, bindProp] of PROJET_LOOKUPS) {
-    const bind = lookupBind(key, trimOrUndef(formData[field]), sapOptions[key]);
+    // Groupe article (division) : même piège que le secteur. L'écran et la
+    // validation acceptent la valeur EFFECTIVE `groupe_article || <verrou
+    // division>` (Bonloc -> PF-B, Rivesaltes -> PF-F). Sans ce repli côté
+    // écriture, une DE au groupe verrouillé (formData.groupe_article vide)
+    // partait en base — et vers SAP — SANS groupe article. Les autres lookups
+    // n'ont pas de repli : valeur du formulaire telle quelle.
+    const rawValue =
+      field === 'groupe_article'
+        ? formData.groupe_article || computeGroupeArticleLockedDE(formData.division)
+        : formData[field];
+    const bind = lookupBind(key, trimOrUndef(rawValue), sapOptions[key]);
     if (bind) payload[bindProp] = bind;
   }
 
@@ -233,7 +254,14 @@ const toListShape = (p) => ({
   designation_article: p.cr04e_nomduproduitdesignation ?? '',
   demandeur: p.cr04e_demandeur ?? '',
   type_demande_de: p.cr04e_typedelademande ?? '',
-  usine_validee: p.cr04e_divisionusinename ?? '',
+  // Usine = libellé dérivé de la DIVISION du projet, pas du champ `...name` du
+  // lookup (`cr04e_divisionusinename` revient null, cf. note ci-dessous) : sinon
+  // la colonne et le filtre « usine » restent vides. Source fiable = code division
+  // (valeur formatée du lookup), repli sur la colonne d'import beCPG (nom de site).
+  usine_validee: usineLabelFromDivision(
+    String(p[`_cr04e_divisionusine_value${FMT_VALUE}`] ?? '').trim() ||
+      divisionCodeFromPlant(p.cr04e_divisionimport),
+  ),
   // Réseau : sert à dériver le secteur d'activité pour le préremplissage FL
   // (computeSecteurFromReseau), même règle que la DE.
   reseau: p.cr04e_reseau ?? '',
