@@ -9,6 +9,7 @@ export const DEMO_FICHE = {
   code_logistique: '914201',
   libelle_article: '16 MIGNARDISES APÉR PICARD',
   libelle_long_40: '16 MIGNARDISES APÉR PICARD',
+  design_normalisee: '16 MIGNARD. APÉRO',
   libelle_caisse: '0',
   code_article_client: '10108',
   statut_lancement: 'Création nouvel article',
@@ -91,7 +92,7 @@ const isEmpty = (v) =>
 export function isFicheComplete(fiche) {
   if (!fiche) return false;
   return (
-    !isEmpty(fiche.libelle_long_40) &&
+    !isEmpty(fiche.design_normalisee) &&
     !isEmpty(fiche.marque) &&
     (!isEmpty(fiche.ean_carton) || !isEmpty(fiche.colis_block && fiche.colis_block.gtin)) &&
     !isEmpty(fiche.secteur_activite) &&

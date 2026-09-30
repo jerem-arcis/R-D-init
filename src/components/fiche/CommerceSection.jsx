@@ -15,6 +15,7 @@ import {
   libelleDemande,
   tagHerite,
   optionsSecteur,
+  avecLibelleFr,
 } from '@/lib/ficheSchema';
 import { useSapOptions } from '@/lib/sapLists';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
@@ -72,18 +73,10 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
       visaLabel="Visa Commerce"
       visaBlockers={visaBlockers}
     >
-      {/* Ordre aligné sur la capture FL « Commerce » : libellé long + origine +
+      {/* Ordre aligné sur la capture FL « Commerce » : origine +
           canaux + secteur/marque en tête, puis libellés normalisés & langues,
           puis hiérarchie / douane / sites de stockage, puis GTIN. */}
       <FieldGrid title="Classification & distribution" cols={2}>
-        <TextField
-          label="Libellé long 40 caractères"
-          value={fiche.libelle_long_40}
-          onChange={set('libelle_long_40')}
-          disabled={disabled}
-          maxLength={40}
-          placeholder="Libellé français"
-        />
         <SelectField
           label="Origine de fabrication"
           value={fiche.origine_fabrication}
@@ -119,10 +112,10 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
 
       <FieldGrid title="Libellés normalisés" cols={2}>
         <TextField
-          label="Désign. normalisée"
+          label="Désignation article SAP"
           maxLength={18}
           value={fiche.design_normalisee}
-          onChange={set('design_normalisee')}
+          onChange={(v) => onUpdate?.(avecLibelleFr(fiche, { design_normalisee: v }))}
           disabled={disabled}
         />
         <TextField

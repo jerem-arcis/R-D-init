@@ -188,21 +188,9 @@ export const FORMATS_DATE_ETIQUETTE = [
 // entrées en double dans le menu pour une valeur SAP identique.
 export const TEMPS_RECEPTION_USINE = ['0', '3', '4', '7', '10', '15'];
 
-// Durées de vie standard (valeurs du référentiel SAP).
-export const DUREES_VIE = [
-  '6',
-  '9',
-  '12',
-  '15',
-  '18',
-  '21',
-  '24',
-  '35',
-  '36',
-  '270',
-  '365',
-  '456',
-];
+// Unité de la durée de vie (saisie libre du nombre à côté) : jours pour le frais,
+// mois pour le surgelé (≈ 90 % des cas). Format « X - Libellé » lu par le PDF.
+export const UNITES_DUREE_VIE = ['J - Jours', 'M - Mois'];
 
 export const STATUTS_LANCEMENT = [
   '01 - En cours de création',
@@ -311,6 +299,31 @@ export const PAYS_LIBELLES = [
   { code: 'NL', label: 'Néerlandais' },
   { code: 'PT', label: 'Portugais' },
 ];
+
+// Libellé FR du tableau « Libellé par pays » alimenté automatiquement par la
+// Désignation article SAP (design_normalisee). On ne remplace la ligne FR que si
+// elle est absente, vide, ou encore égale à l'ancienne désignation (= pas
+// retouchée à la main). Retourne null si rien ne change.
+export function syncLibelleFr(libelles, ancienneDesign, nouvelleDesign) {
+  const rows = Array.isArray(libelles) ? libelles : [];
+  const next = (nouvelleDesign ?? '').trim();
+  const prev = (ancienneDesign ?? '').trim();
+  const idx = rows.findIndex((r) => r.code === 'FR');
+  if (idx === -1) {
+    return next ? [{ code: 'FR', libelle: next }, ...rows] : null;
+  }
+  const actuel = (rows[idx].libelle ?? '').trim();
+  if (actuel && actuel !== prev) return null;
+  if (actuel === next) return null;
+  if (!next) return rows.filter((_, i) => i !== idx);
+  return rows.map((r, i) => (i === idx ? { ...r, libelle: next } : r));
+}
+
+// Complète un patch design_normalisee avec le libellé FR synchronisé.
+export function avecLibelleFr(fiche, patch) {
+  const libelles = syncLibelleFr(fiche?.libelle_par_pays, fiche?.design_normalisee, patch.design_normalisee);
+  return libelles ? { ...patch, libelle_par_pays: libelles } : patch;
+}
 
 // ---------- Mapping DE → FL ----------
 // Quels champs de la FL sont pré-remplis depuis la DE associée.
@@ -456,6 +469,7 @@ export const FIELD_OWNERS = {
   colis_block: 'ind',
   palette_block: 'ind',
   duree_vie: 'ind',
+  unite_duree_vie: 'ind',
   temps_reception_usine: 'ind',
   format_date_etiquette_colis: 'ind',
   format_dluo_etiquette_colis: 'ind',
@@ -525,7 +539,8 @@ export const REMOVED_FIELDS = new Set([
   'delai_securite_couv_reelle_usine', 'delai_securite_couv_reelle_stockiste',
   'type_approvisionnement_usine', 'type_approvisionnement_stockiste',
   'appro_special', 'delai_previsionnel_livraison', 'temps_reception_stockiste',
-  'unite_duree_vie',
+  // Libellé long 40 : jugé inutile (point d'étape du 29/09).
+  'libelle_long_40',
 ]);
 
 // Tableau « Emballages » (5 blocs) : exempté du contrôle « tous les champs remplis »
@@ -549,13 +564,14 @@ export const FIELD_LABELS = {
   type_usine: "Type d'usine",
   type_palette: 'Type de palette',
   duree_vie: 'Durée de vie',
+  unite_duree_vie: 'Unité durée de vie',
   temps_reception_usine: 'Temps de réception usine',
   format_date_etiquette_colis: 'Format date étiquette colis',
   format_dluo_etiquette_colis: 'Format DLUO étiquette colis',
   type_magasin: 'Type de magasin',
   ancien_numero_article: 'Ancien n° article',
   // COM
-  design_normalisee: 'Désignation normalisée',
+  design_normalisee: 'Désignation article SAP',
   libelle_long_40: 'Libellé long 40',
   libelle_caisse: 'Libellé article caisse',
   libelle_par_pays: 'Libellé par pays',

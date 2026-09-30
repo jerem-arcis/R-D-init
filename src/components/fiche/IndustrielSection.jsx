@@ -14,7 +14,7 @@ import {
   TYPES_USINE,
   TYPES_PALETTE,
   TYPES_MAGASIN_EM,
-  DUREES_VIE,
+  UNITES_DUREE_VIE,
   tagHerite,
   libelleDemande,
   isFicheNegoce,
@@ -134,14 +134,20 @@ export default function IndustrielSection({ fiche, de, onUpdate, onUpdateDebounc
         isEditable={() => isEditable}
       />
 
-      <FieldGrid title="Durée de vie & réception" cols={2}>
-        <SelectField
-          label="Durée de vie (jours)"
+      <FieldGrid title="Durée de vie & réception" cols={3}>
+        <TextField
+          label="Durée de vie"
+          type="number"
           value={fiche.duree_vie}
           onChange={set('duree_vie')}
           disabled={disabled}
-          options={DUREES_VIE}
-          crossRef="vu en Commerce"
+        />
+        <SelectField
+          label="Unité durée de vie"
+          value={fiche.unite_duree_vie}
+          onChange={set('unite_duree_vie')}
+          disabled={disabled}
+          options={UNITES_DUREE_VIE}
         />
         <SelectField
           label="Temps de réception (usine, j)"

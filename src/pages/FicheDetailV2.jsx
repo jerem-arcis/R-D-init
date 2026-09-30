@@ -31,7 +31,7 @@ import {
   GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
   REMOVED_FIELDS, getMissingVisaFields, hierarchieActivite,
-  libelleDemande, tagHerite, optionsSecteur,
+  libelleDemande, tagHerite, optionsSecteur, avecLibelleFr, UNITES_DUREE_VIE,
 } from '@/lib/ficheSchema';
 import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
@@ -347,7 +347,7 @@ export default function FicheDetailV2() {
         {/* ----- 4. Libellés ----- */}
         <Group visible={showGroup('libelles')} id="libelles" title="Libellés & étiquettes">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Fld visible={showField('design_normalisee')}><TextField label="Désign. normalisée" maxLength={18} {...fld('design_normalisee')} /></Fld>
+            <Fld visible={showField('design_normalisee')}><TextField label="Désignation article SAP" maxLength={18} {...fld('design_normalisee')} onChange={(v) => handleUpdate(avecLibelleFr(localFiche, { design_normalisee: v }))} /></Fld>
             <Fld visible={showField('libelle_long_40')}><TextField label="Libellé long 40 caractères" maxLength={40} {...fld('libelle_long_40')} /></Fld>
             <Fld visible={showField('libelle_caisse')}><TextField label="Libellé caisse" {...fld('libelle_caisse')} /></Fld>
             <Fld visible={showField('libelle_client')}><TextField label="Libellé client" {...fld('libelle_client')} /></Fld>
@@ -372,7 +372,8 @@ export default function FicheDetailV2() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Fld visible={showField('type_usine')}><SelectField label="Type d'usine" {...fld('type_usine')} options={TYPES_USINE} fromDE={tagHerite(localFiche, 'type_usine')} /></Fld>
             <Fld visible={showField('type_palette')}><SelectField label="Type de support/palette" {...fld('type_palette')} options={TYPES_PALETTE} /></Fld>
-            <Fld visible={showField('duree_vie')}><TextField label="Durée de vie (jours)" type="number" {...fld('duree_vie')} /></Fld>
+            <Fld visible={showField('duree_vie')}><TextField label="Durée de vie" type="number" {...fld('duree_vie')} /></Fld>
+            <Fld visible={showField('unite_duree_vie')}><SelectField label="Unité durée de vie" {...fld('unite_duree_vie')} options={UNITES_DUREE_VIE} /></Fld>
           </div>
           <Fld visible={showField('uvc_block')}>
             {localFiche.herite?.uvc_block && (

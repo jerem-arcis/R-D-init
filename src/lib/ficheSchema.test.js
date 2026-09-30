@@ -11,6 +11,8 @@ import {
   isFicheNegoce,
   codeSecteur,
   optionsSecteur,
+  syncLibelleFr,
+  avecLibelleFr,
 } from './ficheSchema';
 
 // Champs visibles (non retirés, hors blocs emballage) par section, tous remplis.
@@ -28,6 +30,7 @@ const filledFiche = {
   type_usine: 'x',
   type_palette: 'x',
   duree_vie: '12',
+  unite_duree_vie: 'M - Mois',
   temps_reception_usine: '2',
   format_date_etiquette_colis: 'x',
   format_dluo_etiquette_colis: 'x',
@@ -197,5 +200,41 @@ describe('secteur d’activité (code DE/DS <-> choix de la liste Admin)', () =>
   it('optionsSecteur : code + désignation séparés, et valeur inconnue conservée', () => {
     const opts = optionsSecteur([{ value: '12', designation: 'GDM' }], '99');
     expect(opts.map((o) => [o.value, o.label])).toEqual([['12', '12 - GDM'], ['99', '99']]);
+  });
+
+  it('syncLibelleFr : ajoute la ligne FR si absente', () => {
+    expect(syncLibelleFr([{ code: 'EN', libelle: 'APPLE PIE' }], '', 'TARTE POMME'))
+      .toEqual([{ code: 'FR', libelle: 'TARTE POMME' }, { code: 'EN', libelle: 'APPLE PIE' }]);
+    expect(syncLibelleFr(undefined, '', 'TARTE')).toEqual([{ code: 'FR', libelle: 'TARTE' }]);
+  });
+
+  it("syncLibelleFr : suit la désignation tant que le FR n'a pas été retouché", () => {
+    expect(syncLibelleFr([{ code: 'FR', libelle: 'TARTE' }], 'TARTE', 'TARTE POMME'))
+      .toEqual([{ code: 'FR', libelle: 'TARTE POMME' }]);
+    expect(syncLibelleFr([{ code: 'FR', libelle: '' }], 'X', 'TARTE'))
+      .toEqual([{ code: 'FR', libelle: 'TARTE' }]);
+  });
+
+  it('syncLibelleFr : ne touche pas un FR saisi à la main', () => {
+    expect(syncLibelleFr([{ code: 'FR', libelle: 'Tarte maison' }], 'TARTE', 'TARTE POMME')).toBeNull();
+    expect(syncLibelleFr([], '', '')).toBeNull();
+  });
+
+  it('syncLibelleFr : retire le FR auto si la désignation est vidée', () => {
+    expect(syncLibelleFr([{ code: 'FR', libelle: 'TARTE' }, { code: 'EN', libelle: 'PIE' }], 'TARTE', ''))
+      .toEqual([{ code: 'EN', libelle: 'PIE' }]);
+  });
+
+  it('avecLibelleFr : ajoute libelle_par_pays au patch seulement si besoin', () => {
+    expect(avecLibelleFr({ design_normalisee: '', libelle_par_pays: [] }, { design_normalisee: 'TARTE' }))
+      .toEqual({ design_normalisee: 'TARTE', libelle_par_pays: [{ code: 'FR', libelle: 'TARTE' }] });
+    expect(avecLibelleFr({ design_normalisee: 'A', libelle_par_pays: [{ code: 'FR', libelle: 'Manuel' }] }, { design_normalisee: 'B' }))
+      .toEqual({ design_normalisee: 'B' });
+  });
+
+  it("visa : l'unité de durée de vie est requise côté Industriel, plus le libellé long 40 côté Commerce", () => {
+    const { unite_duree_vie, libelle_long_40, ...fiche } = filledFiche;
+    expect(getMissingVisaFields(fiche, 'ind').map((m) => m.name)).toEqual(['unite_duree_vie']);
+    expect(getMissingVisaFields(fiche, 'com')).toEqual([]);
   });
 });

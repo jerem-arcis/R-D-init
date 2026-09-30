@@ -164,7 +164,7 @@ const VisaCell = ({ label, k, fiche }) => {
 };
 
 export function FichePdfDocument({ fiche = {}, de = null }) {
-  const titre = fiche.libelle_long_40 || fiche.libelle_article || fiche.code_article || 'Fiche de lancement';
+  const titre = fiche.libelle_long_40 || fiche.design_normalisee || fiche.libelle_article || fiche.code_article || 'Fiche de lancement';
   const statut = fiche.statut_sap || fiche.statut_lancement || 'Fiche de lancement produit';
   const racine = fiche.code_racine || fiche.code_article;
   const uvc = fiche.uvc_block || {};
@@ -244,7 +244,7 @@ export function FichePdfDocument({ fiche = {}, de = null }) {
             <View style={[s.card, { flexGrow: 1, flexBasis: 0 }]}>
               <Text style={s.cardH}>Libellé produit</Text>
               <View style={s.inner}>
-                <Field style={{ marginBottom: 4 }} k="Général (40)" v={val(fiche.libelle_long_40)} variant="big" />
+                <Field style={{ marginBottom: 4 }} k="Désignation article SAP" v={val(fiche.design_normalisee)} variant="big" />
                 <View style={s.row}>
                   <Field style={{ width: '50%' }} k="Code article client" v={val(fiche.code_article_client)} variant="big" />
                   <Field style={{ width: '50%' }} k="Standard (18)" v={val(fiche.libelle_caisse)} />
