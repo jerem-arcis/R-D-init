@@ -541,6 +541,9 @@ export const REMOVED_FIELDS = new Set([
   'appro_special', 'delai_previsionnel_livraison', 'temps_reception_stockiste',
   // Libellé long 40 : jugé inutile (point d'étape du 29/09).
   'libelle_long_40',
+  // Groupe statistique article : masqué (demande ADV), toujours « 1 » — prérempli
+  // à l'ouverture, écrit en base au visa ADV (patchHeritage) et forcé côté SAP.
+  'groupe_statistique_article',
 ]);
 
 // Tableau « Emballages » (5 blocs) : exempté du contrôle « tous les champs remplis »

@@ -162,6 +162,9 @@ describe('computeFicheSap (agrégat)', () => {
     expect(payload['MVKE-BONUS']).toBe('AY');  // ristourne : code sur 2 car.
     expect(payload['MVKE-KTGRM']).toBe('01');  // imputation : code
   });
+  it('groupe statistique : « 1 » même si vide (champ masqué dans la FL)', () => {
+    expect(computeFicheSap({})['MVKE-VERSG']).toBe('1');
+  });
   it('génère les unités de mesure', () => {
     const units = payload.unitsOfMeasure.map((r) => r.cr04e_alternativeunit);
     expect(units).toContain('U');

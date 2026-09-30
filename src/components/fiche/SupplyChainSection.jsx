@@ -9,7 +9,6 @@ import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
-  GROUPES_STATISTIQUE,
   SITES_STOCKAGE,
   tagHerite,
 } from '@/lib/ficheSchema';
@@ -37,13 +36,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
       visaBlockers={visaBlockers}
     >
       <FieldGrid title="Groupements" cols={2}>
-        <SelectField
-          label="Groupe statistique article"
-          value={fiche.groupe_statistique_article}
-          onChange={set('groupe_statistique_article')}
-          disabled={disabled}
-          options={GROUPES_STATISTIQUE}
-        />
+        {/* Groupe statistique article : masqué, toujours « 1 » (demande ADV). */}
         <SearchableSelectField
           label="Groupe d'article"
           value={fiche.groupe_article}

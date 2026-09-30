@@ -10,6 +10,7 @@
 // UoM) sont gérées à part par computeEmballagesSap (src/lib/emballagesSap.js).
 
 import { computeEmballagesSap } from '@/lib/emballagesSap';
+import { GROUPE_STATISTIQUE_DEFAUT } from '@/lib/ficheSchema';
 
 const s = (v) => String(v ?? '').trim();
 
@@ -196,7 +197,8 @@ export function computeFicheSap(fiche = {}) {
     // OC2 — groupements ADV saisis dans la FL (SupplyChainSection), poussés tels
     // quels : tous en code (article/ristourne sur 2 car. « AY », statistique « 1 »,
     // imputation « 01 »). Cf. listes ficheSchema.
-    'MVKE-VERSG': s(fiche.groupe_statistique_article),
+    // Champ masqué dans la FL : repli sur « 1 » si jamais vide en base.
+    'MVKE-VERSG': s(fiche.groupe_statistique_article) || GROUPE_STATISTIQUE_DEFAUT,
     'MVKE-KONDM': s(fiche.groupe_article),
     'MVKE-BONUS': s(fiche.groupe_ristourne),
     'MVKE-KTGRM': s(fiche.groupe_imputation),

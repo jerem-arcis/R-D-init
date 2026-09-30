@@ -28,7 +28,7 @@ import {
   STATUTS_LANCEMENT, FABRICATION_NEGOCE,
   MARQUES,
   NOMENCLATURES_DOUANIERES, MENTIONS_PRODUIT, SPECIFICITES_PRODUIT,
-  GROUPES_STATISTIQUE, GESTION_PAR_LOTS,
+  GESTION_PAR_LOTS,
   FIELD_OWNERS, OWNER_META, isFieldEditable, getFieldState,
   REMOVED_FIELDS, getMissingVisaFields, hierarchieActivite,
   libelleDemande, tagHerite, optionsSecteur, avecLibelleFr, UNITES_DUREE_VIE,
@@ -414,7 +414,6 @@ export default function FicheDetailV2() {
             <Fld visible={showField('groupe_article')}><SearchableSelectField label="Groupe article" {...fld('groupe_article')} options={GROUPES_ARTICLE} /></Fld>
             <Fld visible={showField('groupe_ristourne')}><SearchableSelectField label="Groupe de ristourne" {...fld('groupe_ristourne')} options={GROUPES_RISTOURNE} /></Fld>
             <Fld visible={showField('groupe_imputation')}><SelectField label="Groupe d'imputation" {...fld('groupe_imputation')} options={GROUPES_IMPUTATION} fromDE={tagHerite(localFiche, 'groupe_imputation')} /></Fld>
-            <Fld visible={showField('groupe_statistique_article')}><SelectField label="Groupe statistique article" {...fld('groupe_statistique_article')} options={GROUPES_STATISTIQUE} /></Fld>
             <Fld visible={showField('nomenclature_douaniere')}><SearchableSelectField label="Nomenclature douanière" {...fld('nomenclature_douaniere')} options={NOMENCLATURES_DOUANIERES} /></Fld>
           </div>
         </Group>

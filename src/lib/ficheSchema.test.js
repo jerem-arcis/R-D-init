@@ -60,10 +60,12 @@ describe('getMissingVisaFields', () => {
   it('SC : liste les champs Supply Chain vides', () => {
     const names = getMissingVisaFields({}, 'sc').map((m) => m.name);
     expect(names).toEqual(
-      expect.arrayContaining(['groupe_article', 'groupe_ristourne', 'groupe_imputation', 'groupe_statistique_article']),
+      expect.arrayContaining(['groupe_article', 'groupe_ristourne', 'groupe_imputation']),
     );
     // Un champ d'une autre section ne remonte pas côté SC.
     expect(names).not.toContain('marque');
+    // Groupe statistique : masqué (toujours « 1 »), jamais bloquant.
+    expect(names).not.toContain('groupe_statistique_article');
   });
 
   it('IND : le tableau Emballages (5 blocs) est exempté même vide', () => {
