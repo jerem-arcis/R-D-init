@@ -347,9 +347,9 @@ export default function FicheDetailV2() {
         {/* ----- 4. Libellés ----- */}
         <Group visible={showGroup('libelles')} id="libelles" title="Libellés & étiquettes">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Fld visible={showField('design_normalisee')}><TextField label="Désignation article SAP" maxLength={18} {...fld('design_normalisee')} onChange={(v) => handleUpdate(avecLibelleFr(localFiche, { design_normalisee: v }))} /></Fld>
+            <Fld visible={showField('design_normalisee')}><TextField label="Désignation article SAP" maxLength={18} {...fld('design_normalisee')} /></Fld>
             <Fld visible={showField('libelle_long_40')}><TextField label="Libellé long 40 caractères" maxLength={40} {...fld('libelle_long_40')} /></Fld>
-            <Fld visible={showField('libelle_caisse')}><TextField label="Libellé caisse" {...fld('libelle_caisse')} /></Fld>
+            <Fld visible={showField('libelle_caisse')}><TextField label="Libellé article caisse" {...fld('libelle_caisse')} onChange={(v) => handleUpdate(avecLibelleFr(localFiche, { libelle_caisse: v }))} /></Fld>
             <Fld visible={showField('libelle_client')}><TextField label="Libellé client" {...fld('libelle_client')} /></Fld>
             <Fld visible={showField('libelle_etiquette_colis')}><TextField label="Libellé étiquette colis" {...fld('libelle_etiquette_colis')} /></Fld>
             <Fld visible={showField('designation_client_colis')}><TextField label="Désignation client sur colis" {...fld('designation_client_colis')} /></Fld>

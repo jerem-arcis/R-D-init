@@ -115,13 +115,13 @@ export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced
           label="Désignation article SAP"
           maxLength={18}
           value={fiche.design_normalisee}
-          onChange={(v) => onUpdate?.(avecLibelleFr(fiche, { design_normalisee: v }))}
+          onChange={set('design_normalisee')}
           disabled={disabled}
         />
         <TextField
           label="Libellé article caisse"
           value={fiche.libelle_caisse}
-          onChange={set('libelle_caisse')}
+          onChange={(v) => onUpdate?.(avecLibelleFr(fiche, { libelle_caisse: v }))}
           disabled={disabled}
         />
       </FieldGrid>

@@ -40,6 +40,7 @@ import {
   computeSecteurFromReseau,
   AXES_STRATEGIQUES_DE,
   familleGroupeArticle,
+  prefixeGroupeArticleDE,
   hierarchiePrefix,
   centresProfitAutorises,
   classesValoAutorisees,
@@ -819,10 +820,6 @@ export default function CreerDE() {
   const groupesArticleOptions = sapOptions.groupes_article.filter((o) =>
     String(o.value).toUpperCase().startsWith('PF'),
   );
-  // Agen : liste restreinte aux groupes « PF-A… » (assortiments / surgelés Agen).
-  const groupesArticleAgenOptions = groupesArticleOptions.filter((o) =>
-    String(o.value).toUpperCase().startsWith('PF-A'),
-  );
   // Hiérarchie produit famille : on ne propose que les familles 21 / 22 / 27.
   const hierarchieOptions = sapOptions.familles_produit.filter((o) =>
     ['21', '22', '27'].some((p) => String(o.value).startsWith(p)),
@@ -1553,9 +1550,15 @@ export default function CreerDE() {
   // Groupe article verrouillé (Bonloc/Rivesaltes uniquement) vs défaut Agen.
   const deGroupeArticleLocked = computeGroupeArticleLockedDE(formData.division);
   const deSecteur = computeSecteurFromReseau(formData.reseau);
-  const deAgenWarning = needsSurgeleWarningDE(formData.division);
+  // Agen et Aire : alerte « produit surgelé » sous le groupe article.
+  const deSurgeleWarning = needsSurgeleWarningDE(formData.division);
   // Agen : le centre de profit n'est plus un choix libre — il est déduit de « Agen - choix ».
-  const isAgenDE = deAgenWarning; // division Agen (2847)
+  const isAgenDE = String(formData.division ?? '').trim() === '2847';
+  // Agen -> groupes « PF-A… », Aire -> groupes « PF-H… » ; sinon liste PF complète.
+  const deGroupeArticlePrefixe = prefixeGroupeArticleDE(formData.division);
+  const deGroupesArticleOptions = deGroupeArticlePrefixe
+    ? groupesArticleOptions.filter((o) => String(o.value).toUpperCase().startsWith(deGroupeArticlePrefixe))
+    : groupesArticleOptions;
   const deCentreProfitAgen = computeCentreProfitAgenDE(formData.agen_choix);
 
   // Filtre centre profit / classe valo aux valeurs autorisées par F (groupe article
@@ -1615,7 +1618,7 @@ export default function CreerDE() {
       force('groupe_frais_generaux', computeGroupeFraisGenerauxDE(formData.division)); // Aire→NEGO, sinon FG
       force('groupe_article', deGroupeArticleLocked); // Bonloc/Rivesaltes
       // Agen : PF-AS par défaut (modifiable car « vérifier surgelé »).
-      if (deAgenWarning) setDefault('groupe_article', computeGroupeArticleDE(formData.division));
+      if (isAgenDE) setDefault('groupe_article', computeGroupeArticleDE(formData.division));
       return changed ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2139,18 +2142,18 @@ export default function CreerDE() {
                       <Field
                         label="Groupe article (division)"
                         required
-                        hint={deAgenWarning ? 'Agen - PF-AS par défaut, modifiable' : 'Choix libre (Aire)'}
+                        hint={isAgenDE ? 'Agen - PF-AS par défaut, modifiable' : deGroupeArticlePrefixe === 'PF-H' ? 'Aire - groupes PF-H' : 'Choix libre'}
                       >
                         <SearchableSelect
                           value={formData.groupe_article}
                           onChange={(v) => handleChange('groupe_article', v)}
                           options={buildOptions(
-                            deAgenWarning ? groupesArticleAgenOptions : groupesArticleOptions,
+                            deGroupesArticleOptions,
                             formData.groupe_article,
                           )}
                           placeholder="Sélectionner un groupe"
                         />
-                        {deAgenWarning && (
+                        {deSurgeleWarning && (
                           <p className="mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                             ⚠️ Attention : vérifiez que vous avez bien un produit surgelé.
                           </p>

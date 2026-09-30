@@ -228,10 +228,13 @@ describe('secteur d’activité (code DE/DS <-> choix de la liste Admin)', () =>
   });
 
   it('avecLibelleFr : ajoute libelle_par_pays au patch seulement si besoin', () => {
-    expect(avecLibelleFr({ design_normalisee: '', libelle_par_pays: [] }, { design_normalisee: 'TARTE' }))
-      .toEqual({ design_normalisee: 'TARTE', libelle_par_pays: [{ code: 'FR', libelle: 'TARTE' }] });
-    expect(avecLibelleFr({ design_normalisee: 'A', libelle_par_pays: [{ code: 'FR', libelle: 'Manuel' }] }, { design_normalisee: 'B' }))
-      .toEqual({ design_normalisee: 'B' });
+    expect(avecLibelleFr({ libelle_caisse: '', libelle_par_pays: [] }, { libelle_caisse: 'TARTE' }))
+      .toEqual({ libelle_caisse: 'TARTE', libelle_par_pays: [{ code: 'FR', libelle: 'TARTE' }] });
+    expect(avecLibelleFr({ libelle_caisse: 'A', libelle_par_pays: [{ code: 'FR', libelle: 'Manuel' }] }, { libelle_caisse: 'B' }))
+      .toEqual({ libelle_caisse: 'B' });
+    // La Désignation article SAP n'alimente plus le FR.
+    expect(avecLibelleFr({ libelle_caisse: '', libelle_par_pays: [] }, { design_normalisee: 'TARTE' }))
+      .toEqual({ design_normalisee: 'TARTE' });
   });
 
   it("visa : l'unité de durée de vie est requise côté Industriel, plus le libellé long 40 côté Commerce", () => {

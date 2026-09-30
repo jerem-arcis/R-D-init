@@ -127,8 +127,17 @@ export const computeGroupeArticleLockedDE = (code) => {
   return '';
 };
 
-// L'usine Agen impose un message « vérifiez que le produit est bien surgelé ».
-export const needsSurgeleWarningDE = (code) => usineFromDivision(code) === 'Agen';
+// Agen et Aire imposent un message « vérifiez que le produit est bien surgelé ».
+export const needsSurgeleWarningDE = (code) => ['Agen', 'Aire'].includes(usineFromDivision(code));
+
+// Préfixe qui restreint la liste « Groupe article (division) » selon l'usine :
+// Agen -> PF-A…, Aire -> PF-H… ; '' = pas de restriction (liste PF complète).
+export const prefixeGroupeArticleDE = (code) => {
+  const u = usineFromDivision(code);
+  if (u === 'Agen') return 'PF-A';
+  if (u === 'Aire') return 'PF-H';
+  return '';
+};
 
 // Réseau -> secteur d'activité (code SAP 10/12/15).
 export const RESEAU_TO_SECTEUR = {

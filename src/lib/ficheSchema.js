@@ -300,9 +300,9 @@ export const PAYS_LIBELLES = [
   { code: 'PT', label: 'Portugais' },
 ];
 
-// Libellé FR du tableau « Libellé par pays » alimenté automatiquement par la
-// Désignation article SAP (design_normalisee). On ne remplace la ligne FR que si
-// elle est absente, vide, ou encore égale à l'ancienne désignation (= pas
+// Libellé FR du tableau « Libellé par pays » alimenté automatiquement par le
+// Libellé article caisse (libelle_caisse). On ne remplace la ligne FR que si
+// elle est absente, vide, ou encore égale à l'ancien libellé caisse (= pas
 // retouchée à la main). Retourne null si rien ne change.
 export function syncLibelleFr(libelles, ancienneDesign, nouvelleDesign) {
   const rows = Array.isArray(libelles) ? libelles : [];
@@ -319,9 +319,9 @@ export function syncLibelleFr(libelles, ancienneDesign, nouvelleDesign) {
   return rows.map((r, i) => (i === idx ? { ...r, libelle: next } : r));
 }
 
-// Complète un patch design_normalisee avec le libellé FR synchronisé.
+// Complète un patch libelle_caisse avec le libellé FR synchronisé.
 export function avecLibelleFr(fiche, patch) {
-  const libelles = syncLibelleFr(fiche?.libelle_par_pays, fiche?.design_normalisee, patch.design_normalisee);
+  const libelles = syncLibelleFr(fiche?.libelle_par_pays, fiche?.libelle_caisse, patch.libelle_caisse);
   return libelles ? { ...patch, libelle_par_pays: libelles } : patch;
 }
 

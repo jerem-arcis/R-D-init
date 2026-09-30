@@ -10,6 +10,7 @@ import {
   computeGroupeArticleDE,
   computeGroupeArticleLockedDE,
   needsSurgeleWarningDE,
+  prefixeGroupeArticleDE,
   computeSecteurFromReseau,
   normalizeAxeStrategique,
   computeProfilFabricRepetDE,
@@ -158,9 +159,20 @@ describe('computeGroupeArticleLockedDE', () => {
 });
 
 describe('needsSurgeleWarningDE', () => {
-  it('vrai uniquement pour Agen', () => {
+  it('vrai pour Agen et Aire uniquement', () => {
     expect(needsSurgeleWarningDE('2847')).toBe(true);
+    expect(needsSurgeleWarningDE('2859')).toBe(true);
     expect(needsSurgeleWarningDE('2886')).toBe(false);
+    expect(needsSurgeleWarningDE('2866')).toBe(false);
+  });
+});
+
+describe('prefixeGroupeArticleDE', () => {
+  it('PF-A pour Agen, PF-H pour Aire, rien ailleurs', () => {
+    expect(prefixeGroupeArticleDE('2847')).toBe('PF-A');
+    expect(prefixeGroupeArticleDE('2859')).toBe('PF-H');
+    expect(prefixeGroupeArticleDE('2886')).toBe('');
+    expect(prefixeGroupeArticleDE('')).toBe('');
   });
 });
 
