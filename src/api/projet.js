@@ -226,6 +226,20 @@ export async function getProjetById(id, sapOptions = {}) {
   return p ? toFormData(p, sapOptions) : null;
 }
 
+// Statut BRUT du dernier envoi DE/DS vers SAP (cr04e_fluxenvoiede, écrit par le flux
+// Power Automate ; la DS utilise la même colonne). Lecture légère, interprétée par
+// fluxStatut (lib/erreursSap.js). null si la ligne est introuvable.
+export async function getFluxEnvoiDe(id) {
+  if (!id) return null;
+  const result = await Cr04e_projetsService.getAll({
+    filter: `cr04e_projetid eq ${id}`,
+    select: ['cr04e_fluxenvoiede'],
+    top: 1,
+  });
+  const rows = unwrap(result, 'Lecture statut flux DE') ?? [];
+  return rows[0]?.cr04e_fluxenvoiede ?? null;
+}
+
 // Met à jour une ligne cr04e_projet existante.
 export async function updateProjetFromDE(id, formData, ctx) {
   const payload = buildProjetPayload(formData, ctx);
@@ -262,6 +276,10 @@ const toListShape = (p) => ({
     String(p[`_cr04e_divisionusine_value${FMT_VALUE}`] ?? '').trim() ||
       divisionCodeFromPlant(p.cr04e_divisionimport),
   ),
+  // Code division du dossier : sert à déduire sa société (cf. lib/perimetre.js).
+  division:
+    String(p[`_cr04e_divisionusine_value${FMT_VALUE}`] ?? '').trim() ||
+    divisionCodeFromPlant(p.cr04e_divisionimport),
   // Réseau : sert à dériver le secteur d'activité pour le préremplissage FL
   // (computeSecteurFromReseau), même règle que la DE.
   reseau: p.cr04e_reseau ?? '',

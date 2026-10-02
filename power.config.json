@@ -8,7 +8,16 @@
   "logoPath": "Default",
   "localAppUrl": "http://localhost:3000/",
   "region": "prod",
-  "connectionReferences": {},
+  "connectionReferences": {
+    "b3d99382-45db-4e54-8678-5a80859b61ff": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_office365groups",
+      "displayName": "Office 365 Groups",
+      "dataSources": [
+        "office365groups"
+      ],
+      "dataSets": {}
+    }
+  },
   "databaseReferences": {
     "default.cds": {
       "dataSources": {
@@ -71,6 +80,22 @@
         "canauxdedistribution": {
           "entitySetName": "cr04e_canauxdedistributions",
           "logicalName": "cr04e_canauxdedistribution"
+        },
+        "soci_t__r_f_rentiel_": {
+          "entitySetName": "cr04e_societereferentiels",
+          "logicalName": "cr04e_societereferentiel"
+        },
+        "canaldedistribution_r_f_rentiel_": {
+          "entitySetName": "cr04e_canaldedistributionreferentiels",
+          "logicalName": "cr04e_canaldedistributionreferentiel"
+        },
+        "organisationcommerciale_r_f_rentiel_": {
+          "entitySetName": "cr04e_organisationcommercialereferentiels",
+          "logicalName": "cr04e_organisationcommercialereferentiel"
+        },
+        "division_usine__r_f_rentiel_": {
+          "entitySetName": "cr04e_divisionusines",
+          "logicalName": "cr04e_divisionusine"
         }
       },
       "environmentVariableName": ""

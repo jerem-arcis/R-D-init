@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { listFiches } from '@/api/fiche';
+import { usePerimetre } from '@/lib/PerimetreContext';
+import { peutVoirDossier } from '@/lib/perimetre';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -53,9 +55,12 @@ export default function Accueil() {
   const [typeDemandeFilter, setTypeDemandeFilter] = useState('tous');
   const [usineFilter, setUsineFilter] = useState('toutes');
 
+  // Périmètre société : on ne liste que les FL de mes sociétés.
+  const { perimetre } = usePerimetre();
   const { data: fiches = [], isLoading } = useQuery({
     queryKey: ['fiches'],
     queryFn: listFiches,
+    select: (rows) => rows.filter((f) => peutVoirDossier(perimetre, f.division)),
   });
 
   // Avancement = nombre de visas posés (0–3), fourni par listFiches.

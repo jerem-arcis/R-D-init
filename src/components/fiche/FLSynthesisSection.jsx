@@ -4,6 +4,7 @@ import { postFlowRaw, FLUX } from '@/api/flux';
 import { resolveFluxOutcome } from '@/lib/erreursSap';
 import { generateFichePdfBase64 } from '@/lib/generateFichePdf';
 import { useSapOptions } from '@/lib/sapLists';
+import { useFichePerimetre } from '@/lib/useFichePerimetre';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import SapSendModal from '@/components/SapSendModal';
@@ -75,6 +76,8 @@ export default function FLSynthesisSection({ fiche }) {
   const setModalIfMounted = (m) => { if (mountedRef.current) setSapModal(m); };
 
   const sap = useSapOptions();
+  // Envoi en erreur : seuls les admins de la société peuvent relancer.
+  const { envoiEnErreur, peutEnvoyerSap } = useFichePerimetre(fiche);
   const createSAPMutation = useMutation({
     mutationFn: () =>
       updateFiche(
@@ -151,6 +154,9 @@ export default function FLSynthesisSection({ fiche }) {
       }
       setModalIfMounted({ status: 'success', title: 'Article créé dans SAP', message });
     } else if (outcome === 'erreur') {
+      // Relit la fiche : son statut d'envoi « erreur » la fige (hors admins).
+      queryClient.invalidateQueries({ queryKey: ['fiche', fiche.id] });
+      queryClient.invalidateQueries({ queryKey: ['fiches'] });
       setModalIfMounted({
         status: 'error',
         title: 'Une ou plusieurs erreurs sur SAP',
@@ -206,9 +212,17 @@ export default function FLSynthesisSection({ fiche }) {
                 Fiche envoyée le {fiche.date_envoi_ficher}
               </div>
             )}
+            {envoiEnErreur && !dejaEnvoyee && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 border border-red-200 rounded text-xs text-red-800 mr-auto">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {peutEnvoyerSap
+                  ? "Envoi vers SAP en erreur : corrigez la fiche puis relancez (réservé aux admins)."
+                  : "Envoi vers SAP en erreur : fiche bloquée, seul un admin peut la corriger et la relancer."}
+              </div>
+            )}
             <Button
               onClick={handleCreateSAP}
-              disabled={!allVisaDone || dejaEnvoyee || isSending || createSAPMutation.isPending}
+              disabled={!allVisaDone || dejaEnvoyee || !peutEnvoyerSap || isSending || createSAPMutation.isPending}
               className="bg-violet-600 text-white hover:bg-violet-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? (
@@ -216,7 +230,7 @@ export default function FLSynthesisSection({ fiche }) {
               ) : (
                 <CheckCircle2 className="w-4 h-4 mr-2" />
               )}
-              {isSending ? 'Envoi vers SAP…' : "Créer l'article dans SAP"}
+              {isSending ? 'Envoi vers SAP…' : envoiEnErreur ? 'Relancer la création SAP' : "Créer l'article dans SAP"}
             </Button>
           </>
         )}

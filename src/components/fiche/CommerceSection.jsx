@@ -18,25 +18,18 @@ import {
   avecLibelleFr,
 } from '@/lib/ficheSchema';
 import { useSapOptions } from '@/lib/sapLists';
-import { DE_DIVISION_CODES } from '@/lib/deRules';
+import { useFichePerimetre } from '@/lib/useFichePerimetre';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
 
 export default function CommerceSection({ fiche, de, onUpdate, onUpdateDebounced, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
 
-  // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
-  // restreinte aux sites de fabrication — identique à « Division (Usine) » de la DE.
   const sap = useSapOptions();
-  const origineFabOptions = buildOptions(
-    (sap.divisions || []).filter((o) => DE_DIVISION_CODES.includes(String(o.value))),
-    fiche.origine_fabrication,
-  );
-
-  // Canaux de distribution : options « code - désignation » issues de la catégorie
-  // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
   const adminOptions = useAdminOptions();
-  const canauxOptions = buildOptions(adminOptions.canaux_distrib);
+  // Origine de fabrication (sites de production, comme la DE) et canaux de
+  // distribution (ceux de la société du dossier) : cf. lib/perimetre.js.
+  const { origineFabOptions, canauxOptions } = useFichePerimetre(fiche);
 
   // Secteur d'activité : même colonne ET même liste Admin que la DE/DS, qui y
   // stockent le code (« 15 »). Options indexées par code : le « 15 » de la demande

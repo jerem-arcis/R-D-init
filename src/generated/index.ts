@@ -5,6 +5,7 @@
 
 // Models
 export * as CommonModels from './models/CommonModels';
+export * as Cr04e_canaldedistributionreferentielsModel from './models/Cr04e_canaldedistributionreferentielsModel';
 export * as Cr04e_canauxdedistributionsModel from './models/Cr04e_canauxdedistributionsModel';
 export * as Cr04e_centredeprofitcepctsModel from './models/Cr04e_centredeprofitcepctsModel';
 export * as Cr04e_centredeprofittkao2sModel from './models/Cr04e_centredeprofittkao2sModel';
@@ -17,11 +18,15 @@ export * as Cr04e_groupearticledivisionsModel from './models/Cr04e_groupearticle
 export * as Cr04e_groupedefraisgenerauxesModel from './models/Cr04e_groupedefraisgenerauxesModel';
 export * as Cr04e_hierarchieproduitfamillesModel from './models/Cr04e_hierarchieproduitfamillesModel';
 export * as Cr04e_optionsetcodeappsesModel from './models/Cr04e_optionsetcodeappsesModel';
+export * as Cr04e_organisationcommercialereferentielsModel from './models/Cr04e_organisationcommercialereferentielsModel';
 export * as Cr04e_projetsModel from './models/Cr04e_projetsModel';
+export * as Cr04e_societereferentielsModel from './models/Cr04e_societereferentielsModel';
 export * as Cr04e_unitofmeasuresModel from './models/Cr04e_unitofmeasuresModel';
 export * as New_libellepaysesModel from './models/New_libellepaysesModel';
+export * as Office365GroupsModel from './models/Office365GroupsModel';
 
 // Services
+export * from './services/Cr04e_canaldedistributionreferentielsService';
 export * from './services/Cr04e_canauxdedistributionsService';
 export * from './services/Cr04e_centredeprofitcepctsService';
 export * from './services/Cr04e_centredeprofittkao2sService';
@@ -34,6 +39,9 @@ export * from './services/Cr04e_groupearticledivisionsService';
 export * from './services/Cr04e_groupedefraisgenerauxesService';
 export * from './services/Cr04e_hierarchieproduitfamillesService';
 export * from './services/Cr04e_optionsetcodeappsesService';
+export * from './services/Cr04e_organisationcommercialereferentielsService';
 export * from './services/Cr04e_projetsService';
+export * from './services/Cr04e_societereferentielsService';
 export * from './services/Cr04e_unitofmeasuresService';
 export * from './services/New_libellepaysesService';
+export * from './services/Office365GroupsService';

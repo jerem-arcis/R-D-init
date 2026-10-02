@@ -9,13 +9,15 @@ import {
   GROUPES_ARTICLE,
   GROUPES_RISTOURNE,
   GROUPES_IMPUTATION,
-  SITES_STOCKAGE,
   tagHerite,
 } from '@/lib/ficheSchema';
+import { useFichePerimetre } from '@/lib/useFichePerimetre';
 
 export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefus, isLocked, isEditable, visaBlockers }) {
   const set = (field) => (value) => onUpdate?.({ [field]: value });
   const disabled = !isEditable;
+  // Sites de stockage : divisions STOCK de la société du dossier (cf. lib/perimetre.js).
+  const { sitesStockageOptions } = useFichePerimetre(fiche);
 
   return (
     <SectionShell
@@ -69,7 +71,7 @@ export default function SupplyChainSection({ fiche, de, onUpdate, onVisa, onRefu
           value={fiche.sites_stockage}
           onChange={set('sites_stockage')}
           disabled={disabled}
-          options={SITES_STOCKAGE}
+          options={sitesStockageOptions}
         />
       </FieldGrid>
     </SectionShell>

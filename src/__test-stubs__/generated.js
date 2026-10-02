@@ -10,3 +10,7 @@ export const Cr04e_centredeprofitcepctsService = {};
 export const Cr04e_projetsService = {};
 export const Cr04e_divisionprojetsService = {};
 export const Cr04e_fluxregistresService = {};
+export const Office365GroupsService = {};
+export const Cr04e_societereferentielsService = {};
+export const Cr04e_organisationcommercialereferentielsService = {};
+export const Cr04e_canaldedistributionreferentielsService = {};

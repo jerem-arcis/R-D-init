@@ -56,7 +56,7 @@ export default function SectionShell({
       <div className={`p-6 space-y-5 ${isLocked ? 'pointer-events-none select-none' : ''}`}>
         <RefusAlert motif={refusMotif} />
         {children}
-        {!isLocked && isEditable && onVisa && (
+        {!isLocked && isEditable && !isValidated && onVisa && (
           <RefusSection
             onVisa={onVisa}
             onRefus={onRefus}

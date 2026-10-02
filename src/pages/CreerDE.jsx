@@ -16,7 +16,11 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { useAdminLists, useAdminOptions, buildOptions, OPTIONSET_QUERY_KEY } from '@/lib/adminLists';
 import { useSapOptions } from '@/lib/sapLists';
-import { createProjetFromDE, updateProjetFromDE, getProjetById, ensureDivisionProjet, PROJET_STATUT } from '@/api/projet';
+import { usePerimetre } from '@/lib/PerimetreContext';
+import { divisionsPour, peutVoirDossier } from '@/lib/perimetre';
+import AccesRefuse from '@/components/AccesRefuse';
+import { createProjetFromDE, updateProjetFromDE, getProjetById, getFluxEnvoiDe, ensureDivisionProjet, PROJET_STATUT } from '@/api/projet';
+import { fluxStatut } from '@/lib/erreursSap';
 import { createDsFromForm, updateDsFromForm, getDsById, computeDsValues, DS_STATUTS } from '@/api/ds';
 import { create as createOptionSetValue } from '@/api/optionSet';
 import { postFlow, postFlowRaw, FLUX } from '@/api/flux';
@@ -25,7 +29,6 @@ import { decimalStr, toNumber } from '@/api/_odata';
 import { buildEANSet } from '@/lib/ean';
 import { mapBeCPGToDE, withValue, dropdownAdditionsFromMapping } from '@/lib/becpgMapping';
 import {
-  DE_DIVISION_CODES,
   computeHierarchieDE,
   computeClasseValoDE,
   computeCentreProfitDE,
@@ -816,6 +819,9 @@ export default function CreerDE() {
   const adminOptions = useAdminOptions();
   // Référentiels alimentés par SAP : lus depuis leurs tables Dataverse dédiées.
   const sapOptions = useSapOptions();
+  // Périmètre société : divisions proposées et accès au dossier rechargé.
+  const { perimetre } = usePerimetre();
+  const dsDivisionOptions = divisionsPour(perimetre, 'DS');
   // Groupe article (division) : ne conserver que les codes commençant par « PF ».
   const groupesArticleOptions = sapOptions.groupes_article.filter((o) =>
     String(o.value).toUpperCase().startsWith('PF'),
@@ -1255,6 +1261,8 @@ export default function CreerDE() {
   const handleSapModalClose = () => {
     const wasSuccess = sapModal?.status === 'success';
     setSapModal(null);
+    // Relit le statut d'envoi : un échec SAP doit figer la demande immédiatement.
+    queryClient.invalidateQueries({ queryKey: ['projet-flux-de'] });
     if (!wasSuccess) return;
     if (pendingSaveRef.current) {
       const payload = pendingSaveRef.current;
@@ -1481,9 +1489,19 @@ export default function CreerDE() {
   // en 'de' (cf. projet.js : type_de = 'de' hors DS_STATUTS) — d'où la présence de
   // ce statut dans les DEUX garde-fous ci-dessous.
   const SAP_CREE_STATUT = 'fl_sap_cree';
+  // Envoi SAP en erreur (DE comme DS) : la demande est FIGÉE pour tout le monde —
+  // ni modification ni relance depuis l'app. Lu sur la ligne Dataverse, y compris
+  // quand le formulaire est rouvert depuis un brouillon local.
+  const { data: fluxEnvoiDe } = useQuery({
+    queryKey: ['projet-flux-de', formData.projet_id],
+    queryFn: () => getFluxEnvoiDe(formData.projet_id),
+    enabled: !!formData.projet_id,
+  });
+  const envoiEnErreur = fluxStatut(fluxEnvoiDe) === 'erreur';
   // DS validée (ou article déjà créé) : fiche en lecture seule, aucune modification.
   const dsReadOnly =
-    formType === 'autre' && (formData.statut === 'ds_validee' || formData.statut === SAP_CREE_STATUT);
+    formType === 'autre' &&
+    (envoiEnErreur || formData.statut === 'ds_validee' || formData.statut === SAP_CREE_STATUT);
   // DS créée et en attente du code chapeau : c'est l'ÉTAPE SUIVANTE (réouverture
   // par l'ADV), la seule où l'obtention du code — « Besoin d'une VL » / « Besoin
   // d'un nouveau code » — a un sens. À la création par le Commerce, la DS n'existe
@@ -1494,7 +1512,8 @@ export default function CreerDE() {
   // DE en lecture seule : étude terminée (validée), en phase DL, ou refusée.
   // Brouillon et de_attente_cc restent éditables (création / obtention du code chapeau).
   const DE_READONLY_STATUTS = ['dl_attente_validation_cdg', 'dl_validee', 'dl_refusee', SAP_CREE_STATUT];
-  const deReadOnly = formType === 'de' && DE_READONLY_STATUTS.includes(formData.statut);
+  const deReadOnly =
+    formType === 'de' && (envoiEnErreur || DE_READONLY_STATUTS.includes(formData.statut));
   const dsUsinesOrigine = USINES_ORIGINE.filter(
     (u) => u !== 'Produit négoce' || isTypeNegoce(formData.autre_type_demande),
   );
@@ -1540,10 +1559,9 @@ export default function CreerDE() {
   const zug = formData.zug === '' || formData.zug == null ? zugAuto : (zugManuel ?? '');
 
   // ---- Règles DE pilotées par la division (usine) et le réseau (lib/deRules) ----
-  // Liste Division restreinte aux 4 sites de fabrication.
-  const deDivisionOptions = sapOptions.divisions.filter((o) =>
-    DE_DIVISION_CODES.includes(String(o.value)),
-  );
+  // Liste Division : divisions de type PROD de mes sociétés (cf. lib/perimetre.js ;
+  // repli sur les 4 sites de fabrication tant qu'aucune division n'est typée).
+  const deDivisionOptions = divisionsPour(perimetre, 'DE');
   const deHierarchie = computeHierarchieDE(formData.division);
   const deClasseValo = computeClasseValoDE(formData.division);
   const deCentreProfitAuto = computeCentreProfitDE(formData.division);
@@ -1868,6 +1886,9 @@ export default function CreerDE() {
     navigate(createPageUrl('DemandesEtude'));
   };
 
+  // Dossier rouvert depuis Dataverse (mail, autre poste) hors de mes sociétés.
+  if (projetIdParam && !peutVoirDossier(perimetre, projetDV?.division)) return <AccesRefuse />;
+
   const formTitle =
     formType === 'de'
       ? 'Demande d\'Étude (DE)'
@@ -1933,7 +1954,12 @@ export default function CreerDE() {
 
             {formType === 'de' && (
               <fieldset disabled={deReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
-                {deReadOnly && (
+                {envoiEnErreur && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800">
+                    Envoi vers SAP en erreur - demande bloquée : aucune modification ni relance possible.
+                  </div>
+                )}
+                {deReadOnly && !envoiEnErreur && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
                     {formData.statut === SAP_CREE_STATUT
                       ? 'Article créé dans SAP - fiche figée, aucune modification possible.'
@@ -2015,7 +2041,7 @@ export default function CreerDE() {
                         value={formData.division}
                         onChange={(v) => handleChange('division', v)}
                         options={buildOptions(deDivisionOptions, formData.division)}
-                        placeholder="Bonloc / Rivesaltes / Agen / Aire"
+                        placeholder="Sélectionner une division"
                       />
                     </Field>
                   </div>
@@ -2279,7 +2305,12 @@ export default function CreerDE() {
 
             {formType === 'autre' && (
               <fieldset disabled={dsReadOnly} className="space-y-6 border-0 p-0 m-0 min-w-0 disabled:opacity-95">
-                {dsReadOnly && (
+                {envoiEnErreur && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800">
+                    Envoi vers SAP en erreur - demande bloquée : aucune modification ni relance possible.
+                  </div>
+                )}
+                {dsReadOnly && !envoiEnErreur && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800">
                     DS validée - fiche en lecture seule.
                   </div>
@@ -2397,7 +2428,7 @@ export default function CreerDE() {
                         label="Code division d'origine"
                         value={dsDivisionOrigine}
                         onChange={(v) => handleChange('_ds_division_origine_ovr', v)}
-                        options={sapOptions.divisions}
+                        options={dsDivisionOptions}
                         hint="Auto selon l'usine d'origine"
                       />
                     )}
@@ -2527,7 +2558,7 @@ export default function CreerDE() {
                       label="Code division"
                       value={dsDivisionFab}
                       onChange={(v) => handleChange('_ds_division_fab_ovr', v)}
-                      options={sapOptions.divisions}
+                      options={dsDivisionOptions}
                       hint="Auto selon l'usine de fabrication"
                     />
 

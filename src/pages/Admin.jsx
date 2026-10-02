@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  DROPDOWN_KEYS,
+  ADMIN_LIST_KEYS,
   OPTIONSET_QUERY_KEY,
   useOptionSetRows,
 } from '@/lib/adminLists';
@@ -34,6 +34,9 @@ import { create, remove, update } from '@/api/optionSet';
 import { parseOptionListFile } from '@/lib/parseOptionList';
 import SuiviCreationsSap from '@/components/admin/SuiviCreationsSap';
 import { useErreursSap } from '@/lib/useErreursSap';
+import ReferentielsSociete, { REFERENTIEL_VIEWS } from '@/components/admin/ReferentielsSociete';
+import { usePerimetre } from '@/lib/PerimetreContext';
+import AccesRefuse from '@/components/AccesRefuse';
 
 const LIST_LABELS = {
   reseaux: 'Réseaux',
@@ -43,7 +46,6 @@ const LIST_LABELS = {
   categories_vif: 'Catégories (Vif)',
   types_logistique: 'Types de logistique',
   services_demandeur: 'Services demandeur',
-  canaux_distrib: 'Canaux de distribution',
 };
 
 // Exécute `fn` sur chaque item par salves de `size` (Promise.allSettled) pour
@@ -126,6 +128,9 @@ export default function Admin() {
   const [selectedKey, setSelectedKey] = useState('reseaux');
   // Vue « Créations SAP » : null = éditeur de listes déroulantes, sinon 'suivi' | 'echec'.
   const [sapView, setSapView] = useState(null);
+  // Vue « Structure SAP » : null, sinon 'societes' | 'orgcos' | 'canaux' | 'divisions'.
+  const [refView, setRefView] = useState(null);
+  const { perimetre } = usePerimetre();
   const { suiviFlux, fluxKpis } = useErreursSap();
   const sapSuiviCount = suiviFlux.length;
   const sapEchecCount = fluxKpis.enErreur;
@@ -287,6 +292,12 @@ export default function Admin() {
     }
   };
 
+  // Onglet réservé au groupe admin (ouvert à tous tant qu'aucun groupe admin
+  // n'est renseigné dans la table société).
+  if (!perimetre?.isAdmin) {
+    return <AccesRefuse message="L'administration est réservée au groupe Admin de votre société." />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border shadow-sm">
@@ -300,7 +311,7 @@ export default function Admin() {
                 Administration
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Listes déroulantes et suivi des créations SAP
+                Listes déroulantes, structure SAP et suivi des créations SAP
               </p>
             </div>
             {busy && (
@@ -320,13 +331,14 @@ export default function Admin() {
               </h2>
             </div>
             <nav className="p-2 space-y-0.5">
-              {DROPDOWN_KEYS.map((key) => {
-                const active = sapView === null && selectedKey === key;
+              {ADMIN_LIST_KEYS.map((key) => {
+                const active = sapView === null && refView === null && selectedKey === key;
                 return (
                   <button
                     key={key}
                     onClick={() => {
                       setSapView(null);
+                      setRefView(null);
                       setSelectedKey(key);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
@@ -346,6 +358,31 @@ export default function Admin() {
                 );
               })}
 
+              {/* Groupe Structure SAP : référentiels rattachés à la société */}
+              <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Structure SAP
+              </div>
+              {REFERENTIEL_VIEWS.map(({ key, label }) => {
+                const active = refView === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setSapView(null);
+                      setRefView(key);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
+                      active
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span>{label}</span>
+                    {active && <ChevronRight className="w-3 h-3" />}
+                  </button>
+                );
+              })}
+
               {/* Groupe Créations SAP */}
               <div className="pt-3 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Créations SAP
@@ -358,7 +395,10 @@ export default function Admin() {
                 return (
                   <button
                     key={key}
-                    onClick={() => setSapView(key)}
+                    onClick={() => {
+                      setRefView(null);
+                      setSapView(key);
+                    }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
                       active
                         ? 'bg-primary/10 text-primary font-semibold'
@@ -379,7 +419,9 @@ export default function Admin() {
             </nav>
           </aside>
 
-          {sapView ? (
+          {refView ? (
+            <ReferentielsSociete key={refView} view={refView} />
+          ) : sapView ? (
             <SuiviCreationsSap filter={sapView} />
           ) : (
           <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

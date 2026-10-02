@@ -140,6 +140,10 @@ export function toFicheShape(p) {
   f.flux_envoi_fl = p.cr04e_fluxenvoiefl;
   f.modified_on = p.modifiedon ?? null;
   f.demande = demandeOrigine(p);
+  // Code division du dossier (non éditable en FL) : sert à déduire sa société.
+  f.division =
+    String(p[`_cr04e_divisionusine_value${FMT}`] ?? '').trim() ||
+    divisionCodeFromPlant(p.cr04e_divisionimport);
   return f;
 }
 
@@ -355,6 +359,10 @@ export function toFicheListShape(p) {
       String(p[`_cr04e_divisionusine_value${FMT}`] ?? '').trim() ||
         divisionCodeFromPlant(p.cr04e_divisionimport),
     ),
+    // Code division du dossier : sert à déduire sa société (cf. lib/perimetre.js).
+    division:
+      String(p[`_cr04e_divisionusine_value${FMT}`] ?? '').trim() ||
+      divisionCodeFromPlant(p.cr04e_divisionimport),
     type_demande: p.cr04e_typedelademande ?? '',
     statut_sap: p.cr04e_statut_en_cours === SAP_STATUT ? SAP_LABEL : '',
     visas_valides: visas.filter((v) => v === true).length,

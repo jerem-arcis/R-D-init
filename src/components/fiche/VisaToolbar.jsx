@@ -13,7 +13,7 @@ const VISAS = [
   { key: 'commerce', label: 'Commerce', short: 'COM' },
 ];
 
-function VisaPill({ visa, fiche, onVisa, onRefus, blockers = [] }) {
+function VisaPill({ visa, fiche, onVisa, onRefus, blockers = [], peutViser = true }) {
   const [open, setOpen] = useState(false);
   const [showRefus, setShowRefus] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -86,7 +86,13 @@ function VisaPill({ visa, fiche, onVisa, onRefus, blockers = [] }) {
             </p>
           )}
 
-          {!validated && !showRefus && !showConfirm && (
+          {!validated && !peutViser && (
+            <p className="text-[11px] text-slate-500 pt-1">
+              Visa réservé au groupe {visa.label} de la société.
+            </p>
+          )}
+
+          {!validated && peutViser && !showRefus && !showConfirm && (
             <div className="space-y-2 pt-1">
               {bloque && (
                 <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
@@ -172,7 +178,9 @@ function VisaPill({ visa, fiche, onVisa, onRefus, blockers = [] }) {
   );
 }
 
-export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers, blockers = {} }) {
+// peutViser : { supply_chain, industriel, commerce } -> bool (droits par groupe).
+// Absent = tout le monde peut viser (comportement historique).
+export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers, blockers = {}, peutViser }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1">
@@ -186,6 +194,7 @@ export default function VisaToolbar({ fiche, onVisaHandlers, onRefusHandlers, bl
           onVisa={onVisaHandlers[v.key]}
           onRefus={onRefusHandlers[v.key]}
           blockers={blockers[v.key] || []}
+          peutViser={peutViser ? !!peutViser[v.key] : true}
         />
       ))}
     </div>

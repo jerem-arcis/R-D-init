@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { listProjets, updateProjetStatut } from '@/api/projet';
+import { usePerimetre } from '@/lib/PerimetreContext';
+import { peutVoirDossier } from '@/lib/perimetre';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -144,9 +146,12 @@ export default function DemandesEtude() {
   const [confirmDe, setConfirmDe] = useState(null);
 
   // Liste branchée sur Dataverse (cr04e_projet).
+  // Périmètre société : on ne liste que les demandes de mes sociétés.
+  const { perimetre } = usePerimetre();
   const { data: demandes = [], isLoading } = useQuery({
     queryKey: ['projets-de'],
     queryFn: listProjets,
+    select: (rows) => rows.filter((d) => peutVoirDossier(perimetre, d.division)),
   });
 
   // Passage MANUEL (phase de test) à l'étape suivante : « Projet qualifié et en cours
@@ -637,7 +642,7 @@ export default function DemandesEtude() {
                     <TableCell>
                       <div className="flex flex-col items-start gap-1.5">
                         {getStatutBadge(de.statut)}
-                        {etapeSuivante(de.statut) && (
+                        {etapeSuivante(de.statut) && fluxStatut(de.flux_envoi_de) !== 'erreur' && (
                           <Button
                             variant="outline"
                             size="sm"

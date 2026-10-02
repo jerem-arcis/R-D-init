@@ -18,6 +18,8 @@ import FLSynthesisSection from '@/components/fiche/FLSynthesisSection';
 import ViewSwitch from '@/components/fiche/ViewSwitch';
 import { isSectionLocked, isSectionEditable, getMissingVisaFields } from '@/lib/ficheSchema';
 import { FL_SECTIONS } from '@/lib/deepLinkRoutes';
+import { useFichePerimetre } from '@/lib/useFichePerimetre';
+import AccesRefuse from '@/components/AccesRefuse';
 
 // Pose un visa et nettoie le refus correspondant
 const visaPatch = (visaField, refusField) => ({
@@ -153,6 +155,9 @@ export default function FicheDetail() {
     }
   };
 
+  // Périmètre société : accès au dossier + droit de modifier/viser chaque bloc.
+  const { accesAutorise, droits, peutViser, peutModifierUnBloc, deblocageAdmin } = useFichePerimetre(localFiche);
+
   if (isLoading || !localFiche) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -161,9 +166,14 @@ export default function FicheDetail() {
     );
   }
 
+  if (!accesAutorise) return <AccesRefuse />;
+
   const sectionHandlers = (sectionKey, visaField, refusField, owner) => ({
     isLocked: isSectionLocked(sectionKey, localFiche),
-    isEditable: isSectionEditable(sectionKey, localFiche),
+    // Hors de son métier, la section reste visible mais en lecture seule (sans visa).
+    // Fiche en erreur d'envoi SAP : l'admin corrige tous les champs, même visés.
+    isEditable: droits[owner] &&
+      (deblocageAdmin ? localFiche.statut_sap !== 'Création SAP effectuée' : isSectionEditable(sectionKey, localFiche)),
     onUpdate: handleUpdate,
     onUpdateDebounced: handleUpdateDebounced,
     // Les valeurs reprises de la DE/DS partent avec le visa (le flux SAP relit Dataverse).
@@ -253,13 +263,14 @@ export default function FicheDetail() {
               onVisaHandlers={visaHandlers}
               onRefusHandlers={refusHandlers}
               blockers={visaBlockers}
+              peutViser={peutViser}
             />
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked} />
+        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked || !peutModifierUnBloc} />
         <div id="section-supply_chain" className="scroll-mt-28">
           <SupplyChainSection
             fiche={localFiche}

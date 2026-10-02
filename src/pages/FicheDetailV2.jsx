@@ -21,7 +21,7 @@ import MultiSelectField from '@/components/fiche/fields/MultiSelectField';
 import EmballagesTable from '@/components/fiche/fields/EmballagesTable';
 import LibelleParPaysTable from '@/components/fiche/fields/LibelleParPaysTable';
 import {
-  SITES_STOCKAGE, GROUPES_ARTICLE,
+  GROUPES_ARTICLE,
   GROUPES_RISTOURNE, GROUPES_IMPUTATION, CLES_CALCUL_LOT, PROFILS_COUVERTURE,
   TYPES_APPROVISIONNEMENT, ECLATEMENTS_GROUPE_MARCHANDISE, TYPES_USINE, TYPES_PALETTE,
   MASQUES_ETIQUETTE_COLIS, FORMATS_DATE_ETIQUETTE, TEMPS_RECEPTION_USINE, TYPES_MAGASIN_EM,
@@ -33,8 +33,9 @@ import {
   REMOVED_FIELDS, getMissingVisaFields, hierarchieActivite,
   libelleDemande, tagHerite, optionsSecteur, avecLibelleFr, UNITES_DUREE_VIE,
 } from '@/lib/ficheSchema';
-import { DE_DIVISION_CODES } from '@/lib/deRules';
 import { buildOptions, useAdminOptions } from '@/lib/adminLists';
+import { useFichePerimetre } from '@/lib/useFichePerimetre';
+import AccesRefuse from '@/components/AccesRefuse';
 
 const GROUPS = [
   { id: 'statut', title: 'Statut & dates clés' },
@@ -179,6 +180,13 @@ export default function FicheDetailV2() {
     }
   };
 
+  // Périmètre société : accès au dossier, droit de modifier/viser chaque bloc et
+  // listes dépendant de la société du dossier (canaux, sites de stockage, origine).
+  const {
+    accesAutorise, droits, peutViser, peutModifierUnBloc, deblocageAdmin,
+    canauxOptions, sitesStockageOptions, origineFabOptions,
+  } = useFichePerimetre(localFiche);
+
   if (isLoading || !localFiche) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -186,6 +194,17 @@ export default function FicheDetailV2() {
       </div>
     );
   }
+
+  if (!accesAutorise) return <AccesRefuse />;
+
+  // Champ modifiable = bloc non visé ET bloc de mon métier (le reste reste visible).
+  // Fiche en erreur d'envoi SAP : l'admin corrige tous les champs, même visés.
+  const editable = (name) => {
+    const owner = FIELD_OWNERS[name];
+    if (!owner || !droits[owner]) return false;
+    if (deblocageAdmin) return localFiche.statut_sap !== 'Création SAP effectuée';
+    return isFieldEditable(name, localFiche);
+  };
 
   // Helper : génère les props standard d'un champ depuis son nom (ownership + disabled)
   const fld = (name, extra = {}) => {
@@ -195,7 +214,7 @@ export default function FicheDetailV2() {
     return {
       value: localFiche[name],
       onChange: (v) => handleUpdate({ [name]: v }),
-      disabled: !isFieldEditable(name, localFiche),
+      disabled: !editable(name),
       owner,
       ownerLabel: meta?.label,
       ownerShort: meta?.short,
@@ -231,17 +250,6 @@ export default function FicheDetailV2() {
     localFiche.visa_supply_chain &&
     localFiche.visa_industriel &&
     localFiche.visa_commerce;
-
-  // Origine de fabrication : liste dynamique des divisions/usines (Dataverse),
-  // restreinte aux sites de fabrication — identique à « Division (Usine) » de la DE.
-  const origineFabOptions = buildOptions(
-    (sap.divisions || []).filter((o) => DE_DIVISION_CODES.includes(String(o.value))),
-    localFiche.origine_fabrication,
-  );
-
-  // Canaux de distribution : options « code - désignation » issues de la catégorie
-  // custom « canaux_distrib » gérée dans l'Admin (option-set cr04e_optionsetcodeapps).
-  const canauxOptions = buildOptions(adminOptions.canaux_distrib);
 
   // Secteur d'activité : même colonne et même liste Admin que la DE/DS (code « 15 »).
   const secteurOptions = optionsSecteur(adminOptions.secteurs_activite, localFiche.secteur_activite);
@@ -314,6 +322,7 @@ export default function FicheDetailV2() {
               onVisaHandlers={visaHandlers}
               onRefusHandlers={refusHandlers}
               blockers={visaBlockers}
+              peutViser={peutViser}
             />
           </div>
         </div>
@@ -321,7 +330,7 @@ export default function FicheDetailV2() {
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-4">
         {/* ----- Identification (bandeau, hors visa) ----- */}
-        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked} />
+        <IdentificationBanner fiche={localFiche} de={null} onUpdate={handleUpdate} disabled={isLocked || !peutModifierUnBloc} />
 
         {/* ----- 1. Statut ----- */}
         <Group visible={showGroup('statut')} id="statut" title="Statut & dates clés">
@@ -362,7 +371,7 @@ export default function FicheDetailV2() {
             <LibelleParPaysTable
               value={localFiche.libelle_par_pays}
               onChange={(v) => handleUpdate({ libelle_par_pays: v })}
-              disabled={!isFieldEditable('libelle_par_pays', localFiche)}
+              disabled={!editable('libelle_par_pays')}
             />
           </Fld>
         </Group>
@@ -385,9 +394,9 @@ export default function FicheDetailV2() {
             <EmballagesTable
               fiche={localFiche}
               onUpdate={handleUpdateDebounced}
-              isEditable={(name) => isFieldEditable(name, localFiche)}
+              isEditable={editable}
               showGtin
-              gtinEditable={!isLocked && !localFiche.visa_commerce}
+              gtinEditable={droits.com && !isLocked && (deblocageAdmin || !localFiche.visa_commerce)}
             />
           </Fld>
         </Group>
@@ -421,7 +430,7 @@ export default function FicheDetailV2() {
         {/* ----- 8. Appro & stock ----- */}
         <Group visible={showGroup('appro_stock')} id="appro_stock" title="Approvisionnement & stock">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdate({ sites_stockage: v })} options={SITES_STOCKAGE} /></Fld>
+            <Fld visible={showField('sites_stockage')}><MultiSelectField label="Sites de stockage" required {...fld('sites_stockage')} onChange={(v) => handleUpdate({ sites_stockage: v })} options={sitesStockageOptions} /></Fld>
             <Fld visible={showField('dluc_dluo_critique')}><TextField label="DLC/DLUO critique (j)" type="number" {...fld('dluc_dluo_critique')} /></Fld>
             <Fld visible={showField('gestion_par_lots')}><SelectField label="Gestion par lots" {...fld('gestion_par_lots')} options={GESTION_PAR_LOTS} /></Fld>
             <Fld visible={showField('cle_calcul_lot_usine')}><SelectField label="Clé calcul lot - usine" {...fld('cle_calcul_lot_usine')} options={CLES_CALCUL_LOT} /></Fld>

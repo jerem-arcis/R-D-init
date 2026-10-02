@@ -4,19 +4,31 @@
 // On synchronise à la sauvegarde de la FL (create/delete, pas d'update : un canal
 // est une simple étiquette sans valeur associée).
 
-import { Cr04e_canauxdedistributionsService } from '@/generated';
+import {
+  Cr04e_canauxdedistributionsService,
+  Cr04e_canaldedistributionreferentielsService,
+} from '@/generated';
 import { listAll as listOptionSet } from '@/api/optionSet';
 
-// Catégorie admin (option-set) qui porte les canaux + leur désignation.
+// Ancienne catégorie admin (option-set) des canaux : ne sert plus que de repli pour
+// les codes absents du référentiel.
 const CANAUX_DROPDOWN_ID = 'canaux_distrib';
 
-// Map code -> désignation, depuis la catégorie « canaux_distrib » de l'Admin.
-// Sert à enregistrer la désignation dans cr04e_nom (le code seul est saisi côté FL).
+// Map code -> désignation, depuis le référentiel des canaux de distribution (un même
+// code existe sous plusieurs orgCo : 1ère désignation non vide), complété par
+// l'ancienne catégorie option-set. Sert à enregistrer la désignation dans cr04e_nom
+// (le code seul est saisi côté FL).
 async function designationsByCode() {
-  const rows = await listOptionSet();
   const map = new Map();
-  for (const r of rows) {
-    if (r.dropdownId === CANAUX_DROPDOWN_ID && r.value) map.set(String(r.value), r.designation ?? '');
+  const ref = await Cr04e_canaldedistributionreferentielsService.getAll({ maxPageSize: 5000 });
+  for (const r of ref?.data ?? []) {
+    const code = String(r.cr04e_canal ?? '').trim();
+    if (code && !map.get(code)) map.set(code, r.cr04e_designation ?? '');
+  }
+  for (const r of await listOptionSet()) {
+    if (r.dropdownId === CANAUX_DROPDOWN_ID && r.value && !map.get(String(r.value))) {
+      map.set(String(r.value), r.designation ?? '');
+    }
   }
   return map;
 }

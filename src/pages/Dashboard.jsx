@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { listProjets } from '@/api/projet';
+import { usePerimetre } from '@/lib/PerimetreContext';
+import { peutVoirDossier } from '@/lib/perimetre';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -95,9 +97,12 @@ function ChartCard({ icon: Icon, title, badge, children }) {
 
 export default function Dashboard() {
   // Données réelles (Dataverse) — utilisées quand la source « Réel » est active.
+  // Périmètre société : les indicateurs ne portent que sur les dossiers de mes sociétés.
+  const { perimetre } = usePerimetre();
   const { data: reels = [], isLoading } = useQuery({
     queryKey: ['projets-de'],
     queryFn: listProjets,
+    select: (rows) => rows.filter((d) => peutVoirDossier(perimetre, d.division)),
   });
 
   // --- État des filtres ---

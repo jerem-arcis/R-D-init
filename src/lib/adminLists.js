@@ -15,8 +15,14 @@ export const DROPDOWN_KEYS = [
   'categories_vif',
   'types_logistique',
   'services_demandeur',
-  'canaux_distrib', // Canaux de distribution (FL) — cr04e_id_dd = 'canaux_distrib'
+  // Ancienne liste des canaux (FL) : remplacée par le référentiel Canaux de
+  // distribution (cf. lib/perimetre.js). Encore LUE comme repli tant que le
+  // référentiel est vide, mais plus éditable dans l'Admin (ADMIN_LIST_KEYS).
+  'canaux_distrib',
 ];
+
+// Listes option-set éditables dans l'onglet Admin.
+export const ADMIN_LIST_KEYS = DROPDOWN_KEYS.filter((k) => k !== 'canaux_distrib');
 
 export const OPTIONSET_QUERY_KEY = ['optionset'];
 

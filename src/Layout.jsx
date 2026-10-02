@@ -11,18 +11,26 @@ import {
   Settings2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePerimetre } from '@/lib/PerimetreContext';
 
 const NAV_ITEMS = [
   { label: "Tableau de bord",     page: "Dashboard",     icon: LayoutDashboard, match: ["Dashboard"] },
   { label: "Demandes d'Étude",    page: "DemandesEtude", icon: FileText,        match: ["DemandesEtude", "CreerDE", "TraiterDE"] },
   { label: "Fiches de Lancement", page: "Accueil",       icon: ClipboardList,   match: ["Accueil", "FicheDetail"] },
-  { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"] },
+  { label: "Admin",               page: "Admin",          icon: Settings2,       match: ["Admin"], adminOnly: true },
 ];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const { perimetre, erreursGroupes, simulation } = usePerimetre();
+
   const isActive = (item) => item.match.includes(currentPageName);
+  const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || perimetre?.isAdmin);
+
+  // Nom affiché : celui de la société quand l'utilisateur n'en voit qu'une.
+  const visibles = (perimetre?.societes ?? []).filter((s) => s.visible);
+  const nomSociete = (visibles.length === 1 && visibles[0].nom) || 'BONCOLAC';
 
   return (
     <div className="min-h-screen flex bg-background font-inter">
@@ -54,8 +62,8 @@ export default function Layout({ children, currentPageName }) {
             </span>
           </div>
           <div>
-            <h1 className="font-extrabold text-base text-white tracking-wide">
-              BONCOLAC
+            <h1 className="font-extrabold text-base text-white tracking-wide uppercase">
+              {nomSociete}
             </h1>
             <p
               className="text-[10px] tracking-widest uppercase"
@@ -76,7 +84,7 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto mt-2">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item);
             return (
@@ -101,6 +109,17 @@ export default function Layout({ children, currentPageName }) {
           })}
         </nav>
 
+        {(erreursGroupes.length > 0 || simulation) && (
+          <div className="p-3 text-[11px] leading-snug" style={{ color: "rgba(255,255,255,0.7)" }}>
+            {simulation && <p>Groupes simulés (développement local).</p>}
+            {erreursGroupes.length > 0 && (
+              <p>
+                {erreursGroupes.length} groupe(s) de sécurité introuvable(s) : vos droits peuvent
+                être incomplets.
+              </p>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* Main */}
@@ -117,7 +136,7 @@ export default function Layout({ children, currentPageName }) {
             className="ml-3 font-bold text-sm tracking-wide"
             style={{ color: "hsl(270, 62%, 37%)" }}
           >
-            BONCOLAC
+            {nomSociete.toUpperCase()}
           </span>
         </header>
 
