@@ -400,9 +400,7 @@ export async function getFicheById(id) {
   const fiche = toFicheShape(p);
   fiche.libelle_par_pays = await listLibellePays(id);
   fiche.canaux_distribution = await listCanaux(id);
-  // `fiche.division` = division propre du projet, à exclure des sites de stockage
-  // (sa ligne négoce STOCK appartient à la DE, pas aux sites gérés en FL).
-  fiche.sites_stockage = await listSitesStockage(id, fiche.division);
+  fiche.sites_stockage = await listSitesStockage(id);
   Object.assign(fiche, blocsFromRows(await listEmballages(id)));
   const profilFabricRepet = await lireProfilFabricRepet(id);
   return appliquerHeritage(fiche, valeursDemande(p, { profilFabricRepet }));

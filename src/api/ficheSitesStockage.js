@@ -8,31 +8,11 @@
 // ⚠️ Sûreté : list ET sync ne regardent QUE les lignes cr04e_type = 'STOCK'. Les
 // lignes PROD (division usine du projet) ne sont jamais lues ni supprimées ici.
 
-import { Cr04e_divisionprojetsService, Cr04e_projetsService } from '@/generated';
+import { Cr04e_divisionprojetsService } from '@/generated';
 
 // Type porté par une ligne « site de stockage » (par opposition à 'PROD', la
 // division usine écrite à la création de la DE, cf. createDivisionProjet).
 const TYPE_STOCK = 'STOCK';
-
-// Suffixe d'annotation OData portant le libellé lisible d'un lookup. Pour le lookup
-// Division/Usine, cette valeur formatée EST le code division (ex. « 2859 »).
-const FMT = '@OData.Community.Display.V1.FormattedValue';
-
-// Division PROPRE du projet (sa ligne « division usine »). À EXCLURE des sites de
-// stockage : en négoce (ex. Aire 2859, entrepôt 2820), cette ligne est de type
-// STOCK comme un site de stockage mais appartient à la DE — sans cette exclusion,
-// la synchro FL la verrait comme un site décoché et la SUPPRIMERAIT. Best-effort :
-// '' en cas d'échec -> aucune exclusion (comportement d'avant).
-async function divisionDuProjet(projetId) {
-  try {
-    const result = await Cr04e_projetsService.get(projetId);
-    const p = unwrap(result, 'Lecture division projet');
-    return String(p?.[`_cr04e_divisionusine_value${FMT}`] ?? '').trim();
-  } catch (err) {
-    console.warn('[sites stockage division projet]', err);
-    return '';
-  }
-}
 
 // Clé d'appariement d'un code : insensible aux espaces et à la casse. Un
 // appariement trop strict ferait « repatcher » des sites inchangés : une ligne
@@ -85,12 +65,8 @@ function unwrap(result, action) {
 }
 
 // Sites de stockage d'un projet (lignes STOCK uniquement) -> [{ id, code }].
-// `divisionProjet` = division propre du projet à exclure (sa ligne négoce STOCK ne
-// doit pas apparaître comme site de stockage). Omis -> relu via divisionDuProjet ;
-// passer '' explicitement pour désactiver l'exclusion sans relecture.
-export async function listForProjet(projetId, divisionProjet) {
+export async function listForProjet(projetId) {
   if (!projetId) return [];
-  const exclu = divisionProjet ?? (await divisionDuProjet(projetId));
   const result = await Cr04e_divisionprojetsService.getAll({
     // Filtre STRICT : le projet ET le type STOCK. Sans le filtre de type, on lirait
     // aussi la ligne PROD (division usine) et on la supprimerait au premier décochage.
@@ -98,35 +74,25 @@ export async function listForProjet(projetId, divisionProjet) {
     maxPageSize: 5000,
   });
   const rows = unwrap(result, 'Liste sites de stockage') ?? [];
-  return rows
-    .map((r) => ({
-      id: r.cr04e_divisionprojetid,
-      code: (r.cr04e_division ?? '').trim(),
-    }))
-    // On écarte la ligne « division usine » du projet (type STOCK en négoce) : c'est
-    // la ligne de la DE, pas un site de stockage géré par la FL.
-    .filter((r) => !exclu || codeKey(r.code) !== codeKey(exclu));
+  return rows.map((r) => ({
+    id: r.cr04e_divisionprojetid,
+    code: (r.cr04e_division ?? '').trim(),
+  }));
 }
 
 // Valeur exploitée par le multi-select : simple tableau de codes.
-export async function listValuesForProjet(projetId, divisionProjet) {
-  const rows = await listForProjet(projetId, divisionProjet);
+export async function listValuesForProjet(projetId) {
+  const rows = await listForProjet(projetId);
   return rows.map((r) => r.code).filter(Boolean);
 }
 
 // Synchronise les sites de stockage d'un projet avec la saisie courante (tableau
 // de codes division). Chaque ligne créée porte le code (cr04e_division), le type
 // STOCK (cr04e_type) et le lien projet (cr04e_Projet).
-export async function syncForProjet(projetId, saisis = [], divisionProjet) {
+export async function syncForProjet(projetId, saisis = []) {
   if (!projetId) return;
-  // Division propre du projet résolue UNE fois, puis réutilisée (list + contrôle)
-  // pour éviter des relectures et garantir la même exclusion partout.
-  const exclu = divisionProjet ?? (await divisionDuProjet(projetId));
-  const existants = await listForProjet(projetId, exclu);
-  // Défensif : on ne (re)crée jamais la division propre du projet comme site de
-  // stockage, même si elle remontait par erreur dans la sélection.
-  const saisisFiltres = (saisis || []).filter((c) => !exclu || codeKey(c) !== codeKey(exclu));
-  const { toCreate, toDelete } = diffSitesStockage(existants, saisisFiltres);
+  const existants = await listForProjet(projetId);
+  const { toCreate, toDelete } = diffSitesStockage(existants, saisis);
 
   for (const code of toCreate) {
     unwrap(
@@ -148,15 +114,15 @@ export async function syncForProjet(projetId, saisis = [], divisionProjet) {
   // Contrôle après écriture : la base doit refléter EXACTEMENT la sélection. On
   // échoue bruyamment plutôt que de laisser une ligne décochée survivre en base.
   if (toCreate.length || toDelete.length) {
-    const apres = await listValuesForProjet(projetId, exclu);
-    const attendu = new Set(saisisFiltres.map(codeKey).filter(Boolean));
+    const apres = await listValuesForProjet(projetId);
+    const attendu = new Set((saisis || []).map(codeKey).filter(Boolean));
     const obtenu = new Set(apres.map(codeKey).filter(Boolean));
     const ecart =
       obtenu.size !== attendu.size || [...attendu].some((c) => !obtenu.has(c));
     if (ecart) {
       throw new Error(
         `Sites de stockage non synchronisés : la base contient [${apres.join(', ') || '-'}]` +
-          ` au lieu de [${saisisFiltres.join(', ') || '-'}].`,
+          ` au lieu de [${(saisis || []).join(', ') || '-'}].`,
       );
     }
   }
