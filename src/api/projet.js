@@ -156,25 +156,38 @@ export async function createDivisionProjet({ projetId, division, type, profilFab
   return unwrap(result, 'Création division-projet');
 }
 
-// Écrit une ligne cr04e_divisionprojet SEULEMENT si elle n'existe pas déjà pour ce
-// projet (même division ET même type) — idempotent, évite les doublons quand la DS
-// est ré-enregistrée / renvoyée. Division vide -> no-op (rien à écrire).
+// Garantit UNE ligne cr04e_divisionprojet pour le couple (projet + division), avec
+// le bon type et profil. Idempotent sur (projet + division) : le TYPE (PROD/STOCK)
+// est une PROPRIÉTÉ de la ligne, pas sa clé. Si la division change de rôle (ex. une
+// DE devenue négoce → STOCK, cf. computeTypeProduitDE), on MET À JOUR la ligne
+// existante au lieu d'en créer une 2ᵉ en laissant l'ancienne (PROD) orpheline.
+// Division vide -> no-op (rien à écrire).
 export async function ensureDivisionProjet({ projetId, division, type, profilFabricRepet } = {}) {
   if (!projetId) return null;
   const div = trimOrUndef(division);
   const t = trimOrUndef(type);
   if (div === undefined) return null;
   const safeDiv = div.replace(/'/g, "''");
-  const filter =
-    `_cr04e_projet_value eq ${projetId} and cr04e_division eq '${safeDiv}'` +
-    (t ? ` and cr04e_type eq '${t.replace(/'/g, "''")}'` : '');
   const existing = await Cr04e_divisionprojetsService.getAll({
-    filter,
-    select: ['cr04e_divisionprojetid'],
+    filter: `_cr04e_projet_value eq ${projetId} and cr04e_division eq '${safeDiv}'`,
+    select: ['cr04e_divisionprojetid', 'cr04e_type', 'cr04e_profilfabricrepet'],
     top: 1,
   });
   const rows = unwrap(existing, 'Lecture division-projet') ?? [];
-  if (rows.length) return null; // déjà présente : on ne recrée pas
+  const row = rows[0];
+  if (row) {
+    // Ligne déjà présente : on ne corrige que ce qui a changé (type / profil),
+    // sinon no-op. `undefined` = valeur non fournie -> on n'écrase pas.
+    const profil = trimOrUndef(profilFabricRepet);
+    const patch = {};
+    if (t !== undefined && (row.cr04e_type ?? '') !== t) patch.cr04e_type = t;
+    if (profil !== undefined && (row.cr04e_profilfabricrepet ?? '') !== profil) {
+      patch.cr04e_profilfabricrepet = profil;
+    }
+    if (Object.keys(patch).length === 0) return null; // déjà conforme
+    const result = await Cr04e_divisionprojetsService.update(row.cr04e_divisionprojetid, patch);
+    return unwrap(result, 'Mise à jour division-projet');
+  }
   return createDivisionProjet({ projetId, division: div, type: t, profilFabricRepet });
 }
 
