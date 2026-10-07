@@ -97,6 +97,13 @@ export const computeProfilFabricRepetDE = (code) => {
   return '';
 };
 
+// Type de produit SAP (type article MARA-MTART / cr04e_typedeproduit) d'une DE
+// STANDARD : division Aire (2859) → NEGO (négoce), toute autre division → PFIN
+// (produit fini). Règle métier « finale et définitive » — même bascule que le
+// groupe d'autorisation ci-dessous. Le pendant DS est computeTypeProduitDS.
+export const computeTypeProduitDE = (code) =>
+  String(code ?? '').trim() === '2859' ? 'NEGO' : 'PFIN';
+
 // Groupe d'autorisation (MARA-BEGRU) selon la division : Aire (2859) → NEGO, sinon PFIN.
 export const computeGroupeAutorisationDE = (code) =>
   String(code ?? '').trim() === '2859' ? 'NEGO' : 'PFIN';

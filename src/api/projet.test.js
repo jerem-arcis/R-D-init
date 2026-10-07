@@ -81,8 +81,11 @@ describe('toFormData — résolution des lookups à la réouverture', () => {
 });
 
 describe('type de produit SAP (cr04e_typedeproduit)', () => {
-  it('une DE est toujours PFIN ; une DS = NEGO si type 4/5 ou usine d’origine contient Aire', () => {
+  it('une DE = NEGO si division Aire (2859), sinon PFIN ; une DS = NEGO si type 4/5 ou usine d’origine contient Aire', () => {
     expect(buildProjetPayload({}).cr04e_typedeproduit).toBe('PFIN');
+    // DE division Aire → NEGO (type article) ; autre division → PFIN.
+    expect(buildProjetPayload({ division: '2859' }).cr04e_typedeproduit).toBe('NEGO');
+    expect(buildProjetPayload({ division: '2886' }).cr04e_typedeproduit).toBe('PFIN');
     // Types 4/5 (négoce) → NEGO, quelle que soit l'usine.
     expect(buildDsPayload({ autre_type_demande: '4' }).cr04e_typedeproduit).toBe('NEGO');
     // Usine de fabrication d'origine contenant « Aire » → NEGO.

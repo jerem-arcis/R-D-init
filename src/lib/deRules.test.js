@@ -14,6 +14,7 @@ import {
   computeSecteurFromReseau,
   normalizeAxeStrategique,
   computeProfilFabricRepetDE,
+  computeTypeProduitDE,
   computeGroupeAutorisationDE,
   computeGroupeFraisGenerauxDE,
   familleGroupeArticle,
@@ -222,6 +223,17 @@ describe('computeProfilFabricRepetDE', () => {
     expect(computeProfilFabricRepetDE('2859')).toBe(''); // Aire
     expect(computeProfilFabricRepetDE('2820')).toBe(''); // négoce
     expect(computeProfilFabricRepetDE('')).toBe('');
+  });
+});
+
+describe('computeTypeProduitDE', () => {
+  it('Aire (2859) → NEGO, toute autre division → PFIN', () => {
+    expect(computeTypeProduitDE('2859')).toBe('NEGO');
+    expect(computeTypeProduitDE('2847')).toBe('PFIN');
+    expect(computeTypeProduitDE('2886')).toBe('PFIN');
+    expect(computeTypeProduitDE('2866')).toBe('PFIN');
+    expect(computeTypeProduitDE('')).toBe('PFIN');
+    expect(computeTypeProduitDE(undefined)).toBe('PFIN');
   });
 });
 

@@ -7,6 +7,7 @@ import {
   normalizeAxeStrategique,
   computeSecteurFromReseau,
   computeGroupeArticleLockedDE,
+  computeTypeProduitDE,
 } from '@/lib/deRules';
 import { buildEANSet } from '@/lib/ean';
 import { toNumber, trimOrUndef } from '@/api/_odata';
@@ -74,10 +75,11 @@ export function buildProjetPayload(formData, { codeChapeau, zug, sapOptions = {}
     cr04e_zug: toNumber(zug),
     cr04e_codechapeau: trimOrUndef(codeChapeau),
     cr04e_statut_en_cours: trimOrUndef(statut),
-    // Type de produit SAP : une DE est toujours un produit FINI. Constante et non
-    // saisissable — même valeur que le champ TypeProduit du payload SAP_SEND.
-    // Le pendant DS (négoce) vaut NEGO, cf. buildDsPayload.
-    cr04e_typedeproduit: 'PFIN',
+    // Type de produit SAP (type article MARA-MTART) : règle métier finale — division
+    // Aire (2859) → NEGO (négoce), toute autre division → PFIN (produit fini). Même
+    // bascule que le groupe d'autorisation. Relu par le flux SAP_SEND depuis Dataverse.
+    // Le pendant DS (négoce types 4/5) vaut NEGO, cf. buildDsPayload.
+    cr04e_typedeproduit: computeTypeProduitDE(formData.division),
   };
 
   // Codes EAN (GS1) déduits du code chapeau, écrits dans les colonnes dédiées de
