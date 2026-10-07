@@ -1791,29 +1791,6 @@ export default function CreerDE() {
         });
         return;
       }
-      // Ligne cr04e_divisionprojet rattachée au projet (relation lookup cr04e_Projet),
-      // écrite JUSTE APRÈS la table Projet (le lookup a besoin du GUID). Non bloquant :
-      // le projet est déjà enregistré, un échec ici ne stoppe pas l'envoi SAP.
-      // Idempotent (ensureDivisionProjet) : un renvoi après échec SAP ne crée pas de
-      // doublon (createDivisionProjet en créait une nouvelle à chaque tentative).
-      if (projetId) {
-        try {
-          await ensureDivisionProjet({
-            projetId,
-            // Rôle de la division : une DE NEGO (division Aire 2859) est un site
-            // STOCKISTE (STOCK), pas un site de production. Même bascule que le
-            // type de produit (computeTypeProduitDE). Toute autre division → PROD.
-            type: computeTypeProduitDE(formData.division) === 'NEGO' ? 'STOCK' : 'PROD',
-            profilFabricRepet: computeProfilFabricRepetDE(formData.division),
-          });
-        } catch (err) {
-          toast({
-            title: 'Division-projet non enregistrée',
-            description: `Le projet est enregistré, mais l'écriture cr04e_divisionprojet a échoué : ${err?.message || 'erreur inconnue'}.`,
-            variant: 'destructive',
-          });
-        }
-      }
     }
     // Payload d'enregistrement de la DE (phase DL). Pour une DE réussie, on le
     // diffère au clic « Voir mes DE » de la pop-up (l'utilisateur voit le vert).
@@ -1830,6 +1807,47 @@ export default function CreerDE() {
       date_code_chapeau: effectiveCode ? new Date().toISOString() : null,
       statut: 'dl_attente_validation_cdg',
     };
+
+    // Table cr04e_divisionprojet (division) : écrite APRÈS le projet et AVANT le flux
+    // final. BLOQUANT — le flux SAP_SEND relit la division par ID (payload réduit à
+    // { ID, PoidsNet }), donc si cette écriture échoue on NE lance PAS le flux : on
+    // repasse la DE en brouillon (retry = même ligne) et on miroite le brouillon
+    // local, exactement comme un échec d'envoi SAP. Idempotent (ensureDivisionProjet).
+    if (formType === 'de' && projetId) {
+      try {
+        await ensureDivisionProjet({
+          projetId,
+          // Rôle de la division : une DE NEGO (division Aire 2859) est un site
+          // STOCKISTE (STOCK), pas un site de production. Même bascule que le type
+          // de produit (computeTypeProduitDE). Toute autre division → PROD.
+          type: computeTypeProduitDE(formData.division) === 'NEGO' ? 'STOCK' : 'PROD',
+          profilFabricRepet: computeProfilFabricRepetDE(formData.division),
+        });
+      } catch (err) {
+        try {
+          await updateProjetFromDE(projetId, formData, {
+            codeChapeau: effectiveCode,
+            zug,
+            sapOptions,
+            statut: PROJET_STATUT.de_brouillon,
+          });
+        } catch (err2) {
+          toast({
+            title: 'Retour en brouillon échoué',
+            description: `Le statut n'a pas pu être remis en brouillon : ${err2?.message || 'erreur inconnue'}.`,
+            variant: 'destructive',
+          });
+        }
+        setFormData((prev) => ({ ...prev, projet_id: projetId, statut: 'de_brouillon' }));
+        await persistLocalBrouillon({ ...savePayload, projet_id: projetId, statut: 'de_brouillon' });
+        setSapModal({
+          status: 'error',
+          title: 'Enregistrement de la division échoué',
+          message: `La DE n'a PAS été transmise à SAP : l'écriture de la table division (cr04e_divisionprojet) a échoué (${err?.message || 'erreur inconnue'}).\nRéessayez ; si le problème persiste, vérifiez les droits sur cette table.`,
+        });
+        return; // finally remet isSubmitting=false
+      }
+    }
 
     // Envoi vers SAP (DE) : pop-up centrale. Erreur (400…) => l'article n'a pas été
     // créé : le projet vient d'être écrit en « attente validation CDG », on le
