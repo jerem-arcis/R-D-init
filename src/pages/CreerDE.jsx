@@ -37,6 +37,7 @@ import {
   computeGroupeArticleDE,
   computeGroupeArticleLockedDE,
   computeProfilFabricRepetDE,
+  computeTypeProduitDE,
   computeGroupeAutorisationDE,
   computeGroupeFraisGenerauxDE,
   needsSurgeleWarningDE,
@@ -1799,8 +1800,10 @@ export default function CreerDE() {
         try {
           await ensureDivisionProjet({
             projetId,
-            division: formData.division,
-            type: 'PROD',
+            // Rôle de la division : une DE NEGO (division Aire 2859) est un site
+            // STOCKISTE (STOCK), pas un site de production. Même bascule que le
+            // type de produit (computeTypeProduitDE). Toute autre division → PROD.
+            type: computeTypeProduitDE(formData.division) === 'NEGO' ? 'STOCK' : 'PROD',
             profilFabricRepet: computeProfilFabricRepetDE(formData.division),
           });
         } catch (err) {
